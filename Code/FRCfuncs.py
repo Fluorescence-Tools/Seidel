@@ -353,7 +353,7 @@ def createBeadImg(size, spotLst, spotSigma, spotAmplitude, background, UsePoisso
     if UsePoisson:
         im = np.random.poisson (im)
 
-    return im
+    return im.astype(np.int)
 
 def createSpotLst(size, Nspots, spotSigma, avoidEdges = False, avoidNeighbour = False):
     """create gaussian spot center list. 
