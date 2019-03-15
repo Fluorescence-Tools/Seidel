@@ -1,0 +1,185 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration file="/Volumes/Data/User/vanderVoortN/python/FRC/IIT Matlab Code/CastelloM_NatMethods_2018_Software/FRCAnalysis/Functions/FRC.prj" location="/Volumes/Data/User/vanderVoortN/python/FRC/IIT Matlab Code/CastelloM_NatMethods_2018_Software/FRCAnalysis/Functions" name="FRC" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>FRC</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>1.0</param.version>
+    <param.authnamewatermark>Anders Barth, Waldemar Schrimpf</param.authnamewatermark>
+    <param.email>anders.barth@gmail.com</param.email>
+    <param.company>FRC</param.company>
+    <param.summary />
+    <param.description />
+    <param.screenshot />
+    <param.guid />
+    <param.installpath.string>/FRC/FRC/</param.installpath.string>
+    <param.installpath.combo>option.installpath.systemwideapp</param.installpath.combo>
+    <param.logo />
+    <param.install.notes>In the following directions, replace MCR_ROOT by the directory where the MATLAB Runtime is installed on the target machine.
+
+If the environment variable DYLD_LIBRARY_PATH is undefined, set it to the concatenation of the following strings:
+
+    MCR_ROOT/v91/runtime/maci64:
+    MCR_ROOT/v91/sys/os/maci64:
+    MCR_ROOT/v91/bin/maci64
+
+If it is defined, set it to the concatenation of these strings:
+
+    ${LD_LIBRARY_PATH}: 
+    MCR_ROOT/v91/runtime/maci64:
+    MCR_ROOT/v91/sys/os/maci64:
+    MCR_ROOT/v91/bin/maci64</param.install.notes>
+    <param.target.install.notes>You must have Python 2.7, 3.3, or 3.4 on your machine to install this package. Go to the directory to which setup.py and your package have been written. Then execute:
+
+        python setup.py install [options]
+
+For details, see the readme.txt distributed with this package.</param.target.install.notes>
+    <param.intermediate>${PROJECT_ROOT}/FRC/for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}/FRC/for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}/FRC/for_redistribution</param.output>
+    <param.logdir>${PROJECT_ROOT}/FRC</param.logdir>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.embed.ctf>true</param.embed.ctf>
+    <param.target.type>subtarget.python.module</param.target.type>
+    <param.support.packages />
+    <param.namespace />
+    <param.classorg />
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>false</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.net.framework>option.net.framework.default</param.net.framework>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace />
+    <param.net.tsa.superclass>Class1</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>/Users/Anders/Documents/MATLAB</param.net.tsa.metadata.assembly>
+    <param.net.saved.interface />
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.version />
+      <param.authnamewatermark />
+      <param.email />
+      <param.summary />
+      <param.description />
+      <param.screenshot />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.logo />
+      <param.intermediate />
+      <param.files.only />
+      <param.output />
+      <param.logdir />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.embed.ctf />
+      <param.support.packages />
+      <param.namespace />
+      <param.classorg />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.web.mcr.name />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.user.only.registration />
+      <param.net.framework />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.enable.remoting />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.superclass />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.net.saved.interface />
+    </unset>
+    <fileset.exports>
+      <file>${PROJECT_ROOT}/IIT_FRCAnalysis.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Class1">
+          <file>${PROJECT_ROOT}/IIT_FRCAnalysis.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>${PROJECT_ROOT}/IIT_FRCAnalysis.m</file>
+    </fileset.resources>
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}/IIT_DriftDetect.m</file>
+      <file>${PROJECT_ROOT}/IIT_G2DFit_gaussian2DFittingRotational.m</file>
+      <file>${PROJECT_ROOT}/IIT_Hamming.m</file>
+      <file>${PROJECT_ROOT}/IIT_ShiftImage.m</file>
+      <file>${PROJECT_ROOT}/IIT_findIntercept.m</file>
+      <file>${PROJECT_ROOT}/IIT_meanFilter.m</file>
+      <file>${PROJECT_ROOT}/IIT_performFRC.m</file>
+      <file>${PROJECT_ROOT}/IIT_plotFRC.m</file>
+      <file>${PROJECT_ROOT}/IIT_read_params.m</file>
+    </fileset.depfun>
+    <fileset.package />
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}/FRC/for_testing" name="FRC" optional="false">/Volumes/Data/User/vanderVoortN/python/FRC/IIT Matlab Code/CastelloM_NatMethods_2018_Software/FRCAnalysis/Functions/FRC/for_testing/FRC</file>
+      <file location="${PROJECT_ROOT}/FRC/for_testing" name="readme.txt" optional="true">/Volumes/Data/User/vanderVoortN/python/FRC/IIT Matlab Code/CastelloM_NatMethods_2018_Software/FRCAnalysis/Functions/FRC/for_testing/readme.txt</file>
+      <file location="${PROJECT_ROOT}/FRC/for_testing" name="setup.py" optional="false">/Volumes/Data/User/vanderVoortN/python/FRC/IIT Matlab Code/CastelloM_NatMethods_2018_Software/FRCAnalysis/Functions/FRC/for_testing/setup.py</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>/Applications/MATLAB_R2016b.app</root>
+      <toolboxes>
+        <toolbox name="fixedpoint" />
+        <toolbox name="matlabcoder" />
+        <toolbox name="embeddedcoder" />
+      </toolboxes>
+      <toolbox>
+        <fixedpoint>
+          <enabled>true</enabled>
+        </fixedpoint>
+      </toolbox>
+      <toolbox>
+        <matlabcoder>
+          <enabled>true</enabled>
+        </matlabcoder>
+      </toolbox>
+      <toolbox>
+        <embeddedcoder>
+          <enabled>true</enabled>
+        </embeddedcoder>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>true</unix>
+      <mac>true</mac>
+      <windows>false</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.14.3</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>maci64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

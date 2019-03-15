@@ -1,0 +1,30 @@
+
+from ctypes import *
+SMB_MAX_DATA_SIZE = 5
+ARRAY5 = c_ubyte * SMB_MAX_DATA_SIZE
+
+class SMB_REQUEST(Structure):
+    _fields_ = [
+        ("Address", c_ubyte),
+        ("Command", c_ubyte),
+        ("BlockLength", c_ubyte),
+        ("Data", ARRAY5)]
+
+smbus_read_byte = CDLL('libfunctions').SmBusReadByte
+smbus_read_byte.argtypes = [c_void_p,POINTER(SMB_REQUEST)]
+smbus_read_byte.restype = c_int
+open_smbus = CDLL('libfunctions').OpenSmbus
+open_smbus.argtypes = []
+open_smbus.restype = c_void_p
+
+handle = open_smbus()
+print ('handle = %08Xh' % handle)
+
+smb_request = SMB_REQUEST(1,2,5)
+
+print ('returned =',smbus_read_byte(handle,byref(smb_request)))
+print ('Address =',smb_request.Address)
+print ('Command =',smb_request.Command)
+print ('BlockLength =',smb_request.BlockLength)
+for i,b in enumerate(smb_request.Data):
+    print ('Data[%d] = %02Xh' % (i,b))

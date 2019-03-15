@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeLite_Workspace Name="sandbox" Database="" Version="10.0.0">
+  <Project Name="fopen" Path="fopen/fopen.project" Active="Yes"/>
+  <Project Name="toydll" Path="toydll/toydll.project" Active="No"/>
+  <BuildMatrix>
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
+      <Environment/>
+      <Project Name="fopen" ConfigName="Debug"/>
+      <Project Name="toydll" ConfigName="Debug"/>
+    </WorkspaceConfiguration>
+    <WorkspaceConfiguration Name="Release" Selected="no">
+      <Environment/>
+      <Project Name="fopen" ConfigName="Release"/>
+      <Project Name="toydll" ConfigName="Release"/>
+    </WorkspaceConfiguration>
+  </BuildMatrix>
+</CodeLite_Workspace>

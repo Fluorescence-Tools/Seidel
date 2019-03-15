@@ -1,0 +1,9 @@
+[{
+  "file": "K:\\vanderVoortN\\python\\sandbox\\fopen\\main.cpp",
+  "directory": "K:\\vanderVoortN\\python\\sandbox\\fopen",
+  "command": "C:/TDM-GCC-64/bin/g++.exe -c K:\\vanderVoortN\\python\\sandbox\\fopen\\main.cpp -o K:\\vanderVoortN\\python\\sandbox\\fopen\\main.cpp.o  -g  -O0  -Wall -I. -I."
+ }, {
+  "file": "K:\\vanderVoortN\\python\\sandbox\\toydll\\main.cpp",
+  "directory": "K:\\vanderVoortN\\python\\sandbox\\toydll",
+  "command": "C:/TDM-GCC-64/bin/g++.exe -c K:\\vanderVoortN\\python\\sandbox\\toydll\\main.cpp -o K:\\vanderVoortN\\python\\sandbox\\toydll\\main.cpp.o  -g  -O0  -Wall -I. -I."
+ }]
