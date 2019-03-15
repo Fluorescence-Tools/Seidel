@@ -369,8 +369,8 @@ def createSpotLst(size, Nspots, spotSigma, avoidEdges = False, avoidNeighbour = 
 
         #check if bead is close to edge
         if avoidEdges:
-            legalEdge = (spotLst[i,0] > 2 * spotSigma and spotLst[i,0] < size - 2 * spotSigma and
-                spotLst[i,1] > 4 * spotSigma and spotLst[i,1] < size - 2 * spotSigma)
+            legalEdge = (spotLst[i,0] > 4 * spotSigma and spotLst[i,0] < size - 4 * spotSigma and
+                spotLst[i,1] > 4 * spotSigma and spotLst[i,1] < size - 4 * spotSigma)
         else: legalEdge = True
 
         #check if bead is too close to other bead
