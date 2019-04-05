@@ -117,7 +117,7 @@ def meanFilter(data, width):
 
 
 
-def pltFRC(pixelSize, title, threeSigma, fiveSigma, largeAngles, smallAngles):
+def pltFRC(pixelSize, title, threeSigma, fiveSigma, largeAngles, smallAngles, saveas = None):
     d = threeSigma.shape[0]
     #plot smallAngles if array was filled
     if (smallAngles[0] is not None):
@@ -140,6 +140,8 @@ def pltFRC(pixelSize, title, threeSigma, fiveSigma, largeAngles, smallAngles):
         else:
             labels[i] = (2 * d * pixelSize / locs[i]).astype(np.int)
     plt.xticks(locs, labels)
+    if (saveas is not None):
+        plt.savefig(saveas, dpi = 300)
     plt.show()
     
 def checkArguments(imA, imB, theta):
