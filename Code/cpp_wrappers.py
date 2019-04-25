@@ -9,8 +9,15 @@ import numpy as np
 import ctypes
 import os
 
+
 readPTU = ctypes.WinDLL (r"S:\64bit dll 's\PQ_PTU_sf\release\PQ_PTU.dll")
-_SplitOnTacs = ctypes.CDLL('ProcessPhotonStream.dll').SplitOnTacs
+#_SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\ProcessPhotonStream.dll').SplitOnTacs
+debug = False
+if debug:
+    _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
+else:
+    _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').SplitOnTacs
+
 
 def ptuHeader_wrap (fname):
     """wrapper for PQ_ptuHeader_sf function. 
@@ -19,12 +26,15 @@ def ptuHeader_wrap (fname):
     #strip file name for header location
     root, file = os.path.split(fname)
     name, _ = os.path.splitext(file)
+    
     try:
-        os.mkdir("header")
+        os.mkdir(os.path.join(root, b"header"))
+        print(b'creating new directory:' + os.path.join(root, b"header"))
     except:
         print("header dir already exists")
-    outfile =  os.path.join(b"header", name + b".txt")
+    outfile =  os.path.join(root, b"header", name + b".txt")
     fpout = ctypes.create_string_buffer(outfile)
+    print(outfile)
     return readPTU.PQ_ptuHeader_sf(fpin,fpout)
 
 def ptu_wrap(fname, NumRecords):
@@ -32,6 +42,7 @@ def ptu_wrap(fname, NumRecords):
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
     c_int_p = ctypes.POINTER(ctypes.c_int) #init class for int pointer
+
 
 
     length = ctypes.c_longlong(NumRecords)
@@ -60,7 +71,9 @@ def ptu_wrap(fname, NumRecords):
 import logging
 logger = logging.getLogger('readptu')
 def read_header(header_name):
-    header = np.genfromtxt(r"header\\Crimson20nm_Exc_640_1perc_STED100perc_0016AU.txt", delimiter = '\n', dtype = str)
+#    header = np.genfromtxt(r"header\\Crimson20nm_Exc_640_1perc_STED100perc_0016AU.txt", delimiter = '\n', dtype = str)
+    print(header_name.decode())
+    header = np.genfromtxt(header_name.decode(), delimiter = '\n', dtype = str)
     for el in header:
         if "ImgHdr_PixX" in el:
             dimX = int(el[40:])
@@ -75,9 +88,8 @@ def read_header(header_name):
     except NameError:
         logger.error("not all needed variables were found")
         raise
-        
-def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumRecords, 
-                     gate = 3328, uselines = np.array([1])):
+
+def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumRecords, uselines, gate = 3328):
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
     c_int_p = ctypes.POINTER(ctypes.c_int) #init class for int pointer

@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 from sys import float_info
 import os
 from scipy.optimize import curve_fit
+from cpp_wrappers import *
+import ctypes
 
 def readtxt(fileA, fileB):
     imA = np.genfromtxt(fileA)
@@ -308,7 +310,7 @@ def stackDrift(img, pixelSize, dwelltime, verbose = False):
     #first element of driftArr is 0
     drift = np.zeros((frames,2))
     for i in range(1, frames):
-        drift[i], _ = FRCfuncs.DriftDetect(img[i-1], img[i], pixelSize)
+        drift[i], _ = DriftDetect(img[i-1], img[i], pixelSize)
     cumDrift = np.cumsum(drift, axis = 0)*pixelSize
     if verbose:
         xdim = img.shape[1]
@@ -393,3 +395,31 @@ def createSpotLst(size, Nspots, spotSigma, avoidEdges = False, avoidNeighbour = 
         if counter >100: raise Exception('image too crowded: no space for new spots')
         else: counter +=1
     return spotLst
+
+def genImABfromptu(fname, uselines = np.ones(1), gate = 3228):
+    NumRecords = ptuHeader_wrap (fname)
+    eventN, tac, t, can = ptu_wrap(fname, NumRecords)
+    root, file = os.path.split(fname)
+    name, _ = os.path.splitext(file)
+    header_name = os.path.join(root, b"header", name + b".txt")
+    print('number of records is ' + str(NumRecords))
+
+    dimX, dimY, dwelltime, counttime = read_header(header_name)
+    #uselines = np.ones(1).astype(np.ubyte)
+    imA, imB = SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, 
+                                NumRecords, gate = gate, uselines = uselines)
+    print("total image intensity is "  + str(np.sum(imA+imB)))
+
+    try:
+        os.mkdir(os.path.join(root, file[:-4]))
+        print('storing result in new folder')
+    except:
+        print('overwriting result in existing folder')
+
+    im = Image.fromarray(imA)
+    outname = str(os.path.join(root, file[:-4] + b'\\imA.tiff'), encoding='utf-8')
+    im.save(outname)
+    im = Image.fromarray(imB)
+    outname = str(os.path.join(root, file[:-4] + b'\\imB.tiff'), encoding='utf-8')
+    im.save(outname)
+    return imA, imB

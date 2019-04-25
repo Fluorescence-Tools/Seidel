@@ -1,0 +1,116 @@
+Tag Version: 1.1.00 
+
+TTResult_StopReason                     0
+File_Comment                            N/A
+File_CreatingTime                       Thu Apr 18 17:38:48 2019
+
+CreatorSW_Name                          Imspector
+CreatorSW_Version                       0.14.15212
+File_GUID                               {0C9417D3-B0EE-44E7-FC93-291CA6D5D183}
+Fast_Load_End                           <empty Tag>
+CreatorSW_SVNBuild                      0
+HW_Type                                 HydraHarp 400
+HW_Version                              2.0
+HW_PartNo                               930020
+HW_SerialNo                             HH#1030755
+Measurement_Mode                        3
+HW_Features                             0x0000000000000007
+ImgHdr_Frame                            2
+ImgHdr_LineStart                        0
+ImgHdr_LineStop                         1
+MeasDesc_AcquisitionTime                3031
+ImgHdr_PixX                             512
+ImgHdr_PixY                             512
+ImgHdr_TimePerPixel                     1.000000E-002
+ImgHdr_PixResol                         0.000000E+000
+ImgHdr_X0                               0.000000E+000
+ImgHdr_Y0                               0.000000E+000
+ImgHdr_Z0                               0.000000E+000
+UsrAI_usrTagVersion                     1.0.0
+UsrAI_ScanAxes                          4
+UsrAIScanAx_Label(0)                    ExpControl X
+UsrAIScanAx_Label(1)                    ExpControl Y
+UsrAIScanAx_Label(2)                    None
+UsrAIScanAx_Label(3)                    None
+Measurement_SubMode                     3
+ImgHdr_BiDirect                         False
+ImgHdr_Dimensions                       3
+ImgHdr_Ident                            7
+HW_BaseResolution                       1.000000E-012
+MeasDesc_GlobalResolution               2.500003E-008
+MeasDesc_Resolution                     1.000000E-012
+MeasDesc_BinningFactor                  1
+MeasDesc_Offset                         0
+MeasDesc_Restart                        False
+MeasDesc_InvalidSync                    False
+MeasDesc_StopOnOvfl                     False
+MeasDesc_StopAt                         -1
+HWTriggerOut_On                         False
+HWTriggerOut_Period                     0.000000E+000
+HW_ExternalDevices                      0
+HW_ExternalRefClock                     False
+TTResult_SyncRate                       39999960
+TTResultFormat_BitsPerRecord            32
+TTResultFormat_TTTRRecType              16843524
+TTResultFormat_NSyncMask                1023
+TTResultFormat_NSyncShift               0
+TTResultFormat_DTimeMask                32767
+TTResultFormat_DTimeShift               10
+TTResultFormat_ChannelMask              63
+TTResultFormat_ChannelShift             25
+TTResultFormat_SpecialMask              -2147483648
+TTResultFormat_WrapAround               1024
+$StartedByRemoteInterface               False
+HW_Modules                              4
+HWModule_TypeCode(0)                    1000
+HWModule_VersCode(0)                    51052545
+HWModule_TypeCode(1)                    1010
+HWModule_VersCode(1)                    33554954
+HWModule_TypeCode(2)                    1040
+HWModule_VersCode(2)                    18153994
+HWModule_TypeCode(3)                    1040
+HWModule_VersCode(3)                    18153994
+HW_Markers                              4
+HWMarkers_HoldOff                       0
+HWMarkers_Enabled(0)                    True
+HWMarkers_RisingEdge(0)                 True
+HWMarkers_Enabled(1)                    True
+HWMarkers_RisingEdge(1)                 False
+HWMarkers_Enabled(2)                    True
+HWMarkers_RisingEdge(2)                 True
+HWMarkers_Enabled(3)                    False
+HWMarkers_RisingEdge(3)                 True
+HW_InpChannels                          4
+HWInpChan_TdCode(0)                     0
+HWInpChan_Offset(0)                     -3600
+HWInpChan_CFDLevel(0)                   100
+HWInpChan_CFDZeroCross(0)               10
+HWInpChan_Enabled(0)                    True
+HWInpChan_ModuleIdx(0)                  2
+HWInpChan_TdCode(1)                     0
+HWInpChan_Offset(1)                     -2950
+HWInpChan_CFDLevel(1)                   100
+HWInpChan_CFDZeroCross(1)               10
+HWInpChan_Enabled(1)                    True
+HWInpChan_ModuleIdx(1)                  2
+HWInpChan_TdCode(2)                     0
+HWInpChan_Offset(2)                     -3100
+HWInpChan_CFDLevel(2)                   100
+HWInpChan_CFDZeroCross(2)               10
+HWInpChan_Enabled(2)                    True
+HWInpChan_ModuleIdx(2)                  3
+HWInpChan_TdCode(3)                     0
+HWInpChan_Offset(3)                     -2952
+HWInpChan_CFDLevel(3)                   100
+HWInpChan_CFDZeroCross(3)               10
+HWInpChan_Enabled(3)                    True
+HWInpChan_ModuleIdx(3)                  3
+HWSync_Offset                           0
+HWSync_CFDLevel                         200
+HWSync_CFDZeroCross                     10
+HWSync_Divider                          4
+TTResult_NumberOfRecords                19997
+TTResult_StopAfter                      3463
+Header_End                              <empty Tag>
+-----------------------
+HydraHarp V2 T3 data
