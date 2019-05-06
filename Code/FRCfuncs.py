@@ -12,6 +12,7 @@ import os
 from scipy.optimize import curve_fit
 from cpp_wrappers import *
 import ctypes
+from PIL import Image
 
 def readtxt(fileA, fileB):
     imA = np.genfromtxt(fileA)
