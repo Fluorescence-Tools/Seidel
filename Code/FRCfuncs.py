@@ -397,7 +397,7 @@ def createSpotLst(size, Nspots, spotSigma, avoidEdges = False, avoidNeighbour = 
         else: counter +=1
     return spotLst
 
-def genImABfromptu(fname, uselines = np.ones(1), gate = 3228):
+def genImABfromptu(fname, uselines = np.ones(1, dtype = np.int), xbinning = 1, ybinning= 1, gate = 3228):
     NumRecords = ptuHeader_wrap (fname)
     eventN, tac, t, can = ptu_wrap(fname, NumRecords)
     root, file = os.path.split(fname)
@@ -406,7 +406,9 @@ def genImABfromptu(fname, uselines = np.ones(1), gate = 3228):
     print('number of records is ' + str(NumRecords))
 
     dimX, dimY, dwelltime, counttime = read_header(header_name)
-    #uselines = np.ones(1).astype(np.ubyte)
+    dimX = int(dimX / xbinning)
+    dimY = int(dimY / ybinning)
+    dwelltime *= xbinning
     imA, imB = SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, 
                                 NumRecords, gate = gate, uselines = uselines)
     print("total image intensity is "  + str(np.sum(imA+imB)))
@@ -424,3 +426,6 @@ def genImABfromptu(fname, uselines = np.ones(1), gate = 3228):
     outname = str(os.path.join(root, file[:-4] + b'\\imB.tiff'), encoding='utf-8')
     im.save(outname)
     return imA, imB
+
+def genArrfromTif(fname):
+    return np.array(Image.open(fname))
