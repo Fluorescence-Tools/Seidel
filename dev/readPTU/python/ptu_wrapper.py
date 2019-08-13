@@ -1,19 +1,14 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 29 11:53:04 2019
-
-@author: voort
-"""
-
 import numpy as np
 import ctypes
 import os
 
+
 readPTU = ctypes.WinDLL (r"S:\64bit dll 's\PQ_PTU_sf\release\PQ_PTU.dll")
 #_SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\ProcessPhotonStream.dll').SplitOnTacs
-debug = False
+debug = True
 if debug:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
+    _genGRYlifetime = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').genGRYlifetime
 else:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').SplitOnTacs
 
@@ -110,83 +105,11 @@ def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumR
     imA_p = imA.ctypes.data_as(c_int_p)
     imB_p = imB.ctypes.data_as(c_int_p)
     #initialize empty arrays and handles for imA, imB
-    _SplitOnTacs(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_dwelltime, C_counttime, C_NumRecords, C_gate, 
+    _SplitOnTacs(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_dwelltime, C_counttime, C_NumRecords, C_gate, \
                  C_nlines, uselines_p, imA_p, imB_p)
     imA = imA.reshape((dimX, dimY))
     imB = imB.reshape((dimX, dimY))
     return imA, imB
-
-def fit2DGaussian_wrap(params0, a, im):
-    """wrapper to fit2DGaussian function from cpp used in Ani Fitting routine
-    params0: initial guess for parameters. They are ordered according to Mortensen et al.
-    im: 2D Gauss image to be fitted
-    a: pixel size"""
-    
-    #ISSUE: class declaration occurs inside of function, this disables use outside of current
-    #function. It cannot be changed easily as imsize must be known for class initialisation.
-    
-    fit2DGaussian = ctypes.WinDLL(r"K:\vanderVoortN\FRC\dev\Fit2DGaussian\x64\Debug\Fit2DGaussian.dll").fit2DGaussian
-
-    c_double_p = ctypes.POINTER(ctypes.c_double)
-    im = im.flatten()
-    imsize = im.shape[0]
-    DOUBLEARRAY = ctypes.c_double * imsize
-
-    class LVDoubleArray(ctypes.Structure):
-        _fields_ = [
-            ('length', ctypes.c_int),#length of array i.e. imsize
-            ('data', DOUBLEARRAY) #image array
-        ]
-
-    class MGPARAM(ctypes.Structure):
-        _fields_ = [
-            ('subimage', ctypes.POINTER(ctypes.POINTER(LVDoubleArray))),
-            ('osize', ctypes.c_int), #number or rows in squared image
-            ('M', ctypes.POINTER(ctypes.POINTER(LVDoubleArray)))
-        ]
-    #give paramaters in correct format
-    variables = np.zeros(10, dtype = np.double).ctypes.data_as(c_double_p)
-    variables[0] = params0[0] / a#ux
-    variables[1] = params0[1] / a#uy
-    variables[3] = params0[2] / a#sx = s
-    variables[2] = params0[4] /(variables[3]**2 * 2*np.pi)#N
-    variables[4] = 1 #ellipticity, for circular 1
-    variables[5] = params0[3]**2#b
-    variables[6] = 0#info from optimization algorithm
-    variables[7] = 1#bool fr weight or no weight: Ask Suren for correct setting1
-    variables[8] = 0#bool if background is fitted: 0 -> background is fitted
-    variables[9] = 1#bool for ellipticity: 1 means circular, 0 means elliptical
-    
-#    for i in range(9):
-#        print('variables element %i has value %f'%(i, variables[i]))
-
-    c_double_p = ctypes.POINTER(ctypes.c_double) #looks like a double declaration. Remove?
-    fit2DGaussian.argtypes = [ctypes.POINTER(ctypes.c_double), ctypes.POINTER(MGPARAM)]
-    fit2DGaussian.restypes = ctypes.c_double
-
-    c_im = DOUBLEARRAY()
-    c_M = DOUBLEARRAY()
-
-    for i, el in enumerate(im):
-        c_im[i] = el
-        c_M[i] = 1
-
-    c_imsize = ctypes.c_int(imsize)
-    c_osize = ctypes.c_int(int(np.sqrt(imsize)))
-
-
-    subimage = ctypes.pointer(LVDoubleArray(c_imsize, c_im))
-    subM = ctypes.pointer(LVDoubleArray(c_imsize, c_M))
-    mgparam = MGPARAM(ctypes.pointer(subimage), c_osize, ctypes.pointer(subM))
-    fit2DGaussian(variables, mgparam)
-    
-    params = np.zeros(5)
-    params[0] = (variables[0]+0.5) * a
-    params[1] = (variables[1]+0.5) *a
-    params[2] = variables[3] * a
-    params[3] = np.sqrt(variables[5])
-    params[4] = variables[2]
-    return params
 
 def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, counttime, NumRecords, 
                        uselines, Gchan, Rchan, Ychan):

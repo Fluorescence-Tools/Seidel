@@ -429,3 +429,23 @@ def genImABfromptu(fname, uselines = np.ones(1, dtype = np.int), xbinning = 1, y
 
 def genArrfromTif(fname):
     return np.array(Image.open(fname))
+
+def initLifetime(fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
+    Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256):
+    uselines = uselines.astype(np.ubyte)
+    Gchan = Gchan.astype(np.ubyte)
+    Rchan = Rchan.astype(np.ubyte)
+    Ychan = Ychan.astype(np.ubyte)
+    root, file = os.path.split(fname)
+    NumRecords = ptuHeader_wrap (fname)
+    eventN, tac, t, can = ptu_wrap(fname, NumRecords)
+    root, file = os.path.split(fname)
+    name, _ = os.path.splitext(file)
+    header_name = os.path.join(root, b"header", name + b".txt")
+    print('number of records is ' + str(NumRecords))
+
+    dimX, dimY, dwelltime, counttime = read_header(header_name)
+    imG, imR, imY = genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, \
+        dwelltime, counttime, NumRecords, uselines, Gchan, Rchan, Ychan)
+    print('total intensity of imG is %i' % imG.sum())
+    return imG, imR, imY

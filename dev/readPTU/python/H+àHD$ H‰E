@@ -2,11 +2,11 @@ Tag Version: 1.1.00
 
 TTResult_StopReason                     0
 File_Comment                            N/A
-File_CreatingTime                       Wed Mar 06 18:02:07 2019
+File_CreatingTime                       Wed Mar 06 17:28:32 2019
 
 CreatorSW_Name                          Imspector
 CreatorSW_Version                       0.14.15212
-File_GUID                               {313BDC90-75E7-4520-D890-0658EBC0C064}
+File_GUID                               {23DC205F-42CC-48E5-8497-E38D122C62C4}
 Fast_Load_End                           <empty Tag>
 CreatorSW_SVNBuild                      0
 HW_Type                                 HydraHarp 400
@@ -109,8 +109,8 @@ HWSync_Offset                           0
 HWSync_CFDLevel                         200
 HWSync_CFDZeroCross                     10
 HWSync_Divider                          4
-TTResult_NumberOfRecords                2154175
-TTResult_StopAfter                      50263
+TTResult_NumberOfRecords                7446999
+TTResult_StopAfter                      50265
 Header_End                              <empty Tag>
 -----------------------
 HydraHarp V2 T3 data
