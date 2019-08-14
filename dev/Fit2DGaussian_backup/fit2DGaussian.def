@@ -1,0 +1,4 @@
+LIBRARY "Fit2DGaussian"
+EXPORTS
+	Gauss2D_analysis_Ani
+	fit2DGaussian

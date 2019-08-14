@@ -38,6 +38,20 @@ def genImABfromptu(fname, uselines = np.ones(1, dtype = np.int), xbinning = 1, y
     
 def initLifetime(fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
     Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256):
+    """initialisation routine for lifetime image manipulation class.
+    Loads the .ptu file located at fname.
+    Uselines codes for the used line steps. 
+        0 denotes that the line is ignored
+        1 denotes that the line is FRET sensitized
+        2 denotes that it is PIE sensitized
+    Uselines should not be used for binning. A separate functions exists for 
+        that.
+    Gchan, Rchan and Ychan indicates the detection channels for the 
+        corresponding colors. No distinction between P and S 
+        polarisation is made. Generally R and Y have the same channels.
+    ntacs is the amount of bins used for the tac histogram. Decrease 
+        to safe memory usage. Computational efficiency is minimal
+        effected."""
     uselines = uselines.astype(np.ubyte)
     Gchan = Gchan.astype(np.ubyte)
     Rchan = Rchan.astype(np.ubyte)

@@ -8,7 +8,8 @@ class SMB_REQUEST(Structure):
         ("Address", c_ubyte),
         ("Command", c_ubyte),
         ("BlockLength", c_ubyte),
-        ("Data", ARRAY5)]
+        ("Data", ARRAY5),
+        ("ppDAT", POINTER(POINTER(c_ubyte)))]
 
 smbus_read_byte = CDLL('libfunctions').SmBusReadByte
 smbus_read_byte.argtypes = [c_void_p,POINTER(SMB_REQUEST)]
@@ -28,3 +29,10 @@ print ('Command =',smb_request.Command)
 print ('BlockLength =',smb_request.BlockLength)
 for i,b in enumerate(smb_request.Data):
     print ('Data[%d] = %02Xh' % (i,b))
+    
+Foo = CDLL('libfunctions').Foo
+Foo.argtypes = [POINTER(POINTER(c_ubyte)),POINTER(c_int)]
+mem = POINTER(c_ubyte)()
+size = c_int(0)
+Foo(byref(mem),byref(size))
+print(size.value,mem[0],mem[1],mem[2],mem[3])

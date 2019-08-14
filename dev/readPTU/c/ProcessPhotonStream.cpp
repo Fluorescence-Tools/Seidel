@@ -73,7 +73,7 @@ extern "C"
 		int j = 0, line = 0, frame = 0;
 		bool inscan(false);
 		float macrotime2pixel = counttime / dwelltime;
-		int tacconvert = 65536 / ntacs;
+		int tacconvert = 32768 / ntacs;
 		int timedif;
 		for (i = 0; i < NumRecords; i++) {
 			if (can[i] == 65) {

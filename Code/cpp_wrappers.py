@@ -16,6 +16,7 @@ if debug:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
 else:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').SplitOnTacs
+    _genGRYlifetime = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').genGRYlifetime
 
 
 def ptuHeader_wrap (fname):
@@ -190,6 +191,8 @@ def fit2DGaussian_wrap(params0, a, im):
 
 def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, counttime, NumRecords, 
                        uselines, Gchan, Rchan, Ychan):
+    """c code wrapper to create tac histogram image. To be used in conjunction
+        with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
     c_ushort_p = ctypes.POINTER(ctypes.c_ushort)
@@ -219,6 +222,6 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, countt
     _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_dwelltime, C_counttime, C_NumRecords,
                    C_nlines, uselines_p, Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
     imG = imG.reshape((dimX, dimY, ntacs))
+    imR = imR.reshape((dimX, dimY, ntacs))
     imY = imY.reshape((dimX, dimY, ntacs))
-    imG = imR.reshape((dimX, dimY, ntacs))
     return imG, imR, imY
