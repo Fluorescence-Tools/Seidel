@@ -1,5 +1,23 @@
 import cpp_wrappers
 import FRCfuncs
+import numpy as np
+
+class GRYLifetime():
+    def __init__(self, imG, imR, imY):
+        assert (len(imG.shape) == 3 and len(imR.shape) == 3 and len(imY.shape) == 3), \
+            "arrays must be 3D"
+        self.G = imG
+        self.R = imR
+        self.Y = imY
+    
+class GRYIntensity():
+    def __init__(self, imG, imR, imY):
+        assert (len(imG.shape) == 2 and len(imR.shape) == 2 and len(imY.shape) == 2), \
+            "arrays must be 2D"
+        self.G = imG
+        self.R = imR
+        self.Y = imY
+    
 class processLifetimeImage:
     def __init__(self, fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
         Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256, pulsetime = 25):
