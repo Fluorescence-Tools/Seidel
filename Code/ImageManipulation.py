@@ -1,6 +1,8 @@
 import cpp_wrappers
 import FRCfuncs
 import numpy as np
+import os
+import copy
 
 class GRYLifetime():
     def __init__(self, imG, imR, imY):
