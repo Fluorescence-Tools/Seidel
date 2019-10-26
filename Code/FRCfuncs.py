@@ -401,7 +401,7 @@ def genImABfromptu(fname, uselines = np.ones(1, dtype = np.int), xbinning = 1, y
     NumRecords = ptuHeader_wrap (fname)
     eventN, tac, t, can = ptu_wrap(fname, NumRecords)
     root, file = os.path.split(fname)
-    name, _ = os.path.splitext(file)
+    name, _ = os.path.splitext(file) #unused, delete
     header_name = os.path.join(root, b"header", name + b".txt")
     print('number of records is ' + str(NumRecords))
 

@@ -19,14 +19,33 @@ class GRYIntensity():
         self.G = imG
         self.R = imR
         self.Y = imY
+        
+class GRYDecay():
+    def __init__(self, decG, decR, decY):
+        assert (len(decG.shape) == 1 and len(decR.shape) == 1 and len(decY.shape) == 1), \
+            "arrays must be 1D"
+        self.G = decG
+        self.R = decR
+        self.Y = decY
     
 class processLifetimeImage:
     def __init__(self, fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
         Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256, pulsetime = 25):
+        """Lifetime Image class
+        fname must be a .ptu file path denoted in bytes.
+                Uselines codes for the used line steps. 
+            0 denotes that the line is ignored
+            1 denotes that the line is FRET sensitized
+            2 denotes that it is PIE sensitized
+        Gchan, Rchan and Ychan code the channel numbers
+        ntacs denote the number of bins in the tac decay histogram
+            should be a multiple of 2, max tacs 2**15 = 32768
+        pulsetime in ns."""
         self.baseLifetime = None #immutable after initialization
         self.baseIntensity = None #immutable after initialization
         self.workLifetime = None #mutable
         self.workIntensity = None #mutable
+        self.decay = None #mutable
         self.ntacs = ntacs
         self.tac2time = pulsetime / ntacs #pulsetime in ns
         assert( type(uselines) == np.ndarray and \
@@ -64,7 +83,68 @@ class processLifetimeImage:
             xshape // xfactor, xfactor, yshape // yfactor, yfactor, \
             nbins).sum(axis = 3).sum(axis = 1)
         return 0
+        
+    def mask(self, mask, Channel = 'all', mode = 'lifetime'):
+    #consider moving this operation to c, as it is very time-consuming
+        """mask worklifetime of workIntensity image.
+        mask should be interger 0 or 1.
+        Channel should be 'all', 'G', 'R' or 'Y'
+        mode should be 'lifetime' or intensity'"""
+        assert (np.unique(mask) == np.array([0,1])).all(), 'mask has values other than 0 and 1'
+        if mode == 'lifetime':
+            #loop over all tacs. This avoids saving 3D mask to disk
+            for tac in range(self.ntacs):
+                if Channel == 'all':
+                    self.workLifetime.G[:,:,tac] = self.workLifetime.G[:,:,tac] * mask
+                    self.workLifetime.R[:,:,tac] = self.workLifetime.R[:,:,tac] * mask
+                    self.workLifetime.Y[:,:,tac] = self.workLifetime.Y[:,:,tac] * mask
+                elif Channel == 'G':
+                    self.workLifetime.G[:,:,tac] = self.workLifetime.G[:,:,tac] * mask
+                elif Channel == 'R':
+                    self.workLifetime.R[:,:,tac] = self.workLifetime.R[:,:,tac] * mask
+                elif Channel == 'Y':
+                    self.workLifetime.Y[:,:,tac] = self.workLifetime.Y[:,:,tac] * mask
+        elif mode == 'intensity':
+            if Channel == 'all':
+                self.workIntensity.G = self.workIntensity.G * mask
+                self.workIntensity.R = self.workIntensity.R * mask
+                self.workIntensity.Y = self.workIntensity.Y * mask
+            elif Channel == 'G':
+                self.workIntensity.G = self.workIntensity.G * mask
+            elif Channel == 'R':
+                self.workIntensity.R = self.workIntensity.R * mask
+            elif Channel == 'Y':
+                self.workIntensity.Y = self.workIntensity.Y * mask
+        return 0
     
+    def sumLifetime(self):
+        """Integrate over the pixels in worklifetime to generate
+            a TAC decay. Operation runs over all channels and is
+            stored in self.decay."""
+        decG = np.sum(self.workLifetime.G, axis = (0,1) )
+        decR = np.sum(self.workLifetime.R, axis = (0,1) )
+        decY = np.sum(self.workLifetime.Y, axis = (0,1) )
+        self.decay = GRYDecay(decG, decR, decY)
+        return 0
+        
+    def buildMaskFromROI(self, ROIS):
+        """the format of the ROIS is inherited from AnI.
+            Ani has the reversed axis convention from python.
+            i.e. x in Ani corresponds to y in python.
+        The logical format for python is therefore:
+            ycorner, yrange, xcorner, xrange, ysubstitute, x substitute. With:
+            ycorner = ycorner_fromAni + x_offset_fromPython."""
+        assert np.issubdtype(ROIS.dtype, np.integer), 'ROIS is not a integer array'
+        xshape, yshape = self.workIntensity.G.shape
+        mask = np.zeros((xshape, yshape), dtype = np.int)
+        for ROI in ROIS:
+            if ROI[2] < 0 or ROI[0] < 0 or ROI[2] + ROI[3] >= xshape or \
+                    ROI[0] + ROI[1] >= yshape:
+                print('ROI is touching image borders, skipping')
+                continue
+            mask[ROI[2] : ROI[2] + ROI[3], ROI[0] : ROI[0] + ROI[1] ] = 1
+        return mask
+        
     def filterLifetime(self, mode = 'xyz', window = 3):
         if mode == 'smear_lifetime':
             # even sized window, weighted toward + direction
@@ -199,6 +279,8 @@ class processLifetimeImage:
             to safe memory usage. Computational efficiency is minimal
             effected.
         returns imG, imR, imY"""
+
+        assert type(fname) == bytes, 'Error, fname is not bytes type'
         uselines = uselines.astype(np.ubyte)
         Gchan = Gchan.astype(np.ubyte)
         Rchan = Rchan.astype(np.ubyte)
