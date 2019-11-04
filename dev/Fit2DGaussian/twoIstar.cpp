@@ -120,19 +120,13 @@ double W2DG(double* C, double* M, int winowi, int Nchannels)
 {
 	double W = 0.;
 	for (int i = 0; i < Nchannels; i++){
-/*		if (C[i] > 0 && winowi==0)  W += (M[i] - C[i])*(M[i] - C[i])/C[i]; 
-		else if (C[i] > 0)  W += (M[i] - C[i])*(M[i] - C[i]);
-	
-*/
-//		if (C[i] > 0) W += (C[i] * log(M[i] / C[i]));
-//		if (M[i] > 1.e-12) W += C[i] * log(M[i]);
-
+		//avoid taking logarithm of Maschine Epsilon
 		if ((C[i] > 1.e-12) && (M[i] > 1.e-12)) {
-			if (winowi == 0) 
-				{ W += 2.*(M[i] - C[i] * (1 - log(C[i]) + log(M[i]))); }	//   division on / sqrt(C[i]) skipped  
-			else W += 2.*(M[i] - C[i] * (1 - log(C[i]) + log(M[i]))); 
+			//all therms that are independant of the model are neglected as they do not contribute to the minimization
+			W += M[i] - C[i] * log( M[i] );
 		}
-		else { W += 2.*(M[i]); }					 						// Poisson-MLR (maximum likelihood ratio)
+		// NV comment: this code is meant to avoid small number error in log. But is it correct?
+		else { W += M[i]; }	// Poisson-MLR (maximum likelihood ratio)
 	}
 
 	return W/(double)Nchannels;

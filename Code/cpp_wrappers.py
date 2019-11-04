@@ -71,8 +71,6 @@ def ptu_wrap(fname, NumRecords):
 import logging
 logger = logging.getLogger('readptu')
 def read_header(header_name):
-#    header = np.genfromtxt(r"header\\Crimson20nm_Exc_640_1perc_STED100perc_0016AU.txt", delimiter = '\n', dtype = str)
-    print(header_name.decode())
     header = np.genfromtxt(header_name.decode(), delimiter = '\n', dtype = str)
     for el in header:
         if "ImgHdr_PixX" in el:
@@ -117,7 +115,7 @@ def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumR
     imB = imB.reshape((dimX, dimY))
     return imA, imB
 
-def fit2DGaussian_wrap(params0, a, im):
+def fit2DGaussian_wrap(params0, a, im, debug = False):
     """wrapper to fit2DGaussian function from cpp used in Ani Fitting routine
     params0: initial guess for parameters. They are ordered according to Mortensen et al.
     im: 2D Gauss image to be fitted
@@ -126,7 +124,10 @@ def fit2DGaussian_wrap(params0, a, im):
     #ISSUE: class declaration occurs inside of function, this disables use outside of current
     #function. It cannot be changed easily as imsize must be known for class initialisation.
     
-    fit2DGaussian = ctypes.WinDLL(r"K:\vanderVoortN\FRC\dev\Fit2DGaussian\x64\Debug\Fit2DGaussian.dll").fit2DGaussian
+    if debug:
+        fit2DGaussian = ctypes.WinDLL(r"K:\vanderVoortN\FRC\dev\Fit2DGaussian\x64\Debug\Fit2DGaussian.dll").fit2DGaussian
+    else:
+        fit2DGaussian = ctypes.WinDLL(r"K:\vanderVoortN\FRC\Code\Fit2DGaussian.dll").fit2DGaussian
 
     c_double_p = ctypes.POINTER(ctypes.c_double)
     im = im.flatten()
@@ -146,17 +147,24 @@ def fit2DGaussian_wrap(params0, a, im):
             ('M', ctypes.POINTER(ctypes.POINTER(LVDoubleArray)))
         ]
     #give paramaters in correct format
-    variables = np.zeros(10, dtype = np.double).ctypes.data_as(c_double_p)
+    variables = np.zeros(17, dtype = np.double).ctypes.data_as(c_double_p)
     variables[0] = params0[0] / a#ux
     variables[1] = params0[1] / a#uy
     variables[3] = params0[2] / a#sx = s
     variables[2] = params0[4] /(variables[3]**2 * 2*np.pi)#N
-    variables[4] = 1 #ellipticity, for circular 1
+    variables[4] = params0[5] #ellipticity, for circular 1
     variables[5] = params0[3]**2#b
-    variables[6] = 0#info from optimization algorithm
-    variables[7] = 1#bool fr weight or no weight: Ask Suren for correct setting1
-    variables[8] = 0#bool if background is fitted: 0 -> background is fitted
-    variables[9] = 1#bool for ellipticity: 1 means circular, 0 means elliptical
+    variables[6] = params0[6]
+    variables[7] = params0[7]
+    variables[8] = params0[8]
+    variables[9] = params0[9]
+    variables[10] = params0[10]
+    variables[11] = params0[11]
+    variables[12] = 0#info from optimization algorithm
+    variables[13] = 1#bool fr weight or no weight: Ask Suren for correct setting: debree, to be deleted
+    variables[14] = params[14]#bool if background is fitted: 0 -> background is fitted
+    variables[15] = params[15]#bool for ellipticity: 1 means circular, 0 means elliptical
+    variables[16] = params[16]# var to select model. 0: 1x 2DGauss, 1: 2x 2DGauss, 2: 3x 2DGauss
     
 #    for i in range(9):
 #        print('variables element %i has value %f'%(i, variables[i]))
@@ -181,12 +189,23 @@ def fit2DGaussian_wrap(params0, a, im):
     mgparam = MGPARAM(ctypes.pointer(subimage), c_osize, ctypes.pointer(subM))
     fit2DGaussian(variables, mgparam)
     
-    params = np.zeros(5)
-    params[0] = (variables[0]+0.5) * a
-    params[1] = (variables[1]+0.5) *a
-    params[2] = variables[3] * a
-    params[3] = np.sqrt(variables[5])
-    params[4] = variables[2]
+    params = np.zeros(12)
+    params[0] = (variables[0]+0.5) * a #x0 in nm
+    params[1] = (variables[1]+0.5) *a #x1 in nm
+    params[2] = variables[3] * a #sigma in nm
+    params[3] = np.sqrt(variables[5]) #sqrt of bg
+    #variables[2] reports fitted amplitude, not total intensity
+    #change by multiplying with 2*pi*sigma**2 ?
+    params[4] = variables[2] #A0
+    params[5] = variables[4] #ellipticity
+    params[6] = (variables[6] + 0.5) * a #x1 in nm
+    params[7] = (variables[7] + 0.5) * a #y1 in nm
+    params[8] = variables[8] #A1
+    params[9] = (variables[9] + 0.5) * a # x2 in nm
+    params[10] = (variables[10] + 0.5) * a #y2 in nm
+    params[11] = variables[11] #A2
+    params[12] = variables[12] #info from optimisation algorithm
+    
     return params
 
 def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, counttime, NumRecords, 
