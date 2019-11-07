@@ -125,7 +125,7 @@ double W2DG(double* C, double* M, int winowi, int Nchannels)
 			//all therms that are independant of the model are neglected as they do not contribute to the minimization
 			W += M[i] - C[i] * log( M[i] );
 		}
-		// NV comment: this code is meant to avoid small number error in log. But is it correct?
+		// code saves taking expensive log when C[i] = 0
 		else { W += M[i]; }	// Poisson-MLR (maximum likelihood ratio)
 	}
 

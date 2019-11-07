@@ -52,16 +52,17 @@ double target2DGaussian(double* vars, void* pM)
 	std::set<std::int8_t>::iterator it = positionSet.begin();
 	while (it != positionSet.end()) {
 		if ((vars[*it] < 0.) || (vars[*it] > p->osize - 1)) vars[*it] = (p->osize) / 2.;
+		it++;
 	}
  
 	//get model
-	if (vars[16] == 0 ) {
+	if ((int) vars[16] == 0 ) {
 		model2DGaussian(vars, M->data, p->osize);
 	}
-	else if (vars[16] == 1) {
+	else if ((int) vars[16] == 1) {
 		modelTwo2DGaussian(vars, M->data, p->osize);
 	}
-	else if (vars[16] == 2) {
+	else if ((int) vars[16] == 2) {
 		modelThree2DGaussian(vars, M->data, p->osize);
 	}
 
@@ -106,8 +107,8 @@ int modelTwo2DGaussian(double* vars, double* M, int osize) {
 	vars_dummy[0] = vars[6];
 	vars_dummy[1] = vars[7];
 	vars_dummy[2] = vars[8];
-	vars_dummy[3] = vars[4];
-	vars_dummy[4] = vars[5];
+	vars_dummy[3] = vars[3];
+	vars_dummy[4] = vars[4];
 	vars_dummy[5] = 0;
 	model2DGaussian(vars_dummy, M_dummy, osize);
 
@@ -134,8 +135,8 @@ int modelThree2DGaussian(double* vars, double* M, int osize) {
 	vars_dummy[0] = vars[9];
 	vars_dummy[1] = vars[10];
 	vars_dummy[2] = vars[11];
-	vars_dummy[3] = vars[4];
-	vars_dummy[4] = vars[5];
+	vars_dummy[3] = vars[3];
+	vars_dummy[4] = vars[4];
 	vars_dummy[5] = 0;
 
 	model2DGaussian(vars_dummy, M_dummy, osize);
@@ -168,20 +169,22 @@ double fit2DGaussian(double* vars, MGParam* p)
 {
 	double  tIstar = 0.;
 	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
+	int j;
 
-	//void declaration to satisfy compiler
-	bfgs bfgs_o(target2DGaussian);
-	if (vars[16] == 0) {
-		bfgs bfgs_o(target2DGaussian, 6);
+	//fix parameters according to model
+	bfgs bfgs_o(target2DGaussian, 17);
+	//bfgs_o.seteps(0.001);
+	if ((int) vars[16] == 0) {
+		for (j = 6; j < 17; j++) bfgs_o.fix(j);
 	}
-	else if (vars[16] == 1) {
-		bfgs bfgs_o(target2DGaussian, 9);
+	else if ((int) vars[16] == 1) {
+		for (j = 9; j < 17; j++) bfgs_o.fix(j);
 	}
-	else if (vars[16] == 2) {
-		bfgs bfgs_o(target2DGaussian, 12);
+	else if ((int) vars[16] == 2) {
+		for (j = 12; j < 17; j++) bfgs_o.fix(j);
 	} 
 
-	bfgs_o.maxiter = 500;
+	bfgs_o.maxiter = 1000;
 	if (vars[15] == 1) { vars[4] = 1; bfgs_o.fix(4); }
 	if (vars[14] == 1) bfgs_o.fix(5);
 	//NV comment: do we really need this?

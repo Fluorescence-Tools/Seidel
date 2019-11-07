@@ -1,8 +1,14 @@
 import cpp_wrappers
 import FRCfuncs
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import patches
+from scipy.optimize import curve_fit
 import os
 import copy
+from PIL import Image
+
+debug = False
 
 class GRYLifetime():
     def __init__(self, imG, imR, imY):
@@ -218,6 +224,8 @@ class processLifetimeImage:
                     imY[i,j] = self.workLifetime.Y[i,j,:].dot(weights) / pixelsum
         self.workIntensity = GRYIntensity(imG, imR, imY)
         return 0
+
+
         
     
     def filterIntensity(self, mode = 'xyz'):
@@ -253,6 +261,30 @@ class processLifetimeImage:
         self.workIntensity = IntensityObject
         return 0
         
+    def saveGRYTif(GRYobj, outfolder, preposition = '', xmin = 0, xmax = -1, ymin = 0, ymax = -1): 
+        """function takes GRY object and saves to outfolder in tif format in 32bit float .tif format
+            preposition allows adding identifier to default filenames.
+            xmin. xmax, ymin, ymax allow saving snip of np array"""
+        #convert all strings to bytes
+        try: outfolder = outfolder.encode()
+        except: pass
+        try: preposition = preposition.encode()
+        except: pass
+        try:
+            os.mkdir(outfolder)
+            print('creating new folder %s\n' %os.path.join(outfolder))
+        except: 'folder already exists'
+        im = Image.fromarray(GRYobj.G[xmin:xmax, ymin:ymax])
+        outname = os.path.join(outfolder, preposition + b'imG.tif').decode()
+        im.save(outname)
+        im = Image.fromarray(GRYobj.R[xmin:xmax, ymin:ymax])
+        outname = os.path.join(outfolder, preposition + b'imR.tif').decode()
+        im.save(outname)
+        im = Image.fromarray(GRYobj.Y[xmin:xmax, ymin:ymax])
+        outname = os.path.join(outfolder, preposition + b'imY.tif').decode()
+        im.save(outname)
+        return 0
+        
     def _makeIntensity(self):
         """sum tac histograms to obtain intensity image"""
         imG = self.baseLifetime.G.sum(axis=2)
@@ -260,8 +292,6 @@ class processLifetimeImage:
         imY = self.baseLifetime.Y.sum(axis=2)
         self.baseIntensity = GRYIntensity(imG, imR, imY)
         return 0
-    
-    
     
     def _makeLifetime(self, fname, uselines, Gchan, Rchan, Ychan, ntacs):
         """initialisation routine for lifetime image manipulation class.
@@ -297,4 +327,175 @@ class processLifetimeImage:
         imG, imR, imY = cpp_wrappers.genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, \
             dwelltime, counttime, NumRecords, uselines, Gchan, Rchan, Ychan)
         self.baseLifetime = GRYLifetime(imG, imR, imY)
+        return 0
+        
+class fitImage:
+    """Class containing fitNGauss and supporting functions.
+    Class interfaces with cppwrappers and c.
+    refer to fitNGauss documentation."""
+    
+    @classmethod
+    def plotNGauss (cls, image, params, identifier, savefig, showfig, model, outdir):
+        """routine for plotting two Gaussian centers on an image
+        sides of the box is three sigma.
+        params should be ordered according to Gaussian c code convention.
+        savefig and showfig are bools to trigger saving to outdir and display, respectively.
+        model determines whether one, two or three gaussians are fitted
+        identifier is a string used for graph title and filename.
+        Currently only 2 Gauss implemented"""
+        #draw image
+        plt.imshow(image)
+        plt.colorbar()
+        ax = plt.gca()
+        plt.title(identifier, fontsize = 20)
+        
+        #Draw rectangles to indicate ROIS
+        cls._drawrect(params[0], params[1], params[3], ax)
+        if params[16] >= 1 :
+            cls._drawrect(params[6], params[7], params[3], ax)
+        if params[16] >= 2 :
+            cls._drawrect(params[9], params[10], params[3], ax)
+
+        if savefig:
+            try:
+                os.mkdir (outdir)
+            except FileExistsError:
+                pass
+            if outdir == '':
+                raise ValueError ('No output dir to save figure specified, aborting.')
+            outname = os.path.join( outdir, identifier + r'.png')
+            plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
+        if showfig:
+            plt.show()
+        else:
+            plt.clf()
+        return 0
+
+    def modelTwo2DGaussians(coord, x0, y0, A0, sigma, ellipticity, bg, x1, y1, A1):
+        """models two 2D Gaussian functions. Coordinate order is taken from c code.
+        ellipticity remains unused."""
+        x = coord[0]
+        y = coord[1]  
+        g = bg + A0 * np.exp( - ((x-x0)**2 + (y-y0)**2) / (2 * sigma**2)) + \
+            A1 * np.exp( - ((x-x1)**2 + (y-y1)**2) / (2 * sigma**2))
+        return g.ravel()
+        
+    @classmethod
+    def fitTwo2DGaussian(cls, image, params0):
+        """fit image with two 2D Gaussians using python code and optimalisation"""
+        # Create x and y indices
+        x = np.arange(image.shape[0])
+        y = np.arange(image.shape[1])
+        coord = np.meshgrid(x, y)
+        
+        popt, pcov = curve_fit(cls.modelTwo2DGaussians, coord, image.ravel(), p0 = params0)
+        
+        return popt, pcov
+        
+    def IstarThres(image):
+        """calculate an accepted value of Istar assuming that the model
+        describes the object very well
+        Addition factor 0.5 is chosen arbitrarily"""
+        
+        thres = 0
+        for el in image.ravel():
+            if el == 0:
+                pass
+            else:
+                thres += el - el * np.log(el)
+        return thres / image.ravel().shape[0] + 0.8
+    
+    @classmethod
+    def tryfit(cls, image, model, identifier):
+        Ntries = 50
+        Istar = None
+        for counter in range(Ntries):
+            #generate params0, add offset to sigma to avoid local minima of small rois
+            xshape, yshape = image.shape
+            Nmax = image.max()
+            params0 = np.random.random(17) * \
+                        np.array([xshape, yshape, Nmax, 5, 1, 2, xshape, yshape, Nmax, xshape, yshape, Nmax, \
+                                 0, 0, 0, 0, 0]) + \
+                        np.array([0, 0, 0, 2, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0])
+            params = params0
+
+            #decide which fit to use
+            if model == 'one2DGaussian_py':
+                raise NotImplemented
+            elif model == 'two2DGaussian_py':
+                try:
+                    params[:9] , _ = cls.fitTwo2DGaussian(image, params0[:9])
+                except RuntimeError:
+                    print ('%s attempt %i: python fit did not converge, trying again' % (identifier, counter))
+                    continue
+            elif model == 'three2DGaussian_py':
+                raise NotImplemented
+            elif model == 'one2DGaussian_c':
+                params0[16] = 0
+                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+            elif model == 'two2DGaussian_c':
+                params0[16] = 1
+                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+            elif model == 'three2DGaussian_c':
+                params0[16] = 2.01
+                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+            else:
+                raise ValueError('invalid model')
+                
+            #check if c routine returned convergence error or bad Istar value
+            thresh = cls.IstarThres(image)
+            if params[12] == -1 or params[12] == 1 or params[12] == 2:
+                print('%s attempt %i: c routine returned info %.0f, trying again' % 
+                      (identifier, counter, params[12]))
+                continue
+            elif Istar != None and Istar > thresh:
+                print('%s attempt %i: value of Istar is %.2f and Istarthreshold is %.2f, trying again' %
+                              (identifier, counter, Istar, thresh) )
+                continue
+            print('%s:value of Istar is %.2f and Istarthreshold is %.2f, success!' %
+                              (identifier, Istar, thresh) )
+            break
+            
+        #signal a failed fit
+        if counter == Ntries - 1:
+            params[12] = -1
+
+        return params
+       
+    @classmethod
+    def fitNGauss(cls, image, model, identifier, savefig, showfig, outdir = ''):
+        """fits N Gaussian model to 2D image. 
+        internally params is used among the python and c subroutines.
+        params = [0: x0, 1: y0, 2: A0, 3: sigma, 4: ellipticity, 5: bg, 6: x1, 7: y1, 8: A1, 9: x2, 10: y2, 11: A2, \
+                12: info, 13: wi_nowi, 14: fit_bg, 15: ellipt_circ, 16: model]
+        info contains information from the fitting algorithm
+        wi_nowi contains weights or no_wights, outdated debree
+        fit_bg asks if background is fitted. 0 -> bg is fitted
+        ellipt_circ  determines if elliptical fits are allowed. 1 means circular, 0 elliptical
+            Only relevant for model2DGaussian
+        model determines the model to be used:
+            one2DGaussian_py: not implemented
+            two2DGaussian_py
+            three2DGaussian_py: not implemented
+            one2DGaussian_c
+            two2DGaussian_c
+            three2DGaussian_c
+        savefig and showfig are bools to determine saving and showing of fits
+        
+        returns: params"""
+        #run tryfit
+        params = cls.tryfit (image, model, identifier)
+        
+        #run plotNGauss
+        cls.plotNGauss (image, params, identifier, savefig, showfig, model, outdir)
+        
+        return params
+
+    def _drawrect(centerx, centery, sigma, ax):
+        """subroutine to draw rectangle on ax object
+        sides of object are 3 sigma"""
+        x0, y0, w, h = [centerx - 1.5 * sigma, centery - 1.5 * sigma, 3 * sigma, 3 * sigma]
+        rect0 = patches.Rectangle((x0, y0),w, h, linewidth=1,edgecolor='r',facecolor='none')
+        ax.add_patch(rect0)
+        ax.scatter(int(centerx + 0.5), int(centery + 0.5), s = 3, c = 'r')
         return 0
