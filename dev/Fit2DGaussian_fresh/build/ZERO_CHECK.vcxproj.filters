@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="K:\DimuraM\Fit2DGaussian_fresh\build\CMakeFiles\1ef9b782882c0f0316577707eb4ed4c3\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{69DB1D8B-D155-326B-B28A-D7A6BC4B7B21}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

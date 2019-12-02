@@ -1,0 +1,5 @@
+K:/DimuraM/Fit2DGaussian_fresh/build/CMakeFiles/Fit2DGaussian.dir
+K:/DimuraM/Fit2DGaussian_fresh/build/CMakeFiles/ALL_BUILD.dir
+K:/DimuraM/Fit2DGaussian_fresh/build/CMakeFiles/ZERO_CHECK.dir
+K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/LibAP.dir
+K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/ALL_BUILD.dir

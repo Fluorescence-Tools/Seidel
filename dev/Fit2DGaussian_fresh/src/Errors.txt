@@ -1,0 +1,9 @@
+Output parameters:
+    X   -   solution approximation. Array whose index ranges from 1 to N.
+    Info-   a return code:
+                    * -1 wrong parameters were specified,
+                    * 0 interrupted by user,
+                    * 1 relative function decreasing is less or equal to EpsF,
+                    * 2 step is less or equal EpsX,
+                    * 4 gradient norm is less or equal to EpsG,
+                    * 5 number of iterations exceeds MaxIts.
