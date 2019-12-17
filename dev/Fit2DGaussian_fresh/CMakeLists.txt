@@ -5,6 +5,7 @@ project(Fit2DGaussian
         VERSION 1.0)
 
 add_subdirectory( thirdparty/ap )
+
         
 ############################################################
 # Create a library
@@ -24,3 +25,15 @@ target_include_directories(Fit2DGaussian
 )
 
 target_link_libraries( Fit2DGaussian LibAP )
+
+############################################################
+# export a pybind .pyd python library
+############################################################
+
+set( SOURCES src/eigen_wrap.cpp )
+
+#Generate python module
+add_subdirectory( thirdparty/pybind11 )
+pybind11_add_module(GaussFits ${SOURCES} "src/bindings.cpp")
+
+target_include_directories(GaussFits PUBLIC thirdparty/)

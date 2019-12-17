@@ -1,25 +1,25 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="K:\DimuraM\Fit2DGaussian_fresh\src\fit2DGaussian.cpp">
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\fit2DGaussian.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="K:\DimuraM\Fit2DGaussian_fresh\src\i_lbfgs.cpp">
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\i_lbfgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="K:\DimuraM\Fit2DGaussian_fresh\src\lbfgs.cpp">
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\lbfgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="K:\DimuraM\Fit2DGaussian_fresh\src\twoIstar.cpp">
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\twoIstar.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="K:\DimuraM\Fit2DGaussian_fresh\CMakeLists.txt" />
+    <CustomBuild Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{D744CCA3-1BD7-36A1-869E-7FBD1AE41E85}</UniqueIdentifier>
+      <UniqueIdentifier>{81905D5C-30C6-31A5-A0F4-FE28233611C0}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

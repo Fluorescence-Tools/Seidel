@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{81AC89E6-73E9-3940-948A-F9BC8E0F93AF}</ProjectGuid>
+    <ProjectGuid>{6F4A5FCB-D63A-3689-94A6-AB9FC703175A}</ProjectGuid>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <Keyword>Win32Proj</Keyword>
     <Platform>x64</Platform>
@@ -102,10 +102,10 @@
     </Midl>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+    <CustomBuild Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -114,11 +114,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -127,11 +127,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -140,11 +140,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -153,21 +153,21 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="K:\DimuraM\Fit2DGaussian_fresh\build\ZERO_CHECK.vcxproj">
-      <Project>{1EE8AA74-4E93-3A7F-B57F-E6A2BD48B969}</Project>
+    <ProjectReference Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\ZERO_CHECK.vcxproj">
+      <Project>{70AFCD36-BEDA-35FB-A4A5-2F58B7913874}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </ProjectReference>
-    <ProjectReference Include="K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\LibAP.vcxproj">
-      <Project>{8470AEBB-DF84-32D0-A4CA-C406B8EB55E4}</Project>
+    <ProjectReference Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\LibAP.vcxproj">
+      <Project>{1B622EBD-39A4-3CA6-9767-E1E4D356C414}</Project>
       <Name>LibAP</Name>
     </ProjectReference>
   </ItemGroup>

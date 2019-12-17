@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{8470AEBB-DF84-32D0-A4CA-C406B8EB55E4}</ProjectGuid>
+    <ProjectGuid>{1B622EBD-39A4-3CA6-9767-E1E4D356C414}</ProjectGuid>
     <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <Keyword>Win32Proj</Keyword>
     <Platform>x64</Platform>
@@ -56,26 +56,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">LibAP.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">LibAP</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">LibAP.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">LibAP</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\MinSizeRel\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\MinSizeRel\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">LibAP.dir\MinSizeRel\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">LibAP</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">.lib</TargetExt>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\RelWithDebInfo\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\RelWithDebInfo\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">LibAP.dir\RelWithDebInfo\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">LibAP</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">.lib</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -93,10 +93,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -109,7 +109,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -127,10 +127,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -143,7 +143,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -161,10 +161,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"MinSizeRel\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -177,7 +177,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -194,10 +194,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;CMAKE_INTDIR=\"RelWithDebInfo\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -209,10 +209,10 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\CMakeLists.txt">
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+    <CustomBuild Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\CMakeLists.txt">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -221,11 +221,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -234,11 +234,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -247,11 +247,11 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">false</LinkObjects>
-      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule K:/DimuraM/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">Building Custom Rule K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap/CMakeLists.txt</Message>
       <Command Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SK:/DimuraM/Fit2DGaussian_fresh -BK:/DimuraM/Fit2DGaussian_fresh/build --check-stamp-file K:/DimuraM/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh -BK:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build --check-stamp-file K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal &amp; call :cmErrorLevel %errorlevel% &amp; goto :cmDone
@@ -260,16 +260,16 @@ exit /b %1
 :cmDone
 if %errorlevel% neq 0 goto :VCEnd</Command>
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">%(AdditionalInputs)</AdditionalInputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\DimuraM\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\thirdparty\ap\CMakeFiles\generate.stamp</Outputs>
       <LinkObjects Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">false</LinkObjects>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="K:\DimuraM\Fit2DGaussian_fresh\thirdparty\ap\src\ap.cpp" />
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\thirdparty\ap\src\ap.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="K:\DimuraM\Fit2DGaussian_fresh\build\ZERO_CHECK.vcxproj">
-      <Project>{1EE8AA74-4E93-3A7F-B57F-E6A2BD48B969}</Project>
+    <ProjectReference Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\build\ZERO_CHECK.vcxproj">
+      <Project>{70AFCD36-BEDA-35FB-A4A5-2F58B7913874}</Project>
       <Name>ZERO_CHECK</Name>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
