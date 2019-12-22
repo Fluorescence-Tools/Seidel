@@ -3,18 +3,22 @@
 //edited extensively by Nicolaas van der Voort
 //AG Seidel, Düsseldorf
 
+#include "fit2DGaussian.h"
+#include "i_lbfgs.h"
+#include "twoIstar.h"
 #include <iostream>
 #include <fstream>
 #include <math.h>
 #include <set>
-#include "fit2DGaussian.h"
-#include "i_lbfgs.h"
-#include "twoIstar.h"
+#include <Eigen/Core>
 
 using namespace std;
 
 const int NVARS = 6;
 const int NPEAKS_FACTOR = 10;
+
+typedef Eigen::Matrix<double, 5, 1> Vector5d;
+typedef Eigen::Matrix<double, 6, 1> Vector6d;
 
 // background and threshold surfaces
 static double* bg_surface = NULL;
@@ -41,6 +45,30 @@ void save_array(double *a, int l)
 
 // weighted residuals, weights*(model-data)
 
+
+///////////////////////////////// 2DGaussian ////////////////////////////////////////////////
+void modelGaussian(Eigen::MatrixXd model, Vector5d params)
+{
+	//fill the matrix model with a Gaussian according to params
+	//put parameters in more descriptive wordings
+	int x, y;
+	const int cols = model.cols();
+	double* ex = new double[cols];
+	double x0 = params(0);
+	double y0 = params(1);
+	double A = params(2);
+	double sigma = params(3);
+	double bf = params(4);
+	for (x = 0; x < model.rows(); x++)
+		ex[x] = exp(-(x - x0)*(x - x0)*tx);
+
+	for (y = 0; y < model.cols(); y++) 
+	{
+		model(x,y) = A * exp()
+	}
+	del ex;
+
+}
 
 ///////////////////////////////// target function (to minimize) ///////////////////////////////
 
@@ -97,6 +125,7 @@ int model2DGaussian(double* vars, double* M, int osize)
 	return 0;
 }
 
+/*
 //////////////////////////////////////////// modelTwo2DGaussian ////////////////////////////////////////////
 //function uses model2DGaussian function for constructor, see fit2DGaussian for parameter declaration
 int modelTwo2DGaussian(double* vars, double* M, int osize) {
@@ -122,7 +151,7 @@ int modelTwo2DGaussian(double* vars, double* M, int osize) {
 
 	delete[] vars_dummy, M_dummy;
 	return 0;
-}
+}*/
 
 //////////////////////////////////////////// modelThree2DGaussian ////////////////////////////////////////////
 
@@ -176,7 +205,7 @@ Eigen::VectroXd fitNew(const Eigen::MatrixXi &img)
 	return fit;
 }
 */
-double fit2DGaussian(double* vars, MGParam* p)
+double fit2DGaussian(double* vars, MGParam * p)
 {
 	double  tIstar = 0.;
 	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);

@@ -116,6 +116,7 @@ static void normM (double* M, double s, int Nchannels)
 }
 
 // Gauss_analysis
+double fit2DGaussian(double* vars, MGParam * p);
 int model2DGaussian(double* vars, double* pM, int osize);
 int modelTwo2DGaussian(double* vars, double* M, int osize);
 int modelThree2DGaussian(double* vars, double* M, int osize);

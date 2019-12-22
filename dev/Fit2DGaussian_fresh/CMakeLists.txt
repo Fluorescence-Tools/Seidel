@@ -6,6 +6,7 @@ project(Fit2DGaussian
 
 add_subdirectory( thirdparty/ap )
 
+
         
 ############################################################
 # Create a library
@@ -22,6 +23,7 @@ add_library(Fit2DGaussian SHARED
 target_include_directories(Fit2DGaussian
     PUBLIC 
         ${PROJECT_SOURCE_DIR}/include
+		${PROJECT_SOURCE_DIR}/thirdparty
 )
 
 target_link_libraries( Fit2DGaussian LibAP )
