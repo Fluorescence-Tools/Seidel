@@ -21,21 +21,33 @@ add_library(Fit2DGaussian SHARED
 )
 
 target_include_directories(Fit2DGaussian
-    PUBLIC 
-        ${PROJECT_SOURCE_DIR}/include
-		${PROJECT_SOURCE_DIR}/thirdparty
+    PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/thirdparty
 )
 
-target_link_libraries( Fit2DGaussian LibAP )
+target_link_libraries( Fit2DGaussian PRIVATE LibAP )
 
 ############################################################
 # export a pybind .pyd python library
 ############################################################
 
-set( SOURCES src/eigen_wrap.cpp )
+set( SOURCES 
+	src/pywrap.cpp
+	src/fit2DGaussian.cpp
+	src/twoIstar.cpp
+	src/i_lbfgs.cpp
+	src/lbfgs.cpp
+	src/bindings.cpp
+)
 
 #Generate python module
 add_subdirectory( thirdparty/pybind11 )
-pybind11_add_module(GaussFits ${SOURCES} "src/bindings.cpp")
+pybind11_add_module(GaussFits ${SOURCES} )
 
-target_include_directories(GaussFits PUBLIC thirdparty/)
+target_include_directories(GaussFits PUBLIC 
+	thirdparty/
+	include/
+)
+
+target_link_libraries(GaussFits PRIVATE LibAP )

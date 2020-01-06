@@ -9,7 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
-#include <set>
+//#include <set>
 #include <Eigen/Core>
 
 using namespace std;
@@ -45,7 +45,7 @@ void save_array(double *a, int l)
 
 // weighted residuals, weights*(model-data)
 
-
+/*
 ///////////////////////////////// 2DGaussian ////////////////////////////////////////////////
 void modelGaussian(Eigen::MatrixXd model, Vector5d params)
 {
@@ -54,86 +54,133 @@ void modelGaussian(Eigen::MatrixXd model, Vector5d params)
 	int x, y;
 	const int cols = model.cols();
 	double* ex = new double[cols];
+	double ey;
 	double x0 = params(0);
 	double y0 = params(1);
 	double A = params(2);
 	double sigma = params(3);
-	double bf = params(4);
+	double bg = params(4);
+	double tx;
+	double ty;
+	tx = 0.5 / (sigma * sigma);
+	ty = 0.5 / (sigma * sigma *  * vars[4]);
+
 	for (x = 0; x < model.rows(); x++)
 		ex[x] = exp(-(x - x0)*(x - x0)*tx);
 
-	for (y = 0; y < model.cols(); y++) 
-	{
-		model(x,y) = A * exp()
+	for (y = 0; y < model.cols(); y++) {
+		ey = exp(-(y - y0) * (y - y0) * ty);
+		for (x = 0; x < model.rows(); x++) {
+			model(x, y) = A * ex[x] * ey + bg;
+		}
 	}
-	del ex;
+	delete[] ex;
 
-}
+}*/
 
 ///////////////////////////////// target function (to minimize) ///////////////////////////////
-
-double target2DGaussian(double* vars, void* pM)
+/*
+Function to minimize by bfgs object.
+bfgs constructor needs function with arguments (double *, void*)
+This function resets parameters within bounds, calculates model and gets goodness
+Maybe these functionalities should be split up further?
+*/
+double target2DGaussian(double* vars, void* gdata_dummy)
 {
 	double w;
-	MGParam* p = (MGParam*)pM;
-	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
-	std::set<std::int8_t> positionSet = { 0, 1, 6, 7, 9, 10 };
-
-	//check that the initial positions of all gaussians remain within the frame
-	std::set<std::int8_t>::iterator it = positionSet.begin();
-	while (it != positionSet.end()) {
-		if ((vars[*it] < 0.) || (vars[*it] > p->osize - 1)) vars[*it] = (p->osize) / 2.;
-		it++;
-	}
+	//convert void into GaussDataType. 
+	GaussDataType* gdata = (GaussDataType*)gdata_dummy; 
+	int osize = gdata->xlen * gdata->ylen;
+	//	MGParam* p = (MGParam*)pM;
+	//	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
+	vars[0] = varinbounds(vars[0], 0, (double)gdata->xlen);
+	vars[1] = varinbounds(vars[1], 0, (double)gdata->ylen);
+	vars[6] = varinbounds(vars[6], 0, (double)gdata->xlen);
+	vars[7] = varinbounds(vars[7], 0, (double)gdata->ylen);
+	vars[9] = varinbounds(vars[9], 0, (double)gdata->xlen);
+	vars[10] = varinbounds(vars[10], 0, (double)gdata->ylen);
+	vars[5] = varlowerbound(vars[5], 0); //if bg <0, bg = 1
  
 	//get model
 	if ((int) vars[16] == 0 ) {
-		model2DGaussian(vars, M->data, p->osize);
+		model2DGaussian(vars, gdata->model, gdata->xlen, gdata->ylen);
 	}
 	else if ((int) vars[16] == 1) {
-		modelTwo2DGaussian(vars, M->data, p->osize);
+		modelTwo2DGaussian(vars, gdata->model, gdata->xlen, gdata->ylen);
 	}
 	else if ((int) vars[16] == 2) {
-		modelThree2DGaussian(vars, M->data, p->osize);
+		modelThree2DGaussian(vars, gdata->model, gdata->xlen, gdata->ylen);
 	}
 
-	w = W2DG(subimage->data, M->data, (int)vars[7], subimage->length);
+	w = W2DG(gdata->data, gdata->model, osize);
 	return w;
 }
 
+/*
+check if var is within bounds
+If out-of-bound, reset parameter to the middle of the bounds
+*/
+double varinbounds(double var, double min, double max) {
+	if (var < min || var> max)
+		var = (max - min) / 2;
+	return var;
+}
+/*
+check if var is below lower bound
+if yes, reset to lower-bound + 1*/
+double varlowerbound(double var, double min) {
+	if (var < min)
+		var = min + 1;
+	return var;
+}
 //////////////////////////////////////////// model2DGaussian ////////////////////////////////////////////
 // vars = [x0 y0 A sigma ellipticity bg]
-int model2DGaussian(double* vars, double* M, int osize)
+int model2DGaussian(double* vars, double * model, int xlen, int ylen)
 {
-	int x, y, j = 0;
-	for (int i = 0; i < 6; i++) vars[i] = fabs(vars[i]);
-	double x0 = vars[0], y0 = vars[1], A = vars[2], B = vars[5];
-	double tx = 0.5 / (vars[3] * vars[3]), ty = 0.5 / (vars[3] * vars[3] * vars[4] * vars[4]);
-	double* ex = new double[osize]; double ey;
+	//fill the matrix model with a Gaussian according to params
+	//put parameters in more descriptive wordings
+	int x, y;
+	int i;
+	double* ex = new double[xlen];
+	double ey;
+	double x0 = vars[0];
+	double y0 = vars[1];
+	double A = vars[2];
+	double sigma = vars[3];
+	double eps = vars[4];
+	double bg = vars[5];
+	double tx;
+	double ty;
+	tx = 0.5 / (sigma * sigma);
+	ty = 0.5 / (sigma * sigma * eps * eps);
 
-	for (x = 0; x < osize; x++) ex[x] = exp(-(x - x0)*(x - x0)*tx);
-
-	for (y = 0; y < osize; y++) {
-		ey = exp(-(y - y0)*(y - y0)*ty);
-		for (x = 0; x < osize; x++)
-		{
-			M[j] = (A*ex[x] * ey + B); j++;					// Model of 2D Gaussian
+	//f(x,y) cn be written as ex(x)*ey(y)
+	//first calc ex(x)
+	for (x = 0; x < xlen; x++)
+		ex[x] = exp(-(x - x0) * (x - x0) * tx);
+	//now calc whole thing
+	i = 0;
+	for (y = 0; y < ylen; y++) {
+		ey = exp(-(y - y0) * (y - y0) * ty);
+		for (x = 0; x < xlen; x++) {
+			model[i] = A * ex[x] * ey + bg;
+			i++;
 		}
 	}
-
 	delete[] ex;
 	return 0;
 }
 
-/*
+
 //////////////////////////////////////////// modelTwo2DGaussian ////////////////////////////////////////////
 //function uses model2DGaussian function for constructor, see fit2DGaussian for parameter declaration
-int modelTwo2DGaussian(double* vars, double* M, int osize) {
+int modelTwo2DGaussian(double* vars, double * model, int xlen, int ylen) {
+	int osize = xlen * ylen;
 	double * vars_dummy = new double[6];
-	double * M_dummy = new double[osize * osize];
-	int i, osize_sq = osize * osize;
-	//create the first Gaussian with bg, store in M
-	model2DGaussian(vars, M, osize);
+	double * model_dummy = new double[osize];
+	int i;
+	//create the first Gaussian with bg, store in model
+	model2DGaussian(vars, model, xlen, ylen);
 
 	//create the second Gaussian without bg, store in M_dummy
 	vars_dummy[0] = vars[6];
@@ -142,26 +189,27 @@ int modelTwo2DGaussian(double* vars, double* M, int osize) {
 	vars_dummy[3] = vars[3];
 	vars_dummy[4] = vars[4];
 	vars_dummy[5] = 0;
-	model2DGaussian(vars_dummy, M_dummy, osize);
+	model2DGaussian(vars_dummy, model_dummy, xlen, ylen);
 
 	//add
-	for (i = 0; i < osize_sq; i++) {
-		M[i] += M_dummy[i];
+	for (i = 0; i < osize; i++) {
+		model[i] += model_dummy[i];
 	}
 
-	delete[] vars_dummy, M_dummy;
+	delete[] vars_dummy, model_dummy;
 	return 0;
-}*/
+}
 
 //////////////////////////////////////////// modelThree2DGaussian ////////////////////////////////////////////
 
 //function uses model2DGaussian and model2DGaussian function for constructor, see fit2DGaussian for parameter declaration
-int modelThree2DGaussian(double* vars, double* M, int osize) {
+int modelThree2DGaussian(double* vars, double* model, int xlen, int ylen) {
+	int osize = xlen * ylen;
 	double * vars_dummy = new double[6];
-	double * M_dummy = new double[osize * osize];
-	int i, osize_sq = osize * osize;
+	double * model_dummy = new double[osize];
+	int i;
 	//create the first two Gaussian with bg, store in M
-	modelTwo2DGaussian(vars, M, osize);
+	modelTwo2DGaussian(vars, model, xlen, ylen);
 
 	//create the third Gaussian without bg, store in M_dummy
 	vars_dummy[0] = vars[9];
@@ -171,69 +219,99 @@ int modelThree2DGaussian(double* vars, double* M, int osize) {
 	vars_dummy[4] = vars[4];
 	vars_dummy[5] = 0;
 
-	model2DGaussian(vars_dummy, M_dummy, osize);
+	model2DGaussian(vars_dummy, model_dummy, xlen, ylen);
 
 	//add
-	for (i = 0; i < osize_sq; i++) {
-		M[i] += M_dummy[i];
+	for (i = 0; i < osize; i++) {
+		model[i] += model_dummy[i];
 	}
 
-	delete[] vars_dummy, M_dummy;
+	delete[] vars_dummy, model_dummy;
 	return 0;
 }
 
 //////////////////////////////////////////// fit2DGaussian ////////////////////////////////////////////
-
-//fit2DGaussian initializes optimisation routine
-//vars contains the parameters that are optimized
-//  vars = [0: x0, 1: y0, 2: A0, 3: sigma, 4: ellipticity, 5: bg, 6: x1, 7: y1, 8: A1, 9: x2, 10: y2, 11: A2, 12: info,\
-//          13: wi_nowi, 14: fit_bg, 15: ellipt_circ, 16: model]
-//  info contains information from the fitting algorithm
-//  wi_nowi contains weights or no_wights, outdated?
-//  fit_bg asks if background is fitted. 0 -> bg is fitted
-//  ellipt_circ  determines if elliptical fits are allowed. Only relevant for model2DGaussian
-//  model determines the model to be used:
-//    0: model2DGaussian
-//    1: modelTwo2DGaussian
-//    2: modelThree2DGaussian
-//MGParam Class contains the data function, the model function and the number of rows in the image.
 /*
-Eigen::VectroXd fitNew(const Eigen::MatrixXi &img)
-{
-	Eigen::VectroXd fit;
-	
-	return fit;
-}
+//fit2DGaussian initializes optimisation routine
+//vars contains the parameters that are optimized and has length 18!
+//  vars:
+	0: x0, 
+	1: y0, 
+	2: A0, 
+	3: sigma, 
+	4: ellipticity, 
+	5: bg, 
+	6: x1, 
+	7: y1, 
+	8: A1, 
+	9: x2, 
+	10: y2, 
+	11: A2, 
+	12: info, contains information from the fitting algorithm
+	13: wi_nowi, outdated
+	14: fit_bg, asks if background is fitted. 0 -> bg is fitted
+	15: ellipt_circ, determines if elliptical fits are allowed. Only relevant for model2DGaussian
+	16: model, determines the model to be used:
+	    0: model2DGaussian
+		1: modelTwo2DGaussian
+		2: modelThree2DGaussian
+	17: reserved for two Istar value of optimised solution
 */
-double fit2DGaussian(double* vars, MGParam * p)
+int fit2DGaussian(double* vars, double * data, int xlen, int ylen)
 {
 	double  tIstar = 0.;
-	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
+	double* model;
 	int j;
+	GaussDataType * gdata;
+	bfgs bfgs_o(target2DGaussian, 12); //optimisation object
+	int osize = xlen * ylen;
 
-	//fix parameters according to model
-	bfgs bfgs_o(target2DGaussian, 17);
-	//bfgs_o.seteps(0.001);
+	//reserve space for model
+	if (model = (double*)malloc(sizeof(double) * osize)) {
+		printf("error, out of memory\n");
+		return -1;
+	}
+
+	//fill gdata struct
+	gdata->data = data;
+	gdata->model = model;
+	gdata->xlen = xlen;
+	gdata->ylen = ylen;
+
+	//parameters 12-16 contain fit information and are fixed
+	//1 Gauss fit uses first 6 parameters
 	if ((int) vars[16] == 0) {
-		for (j = 6; j < 17; j++) bfgs_o.fix(j);
+		for (j = 6; j < 12; j++) bfgs_o.fix(j);
 	}
+	//2 Gauss fit uses first 9 parameters
 	else if ((int) vars[16] == 1) {
-		for (j = 9; j < 17; j++) bfgs_o.fix(j);
+		for (j = 9; j < 12; j++) bfgs_o.fix(j);
 	}
+	//3 gauss fit uses first 12 parameters
 	else if ((int) vars[16] == 2) {
-		for (j = 12; j < 17; j++) bfgs_o.fix(j);
-	} 
-
+		for (j = 12; j < 12; j++) bfgs_o.fix(j);
+	}
+	
+	//set levenberg-marquadt conversion parametes
+	//bfgs_o.seteps(0.001);
 	bfgs_o.maxiter = 1000;
+
+	//fix epsilon if indicated by function caller
 	if (vars[15] == 1) { vars[4] = 1; bfgs_o.fix(4); }
+	//fix bg if indicated by function caller
 	if (vars[14] == 1) bfgs_o.fix(5);
+	//if bg is free, make sure initial-guess is non-zero.
 	//NV comment: do we really need this?
 	if (vars[14] == 0 && vars[5] == 0) vars[5] = 0.1;
-	vars[12] = bfgs_o.minimize(vars, p);
+
+	vars[12] = bfgs_o.minimize(vars, gdata);
 
 	//get magnitude of tIstar for optimised solution
-	tIstar = W2DG(subimage->data, M->data, (int)vars[7], subimage->length);
-	return tIstar;
+	vars[17] = W2DG(gdata->data, gdata->model, osize);
+
+	free(model);
+	delete gdata;
+	return 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +339,7 @@ int Gauss2D_analysis_Ani(double* image,				// one frame
 	int i = 0, j, x, y;
 	int yshift;
 	
-	double bg = 0., i0d, tIstar;
+	double bg = 0., i0d;
 
 	// first 4 bytes contain the array size -- must skip. See LabView help.
 	ResultsCluster* results = (ResultsCluster*)((__int64*)(*presults) + 1);
@@ -411,6 +489,18 @@ int Gauss2D_analysis_Ani(double* image,				// one frame
 			else weights[j] = 1.;
 		}
 */
+		/*
+		comment NV for Suren: 
+		I've changed the definition of fit2DGaussian.
+		In the current definition there is no need to build the MGparam* struct.
+		Therefore I've commented out the below piece of code and changed the call to 
+		fit2DGaussian.
+		Please verify that icut contains the data to be fitted.
+		Also, fit2DGaussian now accepts non-square images.
+		Please change the arguments (osize, osize) to (xlen, ylen)
+		if you wish to use this function
+		*/
+		/*
 		//copy data into LV cluster
 		LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
 		p->osize = osize;
@@ -421,11 +511,11 @@ int Gauss2D_analysis_Ani(double* image,				// one frame
 		subimage->data[j] = icut[j];
 		M->data[j] = icut[j];
 		}
-
+		*/
 		// fitting if requested
 		if (options->fit2DGauss)
 		{
-			tIstar = fit2DGaussian(vars, p);
+			fit2DGaussian(vars, icut, osize, osize);
 		}
 
 		//NV comment: this code needs to be changed in order to accomodate multiple Gaussians
@@ -462,7 +552,7 @@ int Gauss2D_analysis_Ani(double* image,				// one frame
 		};
 
 		results[Npeaks].Ncounts = sum_i;
-		results[Npeaks].chi2 = osize_sq * tIstar;
+		results[Npeaks].chi2 = osize_sq * vars[17];
 		results[Npeaks].chi2 /= (osize_sq - NVARS + 1);
 		results[Npeaks++].lm_message = (int)vars[6];
 

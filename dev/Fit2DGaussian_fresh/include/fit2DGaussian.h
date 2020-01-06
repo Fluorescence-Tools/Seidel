@@ -1,6 +1,3 @@
-#ifndef FIT2DGAUSSIAN_
-#define FIT2DGAUSSIAN_
-
 // compile everything:
 // cl /O2 /EHsc /MD /TP /Fefits2x.dll fit23.cpp fit24.cpp fit25.cpp fit26.cpp i_lbfgs.cpp lbfgs.cpp modelf.cpp fsconv2.c twoIstar.cpp libs/ap.cpp /link /dll /export:fit23 /export:fit24 /export:fit25 /export:fit26
 // mt /manifest fits2x.dll.manifest /outputresource:"fits2x.dll;#2"
@@ -29,11 +26,22 @@ typedef struct {
   LVDoubleArray** M;
 } MParam;
 
+//This struct is legacy.
+//Instead, use MGparamS
 typedef struct {
 	LVDoubleArray** subimage;
 	int osize;
 	LVDoubleArray** M;
 } MGParam;
+
+//MGparamS contains all attributes to fit an ND Gaussian
+//MGparamS stands for Model Gauss Parameters Simplified
+typedef struct {
+	double* data; //contains the data to be fitted
+	double* model;//initialise empty array that will contain the model
+	int xlen;
+	int ylen; // for 1D data, ylen is unused
+} GaussDataType;
 
 // fitting options
 typedef struct {
@@ -119,10 +127,13 @@ static void normM (double* M, double s, int Nchannels)
 }
 
 // Gauss_analysis
-int model2DGaussian(double* vars, double* pM, int osize);
-int modelTwo2DGaussian(double* vars, double* M, int osize);
-int modelThree2DGaussian(double* vars, double* M, int osize);
-double target2DGaussian(double* vars, void* pM);
+int fit2DGaussian(double* vars, double * data, int xlen, int ylen);
+int model2DGaussian(double* vars, double* model, int xlen, int ylen);
+int modelTwo2DGaussian(double* vars, double* model, int xlen, int ylen);
+int modelThree2DGaussian(double* vars, double* model, int xlen, int ylen);
+double target2DGaussian(double* vars, GaussDataType* gdata);
 int Gauss2D_analysis_Ani(double*, int, int, OptsCluster*, int, int&, int&, int&, int&, void**, int, int, int*, int*, int, MGParam*);
 
-#endif
+//aid functions
+double varinbounds(double var, double min, double max);
+double varlowerbound(double var, double min);

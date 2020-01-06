@@ -115,21 +115,29 @@ double Wcm(int* C, double* M, int Nchannels)
 
 
 ////////////////////////////// overall -log-likelihood: Gauss2D ///////////////////////////////
-
-double W2DG(double* C, double* M, int winowi, int Nchannels)
+/*
+generic log-likelihood estimator for Poisson-governed data
+double * array can represent 1D or 2D data
+input:
+double * data:  Poisson-statistics governed data.
+                data should contain ints, but is kept double for flexibility
+double * model: model to fit the data
+int osize:      length of array
+*/
+double W2DG(double* data, double* model, int osize)
 {
-	double W = 0.;
-	for (int i = 0; i < Nchannels; i++){
-		//avoid taking logarithm of Maschine Epsilon
-		if ((C[i] > 1.e-12) && (M[i] > 1.e-12)) {
+	double w = 0.;
+	for (int i = 0; i < osize; i++){
+		//avoid taking logarithm of 0
+		if ((data[i] > 1.e-12) && (model[i] > 1.e-12)) {
 			//all therms that are independant of the model are neglected as they do not contribute to the minimization
-			W += M[i] - C[i] * log( M[i] );
+			w += model[i] - data[i] * log( model[i] );
 		}
-		// code saves taking expensive log when C[i] = 0
-		else { W += M[i]; }	// Poisson-MLR (maximum likelihood ratio)
+		// code saves taking expensive log when data[i] = 0
+		else { w += model[i]; }	// Poisson-MLR (maximum likelihood ratio)
 	}
 
-	return W/(double)Nchannels;
+	return w/(double)osize;
 }
 
 ////////////////////////////////// overall 2I*: Cp + 2Cs //////////////////////////////////////
