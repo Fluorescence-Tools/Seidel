@@ -252,10 +252,7 @@ Fit2DGaussian_LIB_DEPENDS:STATIC=general;LibAP;
 Fit2DGaussian_SOURCE_DIR:STATIC=K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh
 
 //Dependencies for the target
-Fit_py_LIB_DEPENDS:STATIC=general;C:/ProgramData/Anaconda3/libs/Python37.lib;
-
-//Dependencies for the target
-GaussFits_LIB_DEPENDS:STATIC=general;C:/ProgramData/Anaconda3/libs/Python37.lib;
+GaussFits_LIB_DEPENDS:STATIC=general;C:/ProgramData/Anaconda3/libs/Python37.lib;general;LibAP;
 
 //Value Computed by CMake
 LibAP_BINARY_DIR:STATIC=K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/build/thirdparty/ap

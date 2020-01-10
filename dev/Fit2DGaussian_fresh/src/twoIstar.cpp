@@ -140,6 +140,30 @@ double W2DG(double* data, double* model, int osize)
 	return w/(double)osize;
 }
 
+////////////////////////// human-readable chisq_mle //////////////////////////////////////////
+/*
+2Istar value for human interpretation of result
+-2 * ln ( L ( C | M ) / L ( C | C ) )
+where L denotes the Likelihood, C the data and M the model. 
+i.e. the found likelihood is devided by the likelihood if a 'perfect' solution is found.
+This function differs from twoIstar in the first to therms of the formula
+source: https://doi.org/10.1038/nmeth0510-338
+double * data:  Poisson-statistics governed data.
+				data should contain ints, but is kept double for flexibility
+double * model: model to fit the data
+int osize:      length of array
+*/
+double twoIstar_G(double* C, double* M, int osize)
+{
+	double W = 0;
+	for (int i = 0; i < osize; i++)
+		if (C[i] > 0)
+			W += M[i] - C[i] + C[i] * log(M[i] / C[i]);
+			//W += C[i] * log(M[i] / C[i]);
+
+	return -W / (double)osize;
+}
+
 ////////////////////////////////// overall 2I*: Cp + 2Cs //////////////////////////////////////
 
 double twoIstar_p2s(int* C, double* M, int Nchannels)
@@ -159,7 +183,8 @@ double twoIstar_p2s(int* C, double* M, int Nchannels)
 }
 
 ////////////////////////////////// overall 2I*: Cp & Cs ///////////////////////////////////////
-
+//NV comment: in below article they use a different approach, which is correct afaik
+//https://doi.org/10.1038/nmeth0510-338
 double twoIstar(int* C, double* M, int Nchannels)
 {
   double W = 0;

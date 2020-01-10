@@ -36,7 +36,7 @@ class GRYDecay():
     
 class processLifetimeImage:
     def __init__(self, fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
-        Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256, pulsetime = 25):
+        Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256, TAC_range = 32768, pulsetime = 25, dwelltime = 10e-3):
         """Lifetime Image class
         fname must be a .ptu file path denoted in bytes.
                 Uselines codes for the used line steps. 
@@ -46,7 +46,8 @@ class processLifetimeImage:
         Gchan, Rchan and Ychan code the channel numbers
         ntacs denote the number of bins in the tac decay histogram
             should be a multiple of 2, max tacs 2**15 = 32768
-        pulsetime in ns."""
+        pulsetime in ns.
+        dwelltime in s, unused for Abberior setup"""
         self.baseLifetime = None #immutable after initialization
         self.baseIntensity = None #immutable after initialization
         self.workLifetime = None #mutable
@@ -60,7 +61,7 @@ class processLifetimeImage:
                type(Ychan) == np.ndarray), \
             "uselines, Gchan, Ychan and Rchan must be numpy array type!"
         #initialize baseLifetimeObject
-        self._makeLifetime(fname, uselines, Gchan, Rchan, Ychan, ntacs)
+        self._makeLifetime(fname, uselines, Gchan, Rchan, Ychan, ntacs, TAC_range, dwelltime)
         #initialize baseIntensityObject
         self._makeIntensity()
         
@@ -224,9 +225,6 @@ class processLifetimeImage:
                     imY[i,j] = self.workLifetime.Y[i,j,:].dot(weights) / pixelsum
         self.workIntensity = GRYIntensity(imG, imR, imY)
         return 0
-
-
-        
     
     def filterIntensity(self, mode = 'xyz'):
         pass
@@ -244,6 +242,26 @@ class processLifetimeImage:
         imY = self.workLifetime.Y.sum(axis=2)
         self.workIntensity = GRYIntensity(imG, imR, imY)
         return 0
+        
+    def getTACS(self, mode = 'all'):
+        if mode == 'all' or mode == 'G':
+            GTACS = self.workLifetime.G.sum(axis=(0, 1))
+        if mode == 'all' or mode == 'R':
+            RTACS = self.workLifetime.R.sum(axis=(0, 1))
+        if mode == 'all' or mode == 'Y':
+            YTACS = self.workLifetime.Y.sum(axis=(0, 1))
+
+        if mode not in ['all', 'G', 'R', 'Y']:
+            raise NotImplementedError( 'mode does not exist')
+
+        if mode == 'G':
+            return GTACS
+        elif mode == 'R':
+            return RTACS
+        elif mode == 'Y':
+            return YTACS
+        else:
+            return GTACS, RTACS, YTACS
     
     def getLifetime(self):
         return self.workLifetime
@@ -293,7 +311,7 @@ class processLifetimeImage:
         self.baseIntensity = GRYIntensity(imG, imR, imY)
         return 0
     
-    def _makeLifetime(self, fname, uselines, Gchan, Rchan, Ychan, ntacs):
+    def _makeLifetime(self, fname, uselines, Gchan, Rchan, Ychan, ntacs, TAC_range, dwelltime):
         """initialisation routine for lifetime image manipulation class.
         Loads the .ptu file located at fname.
         Uselines codes for the used line steps. 
@@ -308,6 +326,7 @@ class processLifetimeImage:
         ntacs is the amount of bins used for the tac histogram. Decrease 
             to safe memory usage. Computational efficiency is minimal
             effected.
+        dwelltime in s. For Abberior setup, dwelltime is obtained from metadata.
         returns imG, imR, imY"""
 
         assert type(fname) == bytes, 'Error, fname is not bytes type'
@@ -323,9 +342,13 @@ class processLifetimeImage:
         header_name = os.path.join(root, b"header", name + b".txt")
         print('number of records is ' + str(NumRecords))
 
-        dimX, dimY, dwelltime, counttime = cpp_wrappers.read_header(header_name)
+        dimX, dimY, _dwelltime, counttime = cpp_wrappers.read_header(header_name)
+        if _dwelltime == -1:
+            print('dwelltime not found in header, using user-set value')
+        else:
+            dwelltime = _dwelltime
         imG, imR, imY = cpp_wrappers.genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, \
-            dwelltime, counttime, NumRecords, uselines, Gchan, Rchan, Ychan)
+            TAC_range, dwelltime, counttime, NumRecords, uselines, Gchan, Rchan, Ychan)
         self.baseLifetime = GRYLifetime(imG, imR, imY)
         return 0
         
@@ -392,7 +415,23 @@ class fitImage:
         
         return popt, pcov
         
-    def IstarThres(image):
+    @classmethod
+    def Istarvar(cls, image):
+        """An estimate of the potential error on Istarvar is made by assuming 
+        that all measured values have a standard deviation of the square root 
+        of their value.
+        The correcter way would be to use the square root of the model, but 
+        the model is not available in the python code"""
+        Istarvar = 0
+        for el in image.ravel():
+            if el == 0:
+                pass
+            else:
+                Istarvar += el - np.sqrt(el) * np.log(el)
+        return Istarvar / image.ravel().shape[0]
+        
+    @classmethod
+    def IstarThres(cls, image):
         """calculate an accepted value of Istar assuming that the model
         describes the object very well
         Addition factor 0.5 is chosen arbitrarily"""
@@ -403,11 +442,14 @@ class fitImage:
                 pass
             else:
                 thres += el - el * np.log(el)
-        return thres / image.ravel().shape[0] + 0.8
+        #var = cls.Istarvar(image)
+        var = np.sum(np.sqrt(image.ravel())) / image.ravel().shape[0]
+        return thres / image.ravel().shape[0] + var
+        
+
     
     @classmethod
-    def tryfit(cls, image, model, identifier):
-        Ntries = 50
+    def tryfit(cls, image, model, identifier, Ntries):
         Istar = None
         for counter in range(Ntries):
             #generate params0, add offset to sigma to avoid local minima of small rois
@@ -424,35 +466,40 @@ class fitImage:
                 raise NotImplemented
             elif model == 'two2DGaussian_py':
                 try:
+                    params[16] = 1
                     params[:9] , _ = cls.fitTwo2DGaussian(image, params0[:9])
                 except RuntimeError:
-                    print ('%s attempt %i: python fit did not converge, trying again' % (identifier, counter))
+                    print ('%s model %s attempt %i: python fit did not converge, trying again' % (identifier, model, counter))
                     continue
             elif model == 'three2DGaussian_py':
                 raise NotImplemented
             elif model == 'one2DGaussian_c':
                 params0[16] = 0
-                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+                params, Istar, model = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+                params[6:12] = 0
             elif model == 'two2DGaussian_c':
                 params0[16] = 1
-                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+                params, Istar, model = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+                params[9:12] = 0
             elif model == 'three2DGaussian_c':
                 params0[16] = 2.01
-                params, Istar = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
+                params, Istar, model = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)
             else:
                 raise ValueError('invalid model')
                 
             #check if c routine returned convergence error or bad Istar value
-            thresh = cls.IstarThres(image)
-            if params[12] == -1 or params[12] == 1 or params[12] == 2:
+            thresh = cls.IstarThres(model)
+            #if params[12] == -1 or params[12] == 1 or params[12] == 2:
+            if params[12] == -1:
                 print('%s attempt %i: c routine returned info %.0f, trying again' % 
                       (identifier, counter, params[12]))
                 continue
             elif Istar != None and Istar > thresh:
-                print('%s attempt %i: value of Istar is %.2f and Istarthreshold is %.2f, trying again' %
-                              (identifier, counter, Istar, thresh) )
+                print('%s model %s attempt %i: value of Istar is %.2f and Istarthreshold is %.2f, trying again' %
+                              (identifier, model, counter, Istar, thresh) )
                 continue
-            print('%s:value of Istar is %.2f and Istarthreshold is %.2f, success!' %
+            if Istar != None:
+                print('%s:value of Istar is %.2f and Istarthreshold is %.2f, success!' %
                               (identifier, Istar, thresh) )
             break
             
@@ -463,7 +510,7 @@ class fitImage:
         return params
        
     @classmethod
-    def fitNGauss(cls, image, model, identifier, savefig, showfig, outdir = ''):
+    def fitNGauss(cls, image, model, identifier, savefig, showfig, outdir = '', Ntries = 50):
         """fits N Gaussian model to 2D image. 
         internally params is used among the python and c subroutines.
         params = [0: x0, 1: y0, 2: A0, 3: sigma, 4: ellipticity, 5: bg, 6: x1, 7: y1, 8: A1, 9: x2, 10: y2, 11: A2, \
@@ -484,7 +531,7 @@ class fitImage:
         
         returns: params"""
         #run tryfit
-        params = cls.tryfit (image, model, identifier)
+        params = cls.tryfit (image, model, identifier, Ntries)
         
         #run plotNGauss
         cls.plotNGauss (image, params, identifier, savefig, showfig, model, outdir)

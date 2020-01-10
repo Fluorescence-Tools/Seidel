@@ -1,7 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\eigen_wrap.cpp">
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\pywrap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\fit2DGaussian.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\twoIstar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\i_lbfgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\lbfgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="K:\vanderVoortN\FRC\dev\Fit2DGaussian_fresh\src\bindings.cpp">

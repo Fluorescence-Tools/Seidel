@@ -8,6 +8,7 @@
 #include "twoIstar.h"
 #include <Eigen/Core>
 #include <Eigen/LU>
+#include <iostream>
 
 
 using namespace Eigen;
@@ -19,7 +20,7 @@ Eigen::MatrixXd inv(Eigen::MatrixXd xs) {
 
 int subtract(int i, int j)
 {
-	return i - j;
+	return (i - j);
 }
 
 /*wrapper for Fit2DGaussian function.
@@ -38,22 +39,20 @@ ArrayXd Fit2DGaussian_pywrap(
 	//be mindful of a mixup.
 	//if correct,	vars[0,6,9] represents x
 	//				vars[1,7,10] represents y
-	double* vars_p = NULL;
-	double* data_p = NULL;
+	double* vars_p;
+	double* data_p;
 	int ncols;
 	int nrows;
+
+	//get pointer to data
 	ncols = (int)data.cols();
 	nrows = (int)data.rows();
-	//get pointer to data
-	Map<ArrayXd>(vars_p, 18) = vars;
-	Map<MatrixXd>(data_p, nrows, ncols) = data;
+	vars_p = vars.data();
+	data_p = data.data();
 
 	//if mixup, replace with fit2DGaussian(vars_p, data_p, ncols, nrows);
 	fit2DGaussian(vars_p, data_p, nrows, ncols);
 
-	//UNTESTES
-	//the map function gets a pointer to the data.
-	//therefore the ArrayXd vars object can be used to access the altered data
 	return vars;
 }
 
@@ -65,15 +64,16 @@ MatrixXd model2DGaussian_pywrap(
 	ArrayXd vars,
 	MatrixXd model
 ) {
-	double* vars_p = NULL;
-	double* model_p = NULL;
+	double* vars_p;
+	double* model_p;
 	int ncols;
 	int nrows;
+
+	//get pointer to data
 	ncols = (int)model.cols();
 	nrows = (int)model.rows();
-	//get pointer to data
-	Map<ArrayXd>(vars_p, 6) = vars;
-	Map<MatrixXd>(model_p, nrows, ncols) = model;
+	vars_p = vars.data();
+	model_p = model.data();
 
 	//call function
 	model2DGaussian(vars_p, model_p, nrows, ncols);
@@ -89,15 +89,16 @@ MatrixXd modelTwo2DGaussian_pywrap(
 	ArrayXd vars,
 	MatrixXd model
 ) {
-	double* vars_p = NULL;
-	double* model_p = NULL;
+	double* vars_p;
+	double* model_p;
 	int ncols;
 	int nrows;
+
+	//get pointer to data
 	ncols = (int)model.cols();
 	nrows = (int)model.rows();
-	//get pointer to data
-	Map<ArrayXd>(vars_p, 9) = vars;
-	Map<MatrixXd>(model_p, nrows, ncols) = model;
+	vars_p = vars.data();
+	model_p = model.data();
 
 	//call function
 	modelTwo2DGaussian(vars_p, model_p, nrows, ncols);
@@ -113,15 +114,16 @@ MatrixXd modelThree2DGaussian_pywrap(
 	ArrayXd vars,
 	MatrixXd model
 ) {
-	double* vars_p = NULL;
-	double* model_p = NULL;
+	double* vars_p;
+	double* model_p;
 	int ncols;
 	int nrows;
+
+	//get pointer to data
 	ncols = (int)model.cols();
 	nrows = (int)model.rows();
-	//get pointer to data
-	Map<ArrayXd>(vars_p, 12) = vars;
-	Map<MatrixXd>(model_p, nrows, ncols) = model;
+	vars_p = vars.data();
+	model_p = model.data();
 
 	//call function
 	modelThree2DGaussian(vars_p, model_p, nrows, ncols);
@@ -138,13 +140,16 @@ double W2DG_pywrap(
 	MatrixXd data,
 	MatrixXd model
 ) {
-	double* data_p = NULL;
-	double* model_p = NULL;
-	int ncols = (int)data.cols();
-	int nrows = (int)data.rows();
+	double* data_p;
+	double* model_p;
+	int ncols;
+	int nrows;
 
-	Map<MatrixXd>(data_p, nrows, ncols) = data;
-	Map<MatrixXd>(model_p, nrows, ncols) = model;
+	//get pointer to data
+	ncols = (int)model.cols();
+	nrows = (int)model.rows();
+	data_p = data.data();
+	model_p = model.data();
 
 	return W2DG(data_p, model_p, nrows * ncols);
 }

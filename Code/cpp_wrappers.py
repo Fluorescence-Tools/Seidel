@@ -82,6 +82,10 @@ def read_header(header_name):
         if "MeasDesc_GlobalResolution" in el:
             counttime = float(el[40:])
     try:
+        dwelltime
+    except UnboundLocalError:
+        dwelltime = -1
+    try:
         return dimX, dimY, dwelltime, counttime
     except NameError:
         logger.error("not all needed variables were found")
@@ -131,6 +135,7 @@ def fit2DGaussian_wrap(params0, im, debug = False):
         fit2DGaussian = ctypes.WinDLL(r"K:\vanderVoortN\FRC\Code\Fit2DGaussian.dll").fit2DGaussian
 
     c_double_p = ctypes.POINTER(ctypes.c_double)
+    xshape, yshape = im.shape
     im = im.flatten()
     imsize = im.shape[0]
     DOUBLEARRAY = ctypes.c_double * imsize
@@ -175,13 +180,19 @@ def fit2DGaussian_wrap(params0, im, debug = False):
     params = []
     for i in range(paramlength):
         params.append(params_c[i])
-    del (c_im, c_M, c_imsize, c_osize, subimage, subM, mgparam, params_c)
     params = np.array(params)
+    
+    model = []
+    for i in range(im.size):
+        model.append(mgparam.M.data[i])
+    model = np.array(model).reshape(xshape, yshape)
 
-    return params, Istar
+    del (c_im, c_M, c_imsize, c_osize, subimage, subM, mgparam, params_c)
 
-def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, counttime, NumRecords, 
-                       uselines, Gchan, Rchan, Ychan):
+    return params, Istar, model
+
+def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range, dwelltime, counttime, \
+    NumRecords, uselines, Gchan, Rchan, Ychan):
     """c code wrapper to create tac histogram image. To be used in conjunction
         with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
@@ -196,6 +207,7 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, countt
     C_dimX = ctypes.c_int(dimX)
     C_dimY = ctypes.c_int(dimY)
     C_ntacs = ctypes.c_int(ntacs)
+    C_TAC_range = ctypes.c_int(TAC_range)
     C_dwelltime = ctypes.c_float(dwelltime)
     C_counttime = ctypes.c_float(counttime)
     C_NumRecords = ctypes.c_int(NumRecords)
@@ -210,7 +222,7 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, countt
     imG_p = imG.ctypes.data_as(c_int_p)
     imR_p = imR.ctypes.data_as(c_int_p)
     imY_p = imY.ctypes.data_as(c_int_p)
-    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_dwelltime, C_counttime, C_NumRecords,
+    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_TAC_range, C_dwelltime, C_counttime, C_NumRecords,
                    C_nlines, uselines_p, Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
     imG = imG.reshape((dimX, dimY, ntacs))
     imR = imR.reshape((dimX, dimY, ntacs))

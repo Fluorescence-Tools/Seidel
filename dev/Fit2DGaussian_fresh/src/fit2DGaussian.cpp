@@ -196,7 +196,8 @@ int modelTwo2DGaussian(double* vars, double * model, int xlen, int ylen) {
 		model[i] += model_dummy[i];
 	}
 
-	delete[] vars_dummy, model_dummy;
+	delete[] vars_dummy;
+	delete[] model_dummy;
 	return 0;
 }
 
@@ -226,7 +227,8 @@ int modelThree2DGaussian(double* vars, double* model, int xlen, int ylen) {
 		model[i] += model_dummy[i];
 	}
 
-	delete[] vars_dummy, model_dummy;
+	delete[] vars_dummy;
+	delete[] model_dummy;
 	return 0;
 }
 
@@ -250,7 +252,7 @@ int modelThree2DGaussian(double* vars, double* model, int xlen, int ylen) {
 	12: info, contains information from the fitting algorithm
 	13: wi_nowi, outdated
 	14: fit_bg, asks if background is fitted. 0 -> bg is fitted
-	15: ellipt_circ, determines if elliptical fits are allowed. Only relevant for model2DGaussian
+	15: ellipt_circ, determines if elliptical fits are allowed.  1-> eps is fixed.
 	16: model, determines the model to be used:
 	    0: model2DGaussian
 		1: modelTwo2DGaussian
@@ -262,34 +264,40 @@ int fit2DGaussian(double* vars, double * data, int xlen, int ylen)
 	double  tIstar = 0.;
 	double* model;
 	int j;
-	GaussDataType * gdata;
-	bfgs bfgs_o(target2DGaussian, 12); //optimisation object
+	//bfgs.minimize needs to take a void * as argument type
+	//Therefore a pointer type is supplied
+	GaussDataType* gdata_p;
+	GaussDataType gdata;
+	bfgs bfgs_o(target2DGaussian, 18); //optimisation object
 	int osize = xlen * ylen;
 
 	//reserve space for model
-	if (model = (double*)malloc(sizeof(double) * osize)) {
+	model = (double*)malloc(sizeof(double) * osize);
+	if (model == NULL) {
 		printf("error, out of memory\n");
 		return -1;
 	}
-
+	
 	//fill gdata struct
-	gdata->data = data;
-	gdata->model = model;
-	gdata->xlen = xlen;
-	gdata->ylen = ylen;
+	//gdata = { 0 };//compiler needs struct to be initialised
+	gdata.data = data;
+	gdata.model = model;
+	gdata.xlen = xlen;
+	gdata.ylen = ylen;
+	gdata_p = &gdata;
 
 	//parameters 12-16 contain fit information and are fixed
 	//1 Gauss fit uses first 6 parameters
 	if ((int) vars[16] == 0) {
-		for (j = 6; j < 12; j++) bfgs_o.fix(j);
+		for (j = 6; j < 18; j++) bfgs_o.fix(j);
 	}
 	//2 Gauss fit uses first 9 parameters
 	else if ((int) vars[16] == 1) {
-		for (j = 9; j < 12; j++) bfgs_o.fix(j);
+		for (j = 9; j < 18; j++) bfgs_o.fix(j);
 	}
 	//3 gauss fit uses first 12 parameters
 	else if ((int) vars[16] == 2) {
-		for (j = 12; j < 12; j++) bfgs_o.fix(j);
+		for (j = 12; j < 18; j++) bfgs_o.fix(j);
 	}
 	
 	//set levenberg-marquadt conversion parametes
@@ -304,13 +312,13 @@ int fit2DGaussian(double* vars, double * data, int xlen, int ylen)
 	//NV comment: do we really need this?
 	if (vars[14] == 0 && vars[5] == 0) vars[5] = 0.1;
 
-	vars[12] = bfgs_o.minimize(vars, gdata);
+	vars[12] = bfgs_o.minimize(vars, gdata_p);
 
 	//get magnitude of tIstar for optimised solution
-	vars[17] = W2DG(gdata->data, gdata->model, osize);
+	vars[17] = twoIstar_G(gdata.data, gdata.model, osize);
 
 	free(model);
-	delete gdata;
+	//delete gdata; //GaussDataType gdata is called with this function, therefore it is also deleted with this function right?
 	return 1;
 }
 

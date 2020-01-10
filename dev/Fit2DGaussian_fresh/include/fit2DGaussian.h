@@ -27,7 +27,7 @@ typedef struct {
 } MParam;
 
 //This struct is legacy.
-//Instead, use MGparamS
+//Instead, use GaussDataType
 typedef struct {
 	LVDoubleArray** subimage;
 	int osize;
