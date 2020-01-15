@@ -12,7 +12,6 @@
 
 import numpy as np
 
-
 def findPeaks(data):
     """finds all local peaks according to 'raindrop' model.
     All pixel get a raindrop. The rain flows uphill in neighbouring pixels
