@@ -31,19 +31,17 @@ def findPeaks(data):
     while(eps_step != 0):
         for index, point in enumerate(points):
             x,y = point
-            xneighbours = padded_data[x: x + 3, y + 1]
-            movex = xneighbours.argmax()
-            if movex == 0: #move point left
+            xset = padded_data[x: x + 3, y + 1]
+            if xset[0] > xset[1] and xset[0] > xset[2]: #move point left
                 points_copy[index, 0] -= 1
                 continue
-            elif movex == 2: # move point right
+            elif xset[2] > xset[1] and xset[2] > xset[0]: # move point right
                 points_copy[index, 0] += 1
                 continue
-            yneighbours = padded_data[ x + 1, y: y + 3]
-            movey = yneighbours.argmax()
-            if movey == 0: #move up
+            yset = padded_data[ x + 1, y: y + 3]
+            if yset[0] > yset[1] and yset[0] > yset [2]: #move up
                 points_copy[index, 1] -= 1
-            if movey == 2: #move down
+            if yset[2] > yset[1] and yset[2] > yset [1]: #move down
                 points_copy[index, 1] += 1
         eps_step = np.linalg.norm(points-points_copy)
         points = points_copy.copy()
