@@ -93,6 +93,7 @@ double target2DGaussian(double* vars, void* gdata_dummy)
 	int osize = gdata->xlen * gdata->ylen;
 	//	MGParam* p = (MGParam*)pM;
 	//	LVDoubleArray *subimage = *(p->subimage), *M = *(p->M);
+	
 	vars[0] = varinbounds(vars[0], 0, (double)gdata->xlen);
 	vars[1] = varinbounds(vars[1], 0, (double)gdata->ylen);
 	vars[6] = varinbounds(vars[6], 0, (double)gdata->xlen);
@@ -100,6 +101,7 @@ double target2DGaussian(double* vars, void* gdata_dummy)
 	vars[9] = varinbounds(vars[9], 0, (double)gdata->xlen);
 	vars[10] = varinbounds(vars[10], 0, (double)gdata->ylen);
 	vars[5] = varlowerbound(vars[5], 0); //if bg <0, bg = 1
+	
  
 	//get model
 	if ((int) vars[16] == 0 ) {
@@ -121,7 +123,7 @@ check if var is within bounds
 If out-of-bound, reset parameter to the middle of the bounds
 */
 double varinbounds(double var, double min, double max) {
-	if (var < min || var> max)
+	if (var < min || var > max)
 		var = (max - min) / 2;
 	return var;
 }
@@ -301,7 +303,7 @@ int fit2DGaussian(double* vars, double * data, int xlen, int ylen)
 	}
 	
 	//set levenberg-marquadt conversion parametes
-	//bfgs_o.seteps(0.001);
+	bfgs_o.seteps(1e-12); //this value has been converged on after testing
 	bfgs_o.maxiter = 1000;
 
 	//fix epsilon if indicated by function caller

@@ -108,7 +108,7 @@ class bfgs
   void setdefaults()
   {
      N = 0;
-     // seteps();
+     //seteps();
 	 seteps(3.3e-16);
      maxiter = 100;
   }

@@ -10,6 +10,8 @@
 #institute: Molecular Physical Chemistry, AG Seidel
 #date: January 10, 2020
 
+from scipy.ndimage import gaussian_filter
+
 import numpy as np
 
 def findPeaks(data):
@@ -109,3 +111,6 @@ def sortPeaks(peaks, xlen, ylen, mindiff = 2):
         goodpeaks[goodpeak_cntr] = np.random.random(2) * [xlen, ylen]
         goodpeak_cntr += 1
     return goodpeaks.astype(np.int)
+    
+def smooth_image(im, sigma = 1):
+    return gaussian_filter(im.astype(np.double), sigma)

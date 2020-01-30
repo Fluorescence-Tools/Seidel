@@ -65,13 +65,16 @@ class processLifetimeImage:
         #initialize baseIntensityObject
         self._makeIntensity()
         
-    def gate(self, mingate, maxgate):
-        self.workLifetime.G[:,:,:mingate] = 0
-        self.workLifetime.G[:,:,maxgate:] = 0
-        self.workLifetime.R[:,:,:mingate] = 0
-        self.workLifetime.R[:,:,maxgate:] = 0
-        self.workLifetime.Y[:,:,:mingate] = 0
-        self.workLifetime.Y[:,:,maxgate:] = 0
+    def gate(self, mingate, maxgate, channel = ['G', 'R', 'Y']):
+        if 'G' in channel:
+            self.workLifetime.G[:,:,:mingate] = 0
+            self.workLifetime.G[:,:,maxgate:] = 0
+        if 'R' in channel:
+            self.workLifetime.R[:,:,:mingate] = 0
+            self.workLifetime.R[:,:,maxgate:] = 0
+        if 'Y' in channel:
+            self.workLifetime.Y[:,:,:mingate] = 0
+            self.workLifetime.Y[:,:,maxgate:] = 0
         return 0
     
     def rebin(self, xfactor, yfactor):
