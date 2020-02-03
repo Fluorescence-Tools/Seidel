@@ -35,8 +35,12 @@ class GRYDecay():
         self.Y = decY
     
 class processLifetimeImage:
-    def __init__(self, fname, uselines = np.array([1,0]), Gchan = np.array([0,2]), \
-        Rchan = np.array([1,3]), Ychan = np.array([1,3]), ntacs = 256, TAC_range = 32768, pulsetime = 25, dwelltime = 10e-3):
+    def __init__(self, 
+        fname, uselines = np.array([1,0]), 
+        Gchan = np.array([0,2]), Rchan = np.array([1,3]), Ychan = np.array([1,3]),
+        ntacs = 256, TAC_range = 32768, pulsetime = 25, dwelltime = 10e-3, 
+        framestop = -1
+        ):
         """Lifetime Image class
         fname must be a .ptu file path denoted in bytes.
                 Uselines codes for the used line steps. 
@@ -61,7 +65,8 @@ class processLifetimeImage:
                type(Ychan) == np.ndarray), \
             "uselines, Gchan, Ychan and Rchan must be numpy array type!"
         #initialize baseLifetimeObject
-        self._makeLifetime(fname, uselines, Gchan, Rchan, Ychan, ntacs, TAC_range, dwelltime)
+        self._makeLifetime(fname, uselines, Gchan, Rchan, Ychan, ntacs, 
+                            TAC_range, dwelltime, framestop)
         #initialize baseIntensityObject
         self._makeIntensity()
         
@@ -314,7 +319,10 @@ class processLifetimeImage:
         self.baseIntensity = GRYIntensity(imG, imR, imY)
         return 0
     
-    def _makeLifetime(self, fname, uselines, Gchan, Rchan, Ychan, ntacs, TAC_range, dwelltime):
+    def _makeLifetime(
+        self, fname, uselines, Gchan, Rchan, Ychan, ntacs, TAC_range, dwelltime, 
+        framestop
+        ):
         """initialisation routine for lifetime image manipulation class.
         Loads the .ptu file located at fname.
         Uselines codes for the used line steps. 
@@ -350,8 +358,10 @@ class processLifetimeImage:
             print('dwelltime not found in header, using user-set value')
         else:
             dwelltime = _dwelltime
-        imG, imR, imY = cpp_wrappers.genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, \
-            TAC_range, dwelltime, counttime, NumRecords, uselines, Gchan, Rchan, Ychan)
+        imG, imR, imY = cpp_wrappers.genGRYLifetimeWrap(
+            eventN, tac, t, can, dimX, dimY, ntacs, TAC_range, dwelltime, 
+            counttime, NumRecords, uselines, Gchan, Rchan, Ychan, framestop
+            )
         self.baseLifetime = GRYLifetime(imG, imR, imY)
         return 0
         

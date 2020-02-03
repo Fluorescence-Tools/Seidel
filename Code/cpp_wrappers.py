@@ -15,8 +15,9 @@ debug = False
 if debug:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
 else:
-    _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').SplitOnTacs
-    _genGRYlifetime = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Release\ProcessPhotonStream.dll').genGRYlifetime
+    wdir = os.path.dirname(__file__)
+    _SplitOnTacs = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).SplitOnTacs
+    _genGRYlifetime = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).genGRYlifetime
 
 
 def ptuHeader_wrap (fname):
@@ -191,8 +192,9 @@ def fit2DGaussian_wrap(params0, im, debug = False):
 
     return params, Istar, model
 
-def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range, dwelltime, counttime, \
-    NumRecords, uselines, Gchan, Rchan, Ychan):
+def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range, 
+                        dwelltime, counttime, NumRecords, uselines, 
+                        Gchan, Rchan, Ychan, framestop):
     """c code wrapper to create tac histogram image. To be used in conjunction
         with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
@@ -216,14 +218,17 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range, dwellt
     Rchan_p = Rchan.ctypes.data_as(c_ushort_p)
     Ychan_p = Ychan.ctypes.data_as(c_ushort_p)
     C_nlines = ctypes.c_int(uselines.shape[0])
+    C_framestop = ctypes.c_int(framestop)
     imG = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imR = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imY = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imG_p = imG.ctypes.data_as(c_int_p)
     imR_p = imR.ctypes.data_as(c_int_p)
     imY_p = imY.ctypes.data_as(c_int_p)
-    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_TAC_range, C_dwelltime, C_counttime, C_NumRecords,
-                   C_nlines, uselines_p, Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
+    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, 
+                    C_TAC_range, C_dwelltime, C_counttime, C_NumRecords,
+                    C_nlines, C_framestop, uselines_p, 
+                    Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
     imG = imG.reshape((dimX, dimY, ntacs))
     imR = imR.reshape((dimX, dimY, ntacs))
     imY = imY.reshape((dimX, dimY, ntacs))

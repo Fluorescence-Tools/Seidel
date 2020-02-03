@@ -39,15 +39,15 @@ class Channel:
         bg = params[5]
         for i in range(params[16].astype(np.int) + 1):
             if i == 0:
-                coord = np.array([params[[0,1]]])
+                coord = params[[0,1]]
                 A = params[2]
                 self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
             if i == 1:
-                coord = np.array([params[[6, 7]]])
+                coord = params[[6, 7]]
                 A = params[8]
                 self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
             if i == 2:
-                coord = np.array([params[[9, 10]]])
+                coord = params[[9, 10]]
                 A = params[11]
                 self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
                 
