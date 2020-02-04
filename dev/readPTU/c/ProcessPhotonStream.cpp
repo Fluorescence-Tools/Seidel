@@ -62,6 +62,7 @@ extern "C"
 		float counttime,
 		int NumRecords,
 		int nlines,
+		int framestop,
 		char * uselines,
 		char * Gchan,
 		char * Rchan,
@@ -93,10 +94,15 @@ extern "C"
 			//and the last frame marker comes after the last frame
 			//for n frames, there are n+1 frame markers
 			//the first frame has label '1'
-			//currently no frame separation is implemented
+			//currently only all or untill slicestop frames are taken
+			//slicestop = -1 means all frames are taken (default)
+			//multiple frame selection may be implemented later.
 			else if (can[i] == 68) {
 				line = 0;
 				frame++;
+				if (frame == framestop) {
+					break;
+				}
 			}
 			//check if pixels goes into G, R or Y channel.
 			//uselines[j] = 0 means skip line

@@ -114,7 +114,7 @@ def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumR
     return imA, imB
 
 def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, counttime, NumRecords, 
-                       uselines, Gchan, Rchan, Ychan):
+                       uselines, Gchan, Rchan, Ychan, framestop = -1):
     """c code wrapper to create tac histogram image. To be used in conjunction
         with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
@@ -137,14 +137,16 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, dwelltime, countt
     Rchan_p = Rchan.ctypes.data_as(c_ushort_p)
     Ychan_p = Ychan.ctypes.data_as(c_ushort_p)
     C_nlines = ctypes.c_int(uselines.shape[0])
+    C_framestop = ctypes.c_int(framestop)
     imG = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imR = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imY = np.zeros(dimX * dimY * ntacs).astype(np.int)
     imG_p = imG.ctypes.data_as(c_int_p)
     imR_p = imR.ctypes.data_as(c_int_p)
     imY_p = imY.ctypes.data_as(c_int_p)
-    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_dwelltime, C_counttime, C_NumRecords,
-                   C_nlines, uselines_p, Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
+    _genGRYlifetime(eventN_p, tac_p, t_p, can_p, C_dimX, C_dimY, C_ntacs, C_dwelltime, 
+                    C_counttime, C_NumRecords, C_nlines, C_framestop, uselines_p, 
+                    Gchan_p, Rchan_p, Ychan_p, imG_p, imR_p, imY_p)
     imG = imG.reshape((dimX, dimY, ntacs))
     imR = imR.reshape((dimX, dimY, ntacs))
     imY = imY.reshape((dimX, dimY, ntacs))
