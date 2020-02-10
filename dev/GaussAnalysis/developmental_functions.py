@@ -68,6 +68,8 @@ def analyseSTEDdir(
     locLst, options, wdir, files, Ggate = 0, Ygate = 0, 
     DTwoIstar = 0.03, garbageBrightness = 20, junkIstar = 0.30,
     outname = '', framestop = -1, verbose = False, saveplot = False):
+    #merge with analyse CF dir
+    #make sure all variables are passed correctly
     ntacs = 256
     ROIsize = 30
 
@@ -128,65 +130,13 @@ def analyseSTEDdir(
         
     return locLst
 
-def plotSinglePair(locLst, pxSize = 10):
-    coords = np.zeros([len(locLst),2])
-    for i, loc in enumerate(locLst):
-        coords[i] = loc['G'].spotLst[0].coord - loc['Y'].spotLst[0].coord
-    coords *= pxSize
-    coords = kickvector(coords, 50)
-    coords = coords - np.mean(coords, axis = 0)
-    plt.plot(coords[:,0], coords[:,1], '.')
-    plt.plot([0,0], [-100,+100], 'r--')
-    plt.plot([-100,+100], [0,0], 'r--')
-    ax = plt.gca()
-    ax.set_aspect('equal')
-    plt.xlim([-50, 50])
-    plt.ylim([-50, 50])
-    stdx, stdy = np.std(coords, axis = 0)
-    print('standard deviation of spots is %.2f and %.2f' % (stdx, stdy))
-    plt.show()
-    return coords
-
 def kickvector(dat, maxval):
+    #provide docstring
     return dat[np.linalg.norm(dat, axis = 1) < maxval]
-
-def plotOccurence(locLst):
-    """plots a 2D histogram of how many spots have been fitted
-    in the Green and red channel.
-    Takes as argument a spotLst Lst"""
-    occurence = np.zeros([4,4], np.int)
-    for loc in locLst:
-        Gspots = len(loc['G'].spotLst)
-        Yspots = len(loc['Y'].spotLst)
-        occurence[Gspots, Yspots] += 1
-    plt.figure(figsize = [4,4])
-    x, y = np.meshgrid(np.arange(4),np.arange(4))
-    plt.scatter(x,y, s = occurence)
-    ax = plt.gca()
-    ax.set_xticks([0,1,2,3])
-    ax.set_yticks([0,1,2,3])
-    plt.ylabel ('# Green spots identified')
-    plt.xlabel ('# red spots identified')
-    plt.show
-    return occurence
-    
-
-    
-def selectSpotOccurence(locLst, Gspots, Yspots):
-    """selects from locLst those localisations that have
-    Gspots and Yspots. Gspots and Spots must be lists.
-    returns: cleaned locLst"""
-    i=0
-    locLst_copy = locLst.copy()
-    while i < len(locLst_copy):
-        if (len(locLst_copy[i]['G'].spotLst) in Gspots and
-                len(locLst_copy[i]['Y'].spotLst) in Yspots):
-            i += 1
-        else:
-            locLst_copy.pop(i)
-    return locLst_copy
     
 def plotSinglePair(locLst, pxSize = 10):
+    #split into fitting function and filtering function
+    #filtering function goes into different function
     coords = np.zeros([len(locLst),2])
     for i, loc in enumerate(locLst):
         coords[i] = loc['G'].spotLst[0].coord - loc['Y'].spotLst[0].coord
@@ -204,9 +154,6 @@ def plotSinglePair(locLst, pxSize = 10):
     print('standard deviation of spots is %.2f and %.2f' % (stdx, stdy))
     plt.show()
     return coords
-
-def kickvector(dat, maxval):
-    return dat[np.linalg.norm(dat, axis = 1) < maxval]
 
 def plotOccurence(locLst):
     """plots a 2D histogram of how many spots have been fitted
@@ -253,7 +200,7 @@ def expDecay(r, tau, A):
     return A * np.exp( - r / tau )
 
 def sortSpots(loc_in, loc_out):
-    
+    #provide docstring
     NG = len(loc_in['G'].spotLst)
     NY = len(loc_in['Y'].spotLst)
     Ndist = min (NG, NY)
@@ -276,16 +223,12 @@ def sortSpots(loc_in, loc_out):
         loc_out['Y'].spotLst.append(loc_in['Y'].spotLst[Ypos])
         alldist[Gpos] = 1e6
         alldist[:, Ypos] = 1e6
-        #alldist = np.delete(alldist, Gpos, 0)
-        #alldist = np.delete(alldist, Ypos, 1)
 
 
 def cropSpot(spotcenter, data, winSigma, ROI):
-    """takes ROI at position spotNumber from ROIchannel
-    a crop is the taken from datachannel
-    ROIchannel and datachannel can be different if e.g. 'Y' ROI
-    is used to crop 'R' photons
-    crops 2D or 3D data in 2D"""
+    """crops 2D or 3D data in 2D"""
+    #change function such that it becomes generally applicable
+    #write applicable docstring
     #convert between float peak to pixel position
     #check that convertion is correct
     xcenter, ycenter = (np.round(spotcenter) + \
@@ -296,8 +239,8 @@ def cropSpot(spotcenter, data, winSigma, ROI):
                                    ycenter + winSigma]
     return data[xstart : xstop + 1, ystart : ystop + 1]
     
-def fitTau(TAC, TACCal, verbose):
-        params0 = [1, 2]
+def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2]):
+        #provide docstring
         tactimes = np.arange(len(TAC)) * TACCal
         fitres = minimize(logLikelihood1D, params0, args = (expDecay, tactimes, TAC), 
                           method = 'SLSQP')
@@ -329,11 +272,14 @@ def analyseLoc(
         winSigma: half-side of area around spot center
             around which photons are collected
             e.g. winSigma = 3: 7x7 image"""
+    #write all relevant parameters in function call
+    #put calculation of FRET indicators in a separate function
     outloc = {}
     
     ntacs = 256
     outloc['filepath'] = loc['filepath']
     
+    #think about whether it is necessary to repeat loading of the file.
     #load image, gate
     CLR = IM.processLifetimeImage(
         outloc['filepath'].encode(), uselines = np.array([1,2]), ntacs = ntacs,
@@ -362,7 +308,7 @@ def analyseLoc(
     #add pairwise localisation of loc to outloc
     sortSpots(loc, outloc)
     npairs = len(outloc['G'].spotLst)
-    
+    #move this into a separate function
     outloc['FRETind'] = []
     for i in range(npairs):
         outloc['FRETind'].append(FRETind())
