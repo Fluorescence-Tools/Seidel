@@ -69,7 +69,7 @@ def findVar(params, a):
     """find variance according to eq.54 suppl. Mortensen et. al."""
     b2 = params[3]**2
     N = params[4]
-    sa = params[2]
+    sa = np.sqrt(params[2]**2 + a**2 / 12)
     F = lambda t: np.log(t) / (1 + (N * a**2 * t / (2 * np.pi * sa**2 * b2)))
     integral, _ = quad(F, 0, 1)
     print('integral in variance has value %f' % integral)

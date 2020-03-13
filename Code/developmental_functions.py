@@ -8,12 +8,14 @@ import os
 import findPeaksLib
 import GaussFits
 import pickle
-from GaussAnalysisPipeline import *
+import GaussAnalysisPipeline as GAP
 import precisionFuncs as pF
 from scipy.optimize import minimize
 from scipy.special import factorial
 import copy
 import lmfit
+import aid_functions as aid
+from skimage import feature
 
 class FRETind:
     def __init__(self):
@@ -40,7 +42,8 @@ def analyseDir(
     options, wdir, files, Ggate = 0, Rgate = 0, Ygate = 0, 
     DTwoIstar = 0.03, garbageBrightness = 20, junkIstar = 0.30,
     outname = '', framestop = -1, ntacs = 256, ROIsize = 20,
-    rebin = None, verbose = False, saveplot = False):
+    rebin = None, verbose = False, saveplot = False,
+    min_distance = 15, ROI_threshold_rel = 0.3):
     """
     Analyse all ptu files listed in files. A single ROI is found in each file.
     In this ROI, either one, two or Three Gaussians are fitted.
@@ -67,10 +70,17 @@ def analyseDir(
     rebin       integer that specifies rebinning factor in x and y_coord
     verbose     if True, plotfits are printed in the terminal
     saveplot    if True, plotfits are saved to disc
+    min_distance
+                minimal distance of two ROIs
+    ROI_threshold
+                threshold for peak identification to determine ROIs
     
     """
-    #make sure all variables are passed correctly
+    print('loc 0')
+    if ROIsize > 2 * min_distance:
+        print('warning: ROIsize larger than 2 * min_distance, ROIs may overlap')
     locLst = []
+    print('loc1')
     for i, file in enumerate(files):
         if file[-4:] != '.ptu':
             print('not a .ptu file, skipping')
@@ -81,40 +91,46 @@ def analyseDir(
         CLR = loadGRYimage(ffile, Ggate = Ggate, Rgate = Rgate,
             Ygate = Ygate, ntacs = ntacs, framestop = framestop,
             rebin = rebin)
-
-        #get ROI based on Y signal
-        ROI = getROI(CLR.workIntensity.Y, ROIsize)    
-        
-        #check that ROI is not touching borders:
-        try:
-            crop(CLR.workIntensity.G, ROI)
-        except IndexError:
-            print('ROI touches image borders, skipping')
-            continue
+        print('loc1-2')
+        #make smooth intensity image to select ROIs
+        CLR_smooth = copy.deepcopy(CLR)
+        CLR_smooth.smoothIntensity(sigma = 2)
+        print('loc2')
+        loc = {}
+        loc['filepath'] = ffile
+        #loop over G, R and Y channels
+        for color in ['G', 'R', 'Y']:
+            bitmap = getattr(CLR.workIntensity, color)
+            loc[color] = GAP.Channel(bitmap)
+            if saveplot:
+                outdir = ffile[:-4] + '_' + color
+            else:
+                outdir = ''
+            peakimg = getattr(CLR_smooth.workIntensity, color)
+            pos = feature.peak_local_max(peakimg, \
+                min_distance = min_distance, \
+                threshold_rel = ROI_threshold_rel)
+            ROIs = aid.pos2ROI(pos[:,0], pos[:,1], ROIsize / 2)
             
-        locLst.append({})
-        locLst[-1]['filepath'] = ffile
-        locLst[-1]['ROI'] = ROI
-        #loop over G and Y channels
-        for color, bitmap in CLR.workIntensity.__dict__.items():
-            if color in ['G', 'R', 'Y']:
-                if saveplot:
-                    outdir = ffile[:-4] + '_' + color
-                else:
-                    outdir = ''
-
-                snip = crop(bitmap, ROI)
+            for ROI in ROIs:
+                #check that ROI is not touching borders:
+                try:
+                    aid.crop(bitmap, ROI)
+                except IndexError:
+                    print('ROI touches image borders, skipping')
+                    continue
+                print('loc3')
+                snip = aid.crop(bitmap, ROI)
                 #fits 1, 2 or 3 gauss spots and determines which one is best
                 #returns optimised parameter array
-                bestfit, twoIstar, _ = fitNGauss (
+                bestfit, twoIstar, _ = GAP.fitNGauss (
                     snip, options, 
                     DTwoIstar = DTwoIstar, garbageBrightness = garbageBrightness,
                     junkIstar = junkIstar, verbose = verbose, outdir = outdir
                     )
-
-                #build array containing all the fit results
-                locLst[-1][color] = Channel(snip)
-                locLst[-1][color].fillSpotLst(bestfit)
+                #this function appends each time it is called
+                loc[color].fillSpotLst(bestfit, ROI)
+        locLst.append(loc)
     
     if outname:
         with open(outname, 'wb') as output:
@@ -149,7 +165,6 @@ def analyseLoc(
     #write all relevant parameters in function call
     #put calculation of FRET indicators in a separate function
     outloc = copy.deepcopy(loc)
-    ROI = loc['ROI'] #shorthand
     
     #reload ptu file
     CLR = loadGRYimage(outloc['filepath'], Ggate = Ggate, Rgate = Rgate,
@@ -158,11 +173,11 @@ def analyseLoc(
     #override existing snips with new snips
     for color, bitmap in CLR.workIntensity.__dict__.items():
         assert color in ['G', 'R', 'Y']
-        snip = crop(bitmap, ROI)
+        #replace if channel already exists, otherwise create
         try:
-            outloc[color].snip = snip
+            outloc[color].bitmap = bitmap
         except KeyError:
-            outloc[color] = Channel(snip)
+            outloc[color] = GAP.Channel(bitmap)
         if verbose:
             plt.imshow(snip)
             plt.show()
@@ -215,10 +230,13 @@ def kickvector(v, maxval):
     """
     return v[np.linalg.norm(v, axis = 1) < maxval]
     
-def filterVec(v, maxval = 50):
+def filterVec(v, maxval = 50, verbose = True, center = None):
     """kick outlier and center coordinates of LocLst"""
     v = kickvector(v, maxval)
-    return v - np.mean(v, axis = 0)
+    if not center: center = np.mean(v, axis = 0)
+    if verbose:
+        print('%.1f in x and %.1f in y subtracted' % (center[0], center [1]))
+    return v - center
     
 def plotSinglePair(locLst, pxSize = 10):
     #split into fitting function and filtering function
@@ -242,23 +260,31 @@ def plotSinglePair(locLst, pxSize = 10):
     stdy = np.std(posy)
     print('standard deviation of spots is %.2f and %.2f' % (stdx, stdy))
     plt.show()
-    return posx, posx
+    return posx, posy
 
 def plotOccurence(locLst):
     """plots a 2D histogram of how many spots have been fitted
     in the Green and red channel.
     Takes as argument a spotLst Lst"""
-    occurence = np.zeros([4,4], np.int)
+    #find max occurence
+    Gmax = 0
+    Ymax = 0
+    for loc in locLst:
+        Gspots = len(loc['G'].spotLst)
+        Yspots = len(loc['Y'].spotLst)
+        if Gspots + 1> Gmax: Gmax = Gspots + 1#+1 to store zero entries
+        if Yspots + 1 > Ymax: Ymax = Yspots + 1
+    occurence = np.zeros([Gmax,Ymax], np.int)
     for loc in locLst:
         Gspots = len(loc['G'].spotLst)
         Yspots = len(loc['Y'].spotLst)
         occurence[Gspots, Yspots] += 1
-    plt.figure(figsize = [4,4])
-    x, y = np.meshgrid(np.arange(4),np.arange(4))
+    plt.figure(figsize = [Gmax,Ymax])
+    x, y = np.meshgrid(np.arange(Gmax),np.arange(Ymax))
     plt.scatter(x,y, s = occurence)
     ax = plt.gca()
-    ax.set_xticks([0,1,2,3])
-    ax.set_yticks([0,1,2,3])
+    ax.set_xticks(np.arange(Gmax))
+    ax.set_yticks(np.arange(Ymax))
     plt.ylabel ('# Green spots identified')
     plt.xlabel ('# red spots identified')
     plt.show
@@ -321,7 +347,7 @@ def genPeakEst(Npeaks, x, y, fixsigma = None):
     A = np.sum(y)
     p.add('bg', bg, True, 0, A_max)
     for i in range(Npeaks):
-        p.add_many(('mu%i' % i, mu, True, 0, np.max(x)),
+        p.add_many(('mu%i' % i, mu, True, 0, np.amax(y)),
                    ('A%i' % i, A, True, 0, A_max))
         if fixsigma:
             p.add('sig%i' % i, fixsigma, False, 0, np.inf)
@@ -373,14 +399,16 @@ def fitNChidistr(dist, N = 1, outfile = '', binwidth = 2,
     BIC = get_BIC(fitres.nvarys, logLikelihood, len(dist))
     return fitres, AIC, AICc, BIC
 def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '', 
-                plotout = '', modelout = '', p = None, fixsigma = None):
+                plotout = '', modelout = '', p = None, fixsigma = None,
+                maxbin = 60):
     fitresL = []
     AICL = []
     BICL = []
     for N in range(4):
         try:
             fitres, AIC, _, BIC = fitNChidistr(
-                dist, N = N, binwidth = binwidth, p = p, fixsigma = fixsigma)
+                dist, N = N, binwidth = binwidth, p = p, fixsigma = fixsigma,
+                maxbin = maxbin)
         except ValueError:
             print('fit for %i peaks failed' %N)
             break
@@ -395,12 +423,12 @@ def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '',
         for i, BIC in enumerate(BICL):
             print('BIC is %.1f for %i peaks' % (BIC, i))
             
-        x = np.arange(0,60,.1)
+        x = np.arange(0,maxbin,.1)
         p = fitresL[bestfit].params
         model = NncChidistr(x, p)
         plt.plot(x, model)
         plt.plot()
-        plt.hist(dist, bins = np.arange(0, 60, binwidth))
+        plt.hist(dist, bins = np.arange(0, maxbin, binwidth))
         plt.xlabel('distance (nm)')
         plt.ylabel('localisation events / %.0f nm' % binwidth)
         plt.title(title)
@@ -417,7 +445,8 @@ def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '',
         plt.show()
     return fitresL[bestfit]
 
-def fitChiDistr(dist, params0, bounds = None, outfile = '', binwidth = 2, maxbin = 60, plotshow = True):
+def fitChiDistr(dist, params0, bounds = None, outfile = '', binwidth = 2, 
+                maxbin = 60, plotshow = True):
     """fits a chi distribution to a set of distances
     params are ordered: mu, sigma, amplitude, offset"""
     counts, bin_edges, _ = plt.hist(dist, bins = np.arange(0, maxbin, binwidth))
@@ -488,19 +517,19 @@ def sortSpots(loc):
         alldist[:, Ypos] = 1e6
 
 
-def cropSpot(xcenter, ycenter, bitmap, winSigma):
-    """crops 2D or 3D data in 2D
-    spotcenter defines the coordinate of the spot in pixels in bitmap
-    The total width of cropwindow is 2*winSigma + 1
-    """
-    #convert between float peak to pixel position
-    xcenter = np.round(xcenter).astype(np.int)
-    ycenter = np.round(ycenter).astype(np.int)
-    xstart, ystart, xstop, ystop = [xcenter - winSigma,
-                                   ycenter-winSigma,
-                                   xcenter + winSigma,
-                                   ycenter + winSigma]
-    return bitmap[xstart : xstop + 1, ystart : ystop + 1]
+#def cropSpot(xcenter, ycenter, bitmap, winSigma):
+#    """crops 2D or 3D data in 2D
+#    spotcenter defines the coordinate of the spot in pixels in bitmap
+#    The total width of cropwindow is 2*winSigma + 1
+#    """
+#    #convert between float peak to pixel position
+#    xcenter = np.round(xcenter).astype(np.int)
+#    ycenter = np.round(ycenter).astype(np.int)
+#    xstart, ystart, xstop, ystop = [xcenter - winSigma,
+#                                  ycenter-winSigma,
+#                                   xcenter + winSigma,
+#                                   ycenter + winSigma]
+#    return bitmap[xstart : xstop + 1, ystart : ystop + 1]
     
 def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2]):
         """simple fitting and plotting function that fits 
@@ -520,26 +549,24 @@ def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2]):
 def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
     """calc FRET indicators based on intensity and lifetime information
     Takes a loc dict and edits properties of the 'FRETind' entry"""
-    ROI = loc['ROI'] #shorthand
     npairs = len(loc['G'].spotLst)
     loc['FRETind'] = []
     for i in range(npairs):
         loc['FRETind'].append(FRETind())
     for i in range(npairs):
-        #get No. Green photons
         loc['FRETind'][i].no = cntr
-        Gsnip = cropSpot(loc['G'].spotLst[i].posx,
+        GROI = aid.pos2ROI(loc['G'].spotLst[i].posx,
                          loc['G'].spotLst[i].posy,
-                         loc['G'].snip, winSigma)
+                         winSigma)
+        YROI = aid.pos2ROI(loc['Y'].spotLst[i].posx,
+                         loc['Y'].spotLst[i].posy,
+                         winSigma)
+        RROI = YROI         #get No. of Red photons using Y localisation
+        Gsnip = aid.crop(loc['G'].bitmap, GROI)
         Gphotons = np.sum(Gsnip)
-        #get No. of Red photons using Y localisation
-        Rsnip = cropSpot(loc['G'].spotLst[i].posx,
-                         loc['G'].spotLst[i].posy, 
-                         loc['R'].snip, winSigma)
+        Rsnip = aid.crop(loc['R'].bitmap, RROI)
         Rphotons = np.sum(Rsnip)
-        Ysnip = cropSpot(loc['Y'].spotLst[i].posx, 
-                         loc['Y'].spotLst[i].posy, 
-                         loc['Y'].snip, winSigma)
+        Ysnip = aid.crop(loc['Y'].bitmap, YROI)
         Yphotons = np.sum(Ysnip)
         loc['FRETind'][i].NG = Gphotons
         loc['FRETind'][i].NR = Rphotons
@@ -560,25 +587,13 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
 
         loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
         loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
-        GlifetimeSnip = cropSpot(
-                            loc['G'].spotLst[i].posx + ROI[0],
-                            loc['G'].spotLst[i].posy + ROI[1],
-                            CLR.workLifetime.G,
-                            winSigma)
+        GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
         loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))[Ggate:150]
         loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC, 0.128, verbose)
-        RlifetimeSnip = cropSpot(
-                            loc['G'].spotLst[i].posx + ROI[0],
-                            loc['G'].spotLst[i].posy + ROI[1],
-                            CLR.workLifetime.R,
-                            winSigma)
+        RlifetimeSnip = aid.crop(CLR.workLifetime.R, RROI)
         loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))[Rgate:150]
         loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC, 0.128, verbose)
-        YlifetimeSnip = cropSpot(
-                            loc['Y'].spotLst[i].posx + ROI[0],
-                            loc['Y'].spotLst[i].posy + ROI[1],
-                            CLR.workLifetime.Y,
-                            winSigma)        
+        YlifetimeSnip = aid.crop(CLR.workLifetime.Y, YROI)      
         loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))[Ygate:150]
         loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC, 0.128, verbose)
         distx = (loc['G'].spotLst[i].posx - loc['Y'].spotLst[i].posx )* pxSize
@@ -591,7 +606,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
     return cntr
 
 def getFRETnames(locLst):
-    """helper function that returns the names of FRET indicators"""
+    """aider function that returns the names of FRET indicators"""
     names = []
     i = 0
     #return empty list if FRETind key does not exist
@@ -621,6 +636,7 @@ def genSpotNames(locLst):
         for color in ['G', 'Y']:
             names.append(name + color)
     return names
+    
 def genStats(locLst, outfile = ''):
     """
     saves al FRET indicators of locLst in a Margarita-readable file.
@@ -634,8 +650,8 @@ def genStats(locLst, outfile = ''):
     #FRETnames contains only single variable FRET indicators
     #empty when locLst['FRETind'] does not exist
     FRETnames = getFRETnames(locLst)
-    ROInames = ['ROI_xstart', 'ROI_ystart', 'ROI_xstop', 'ROI_ystop']
-    names = spotNames + FRETnames + ROInames# + ['filepath']
+    #ROInames = ['ROI_xstart', 'ROI_ystart', 'ROI_xstop', 'ROI_ystop']
+    names = spotNames + FRETnames #+ ROInames# + ['filepath']
 
     for name in names:
         FRETind[name] = []
@@ -650,10 +666,10 @@ def genStats(locLst, outfile = ''):
             for spot in loc['FRETind']:
                 FRETind[FRETname].append( getattr(spot, FRETname) )
         #repeat to create equal length lists
-        for dummy in range(len(loc['G'].spotLst)):
-            for i, ROIname in enumerate(ROInames):
-                FRETind[ROIname].append( loc['ROI'][i] )
-            #FRETind['filepath'].append( loc['filepath'] )
+        #for dummy in range(len(loc['G'].spotLst)):
+        #    for i, ROIname in enumerate(ROInames):
+        #        FRETind[ROIname].append( loc['ROI'][i] )
+        #    #FRETind['filepath'].append( loc['filepath'] )
                     
     if outfile:
         print('saving FRET indicators to disc for Margarita')
@@ -745,9 +761,7 @@ def saveDict(dictionary, outfile):
                 line += str(dictionary[key][i]) + '\t'
             line += '\n'
             f.write(line)
-        
-        
-
+            
 def AnIExport(locLst, outfolder, rebin = 1, sizex = 100):
     """export analysed locLst to AnI compatible format
     To calculate pixelid, rebinning factor and the unbinned xsize is needed
@@ -806,8 +820,8 @@ def AnIExport(locLst, outfolder, rebin = 1, sizex = 100):
             with open(outfile, 'wt') as f:
                 f.write(header)
                 for i, spot in enumerate(spotLst):
-                    posx = loc['ROI'][0] * rebin + np.round(spot.posx * rebin)
-                    posy = loc['ROI'][1] * rebin + np.round(spot.posy * rebin)
+                    posx = np.round(spot.posx * rebin)
+                    posy = np.round(spot.posy * rebin)
                     pixid = posy * sizex + posx +1
                     line = '0\t%d' % pixid
                     for name, value in spot.__dict__.items():

@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
 from scipy.optimize import curve_fit
+from scipy import ndimage
 import os
 import copy
 from PIL import Image
@@ -233,7 +234,18 @@ class processLifetimeImage:
                     imY[i,j] = self.workLifetime.Y[i,j,:].dot(weights) / pixelsum
         self.workIntensity = GRYIntensity(imG, imR, imY)
         return 0
-    
+        
+    def smoothIntensity(self, sigma = 1, channel = ['G', 'R', 'Y']):
+        if 'G' in channel:
+            self.workIntensity.G = \
+                ndimage.gaussian_filter(self.workIntensity.G.astype(np.float), sigma)
+        if 'R' in channel:
+            self.workIntensity.R = \
+                ndimage.gaussian_filter(self.workIntensity.R.astype(np.float), sigma)
+        if 'Y' in channel:
+            self.workIntensity.Y = \
+                ndimage.gaussian_filter(self.workIntensity.Y.astype(np.float), sigma)
+        return 0
     def filterIntensity(self, mode = 'xyz'):
         pass
     

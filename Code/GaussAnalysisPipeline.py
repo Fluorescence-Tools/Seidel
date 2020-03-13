@@ -21,35 +21,50 @@ class optionsCluster:
         params[16] = self.setmodel
 
 class GaussSpot:
-    def __init__(self, coord, Amplitude, sigma, epsilon, background):
-        self.coord = coord
+    def __init__(self, posx, posy, Amplitude, sigma, epsilon, background):
+        self.posx = posx
+        self.posy = posy
         self.A = Amplitude
         self.sigma = sigma
         self.eps = epsilon
         self.bg = background
+        
+    def setROI(self, xstart, ystart, xstop, ystop):
+        self.xstart = xstart
+        self.ystart = ystart
+        self.xstop = xstop
+        self.ystop = ystop
+    def getROI(self):
+        return np.array([self.xstart, self.ystart, self.xstop, self.ystop])
         
 class Channel:
     def __init__(self, bitmap):
         self.bitmap = bitmap
         self.spotLst = []
         
-    def fillSpotLst(self, params):
+    def fillSpotLst(self, params, ROI):
         sigma = params[3]
         eps = params[4]
         bg = params[5]
         for i in range(params[16].astype(np.int) + 1):
             if i == 0:
-                coord = params[[0,1]]
+                posx = params[0] + ROI[1]
+                posy = params[1] + ROI[0]
                 A = params[2]
-                self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
+                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
+                self.spotLst[-1].setROI(*ROI)
             if i == 1:
-                coord = params[[6, 7]]
+                posx = params[6] + ROI[1]
+                posy = params[7] + ROI[0]
                 A = params[8]
-                self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
+                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
+                self.spotLst[-1].setROI(*ROI)
             if i == 2:
-                coord = params[[9, 10]]
+                posx = params[9] + ROI[1]
+                posy = params[10] + ROI[0]
                 A = params[11]
-                self.spotLst.append(GaussSpot(coord, A, sigma, eps, bg))
+                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
+                self.spotLst[-1].setROI(*ROI)
                 
                 
 ################## Gauss fitting and judging functions ############
@@ -57,6 +72,21 @@ class Channel:
 def fitNGauss(image, OptionsCluster,
                   DTwoIstar = 0.03, garbageBrightness = 50, junkIstar = 0.4,
                   verbose = False, outdir = None):
+    """Analyse an image for up to three spots.
+    First a parameter estimate is generated in genParamEstimate.
+    Second, one, two and three Gaussians are fitted.
+    Third, the best fit is chosen based in chooseBestfit.
+    input: 
+    image: a square 2D numpy array
+    OptionsCluster: class object that carries fit options
+    DTwoIstar: minimal difference above which two variables are considered 
+        the same
+    garbageBrightness: minimal integrated photons in spot for it not to be 
+        considered garbage
+    junkIstar: minimal absolute Istar value for photons not be junk
+    verbose: if True, print spot fits in terminal
+    outdir: if not empty, save spot fits to disc. Saving to disc can slow
+        fitting significantly."""
     param_est = None
     param1Gauss = None
     param2Gauss = None
@@ -90,22 +120,27 @@ def fitNGauss(image, OptionsCluster,
     param3Gauss = GaussFits.Fit2DGauss(param3Gauss, image)
     
     if verbose or outdir:
-        pltSpotFit(image, param1Gauss, '1 Gauss Fit', verbose = verbose, outdir = outdir)
-        pltFitResiduals(image, param1Gauss, '1 Gauss Fit', verbose = verbose, outdir = outdir)
-        pltSpotFit(image, param2Gauss, '2 Gauss Fit', verbose = verbose, outdir = outdir)
-        pltFitResiduals(image, param2Gauss, '2 Gauss Fit', verbose = verbose, outdir = outdir)
-        pltSpotFit(image, param3Gauss, '3 Gauss Fit', verbose = verbose, outdir = outdir)
-        pltFitResiduals(image, param3Gauss, '3 Gauss Fit', verbose = verbose, outdir = outdir)
+        pltSpotFit(image, param1Gauss, '1 Gauss Fit', 
+            verbose = verbose, outdir = outdir)
+       # pltFitResiduals(image, param1Gauss, '1 Gauss Fit', 
+       #     verbose = verbose, outdir = outdir)
+        pltSpotFit(image, param2Gauss, '2 Gauss Fit', 
+            verbose = verbose, outdir = outdir)
+       # pltFitResiduals(image, param2Gauss, '2 Gauss Fit', 
+       #     verbose = verbose, outdir = outdir)
+        pltSpotFit(image, param3Gauss, '3 Gauss Fit', 
+            verbose = verbose, outdir = outdir)
+       # pltFitResiduals(image, param3Gauss, '3 Gauss Fit', 
+       #     verbose = verbose, outdir = outdir)
     
     #choose best fit
-    #return best parameters
     bestfit, twoIstar, brightness = chooseBestfit(param1Gauss, param2Gauss, param3Gauss, 
                                                  DTwoIstar = DTwoIstar, 
                                                  garbageBrightness = garbageBrightness, 
                                                  junkIstar = junkIstar,
                                                  verbose = verbose,
                                                  outdir = outdir)
-    
+    #return best parameters
     return bestfit, twoIstar, brightness 
     
 def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
@@ -114,17 +149,18 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     """
     input: optimesed parameters for 1, 2 and 3 Gauss fits
     
-    # check that the 2I* value is at least DTwoIstar lower than all simpler models
-    isSignificantlyLower
+    isSignificantlyLower:
+    check that the 2I* value is at least DTwoIstar lower than all simpler models
     
-    #check that no peaks have brightness less than garbageBrightness
-    #these peaks are considered to be noisepeaks
-    isNoGarbagePeaks
+    isNoGarbagePeaks:
+    check that no peaks have brightness less than garbageBrightness
+    these peaks are considered to be noisepeaks
     
-    #check that Istar values are above junkIstar
-    #For unknown reason, sometimes very negative Istar values are found
-    isNoJunkIstar
-    returns: best parameter set"""
+    isNoJunkIstar:
+    check that Istar values are above junkIstar
+    Istar value of noise is often much lower than regular data
+    
+    returns: most complicated fit that fulfills all conditions."""
     
     brightness = np.zeros([3,3])
 
@@ -148,6 +184,10 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     isNoGarbagePeaks = np.array([False, False, False])
     for i in range(3):
         isNoGarbagePeaks[i] = (brightness[i,:i + 1] > garbageBrightness).all()
+         
+    #combine conditons
+    fullfillsAll = np.logical_and(isSignificantlyLower, isNoJunkIstar)
+    fullfillsAll = np.logical_and(fullfillsAll, isNoGarbagePeaks)
     
     msgLst = []
     msgLst.append('optimised 1 Gauss fit is: ' + str(param1Gauss) + '\n')
@@ -157,6 +197,7 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     msgLst.append('isNoJunkIstar : ' + str(isNoJunkIstar) + '\n')
     msgLst.append('isNoGarbagePeaks : ' + str(isNoGarbagePeaks) + '\n')
     msgLst.append('2I* : ' + str(twoIstar) + '\n')
+    msgLst.append('fullfills all conditions' + str(fullfillsAll) + '\n')
     
     if verbose:
         for msg in msgLst:
@@ -170,10 +211,7 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
         for msg in msgLst:
             f.write(msg)
         f.close()
-    
-    #combine conditons
-    fullfillsAll = np.logical_and(isSignificantlyLower, isNoJunkIstar)
-    fullfillsAll = np.logical_and(fullfillsAll, isNoGarbagePeaks)
+
     
     #choose most complex model that fullfills all conditions
     for i in [2, 1, 0]:
@@ -210,11 +248,8 @@ def getSpotBrightness(params):
     return brightness
     
 def genParamEstimate(image):
-    xlen, ylen = image.shape
-    image = findPeaksLib.smooth_image(image)
+#write docstring why this format is chosen
     peaks = findPeaksLib.findPeaks(image)
-    peaks = findPeaksLib.findUniquePoints(image, peaks)
-    peaks = findPeaksLib.sortPeaks(peaks[:,:2], xlen, ylen, mindiff = 2)
     params_est = np.array([peaks[0,0], #x0
                         peaks[0,1],#y0
                         image[peaks[0,0], peaks[0,1]], #A0
@@ -236,57 +271,12 @@ def genParamEstimate(image):
     return params_est
     
     
-######################helper functions####################################
-def cropAnI(image, ROI, ROISize, ROIpad = 0):
-    """crop ROI from image
-    ROI: roi parameters as taken from AnI, corner positions are taken
-    ROISize: length of square ROI from Ani
-    ROIpad (optional): enlarge ROI from AnI on all sides
-    side of ROI has length: ROISize + 2 * ROIpad"""
-    xshape, yshape = image.shape
-    cornery, cornerx = ROI[[0, 2]].astype(np.int) - np.array([ROIpad, ROIpad])
-    ROISize = ROISize + 2 * ROIpad
-    if cornerx < 0 or cornery < 0 or cornerx + ROISize > xshape or cornery + ROISize > yshape:
-        raise IndexError
-    ROIsnip = image[cornerx: cornerx + ROISize, cornery: cornery + ROISize]
-    return ROIsnip
-    
-def matchfiles(files, roifiles, ext = '_Red Photons.roi'):
-    """matches a set of roifiles to their original ptu files based on names.
-    Returns a list of filename pairs"""
-    filepairs = []
-    #copy files to avoid popping original list
-    filescopy = files[:]
-    for roifile in roifiles:
-        for i in range(len(filescopy)):
-            if filescopy[i][:-4] == roifile[:-len(ext)]:
-                filepairs.append([filescopy.pop(i),roifile])
-                break
-    return filepairs
-    
 
-def getROI(im, ROIsize):
-    assert ROIsize % 2 == 0
-    ROIside = ROIsize / 2
-    smooth_im = findPeaksLib.smooth_image(im)
-    xlen, ylen = im.shape
-    maxpos = smooth_im.argmax()
-    xpos, ypos = [maxpos // xlen, maxpos % xlen]
-    ROI = np.array([xpos - ROIside, ypos - ROIside, xpos + ROIside, ypos + ROIside]).astype(np.int)
-    return ROI
-
-def crop(image, ROI):
-    """crop ROI from image
-    ROI: roi parameters as taken from getROI
-    returns cropped image"""
-    xshape, yshape = image.shape
-    if ROI[0] < 0 or ROI[1] < 0 or ROI[2] >= xshape or ROI[3] >= yshape:
-        raise IndexError
-    return image[ROI[0]: ROI[2], ROI[1]: ROI[3]]
 
 ###################plotting functions #########################
 
 def pltSpotFit(image, fit, title, verbose = True, outdir = None):
+#add docstring
     model= np.zeros(image.shape)
     if fit[16] == 0:
         model = GaussFits.model2DGaussian(fit, model)
@@ -308,6 +298,7 @@ def pltSpotFit(image, fit, title, verbose = True, outdir = None):
     plt.clf()
 
 def pltFitResiduals(image, fit, title, verbose = True, outdir = None):
+#add docstring
     model= np.zeros(image.shape)
     if fit[16] == 0:
         model = GaussFits.model2DGaussian(fit, model)
