@@ -278,15 +278,15 @@ def plotOccurence(locLst):
         Gspots = len(loc['G'].spotLst)
         Yspots = len(loc['Y'].spotLst)
         occurence[Gspots, Yspots] += 1
-    plt.figure(figsize = [Gmax,Ymax])
-    x, y = np.meshgrid(np.arange(Gmax),np.arange(Ymax))
+    plt.figure(figsize = [Ymax,Gmax])
+    x, y = np.meshgrid(np.arange(Ymax),np.arange(Gmax))
     plt.scatter(x,y, s = occurence)
     ax = plt.gca()
-    ax.set_xticks(np.arange(Gmax))
-    ax.set_yticks(np.arange(Ymax))
+    ax.set_xticks(np.arange(Ymax))
+    ax.set_yticks(np.arange(Gmax))
     plt.ylabel ('# Green spots identified')
     plt.xlabel ('# red spots identified')
-    plt.show
+    plt.show()
     return occurence
     
 def selectSpotOccurence(locLst, Gspots, Yspots):
@@ -440,7 +440,7 @@ def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '',
             saveDict(dictout, modelout)
             fpath = os.path.splitext(modelout)[0] + '_fit_parameters.txt'
             with open(fpath, 'wt') as f:
-                f.write(lmfit.fit_report(fitres))
+                f.write(lmfit.fit_report(fitresL[bestfit]))
         plt.show()
     return fitresL[bestfit]
 
@@ -577,7 +577,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
         loc['FRETind'][i].proxRatio = Rphotons / (Gphotons + Rphotons)
         loc['FRETind'][i].stoichiometry = \
             (Gphotons + Rphotons) / (Gphotons + Rphotons + Yphotons)
-        #aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
+        aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
         if verbose:
             fig, (ax1, ax2, ax3) = plt.subplots(1,3)
             ax1.imshow(Gsnip)
