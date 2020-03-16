@@ -43,7 +43,7 @@ def analyseDir(
     DTwoIstar = 0.03, garbageBrightness = 20, junkIstar = 0.30,
     outname = '', framestop = -1, ntacs = 256, ROIsize = 20,
     rebin = None, verbose = False, saveplot = False,
-    min_distance = 15, ROI_threshold_rel = 0.3):
+    min_distance = 15, ROI_threshold_rel = 0.3, ROI_threshold_abs = 1):
     """
     Analyse all ptu files listed in files. A single ROI is found in each file.
     In this ROI, either one, two or Three Gaussians are fitted.
@@ -76,11 +76,9 @@ def analyseDir(
                 threshold for peak identification to determine ROIs
     
     """
-    print('loc 0')
     if ROIsize > 2 * min_distance:
         print('warning: ROIsize larger than 2 * min_distance, ROIs may overlap')
     locLst = []
-    print('loc1')
     for i, file in enumerate(files):
         if file[-4:] != '.ptu':
             print('not a .ptu file, skipping')
@@ -91,11 +89,9 @@ def analyseDir(
         CLR = loadGRYimage(ffile, Ggate = Ggate, Rgate = Rgate,
             Ygate = Ygate, ntacs = ntacs, framestop = framestop,
             rebin = rebin)
-        print('loc1-2')
         #make smooth intensity image to select ROIs
         CLR_smooth = copy.deepcopy(CLR)
         CLR_smooth.smoothIntensity(sigma = 2)
-        print('loc2')
         loc = {}
         loc['filepath'] = ffile
         #loop over G, R and Y channels
@@ -107,19 +103,21 @@ def analyseDir(
             else:
                 outdir = ''
             peakimg = getattr(CLR_smooth.workIntensity, color)
+            #find ROIs in image
             pos = feature.peak_local_max(peakimg, \
                 min_distance = min_distance, \
-                threshold_rel = ROI_threshold_rel)
+                threshold_rel = ROI_threshold_rel,
+                threshold_abs = ROI_threshold_abs)
             ROIs = aid.pos2ROI(pos[:,0], pos[:,1], ROIsize / 2)
             
             for ROI in ROIs:
+
                 #check that ROI is not touching borders:
                 try:
                     aid.crop(bitmap, ROI)
                 except IndexError:
                     print('ROI touches image borders, skipping')
                     continue
-                print('loc3')
                 snip = aid.crop(bitmap, ROI)
                 #fits 1, 2 or 3 gauss spots and determines which one is best
                 #returns optimised parameter array
@@ -130,6 +128,7 @@ def analyseDir(
                     )
                 #this function appends each time it is called
                 loc[color].fillSpotLst(bestfit, ROI)
+            if verbose: aid.plotBitmapROI(bitmap, loc[color].spotLst)
         locLst.append(loc)
     
     if outname:
@@ -179,7 +178,7 @@ def analyseLoc(
         except KeyError:
             outloc[color] = GAP.Channel(bitmap)
         if verbose:
-            plt.imshow(snip)
+            plt.imshow(bitmap)
             plt.show()
     #add pairwise localisation of loc to outloc
     sortSpots(outloc)    
@@ -562,11 +561,15 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
                          loc['Y'].spotLst[i].posy,
                          winSigma)
         RROI = YROI         #get No. of Red photons using Y localisation
-        Gsnip = aid.crop(loc['G'].bitmap, GROI)
+        try:
+            Gsnip = aid.crop(loc['G'].bitmap, GROI)
+            Rsnip = aid.crop(loc['R'].bitmap, RROI)
+            Ysnip = aid.crop(loc['Y'].bitmap, YROI)
+        except IndexError:
+            print('ROI touches image borders, skipping')
+            continue
         Gphotons = np.sum(Gsnip)
-        Rsnip = aid.crop(loc['R'].bitmap, RROI)
         Rphotons = np.sum(Rsnip)
-        Ysnip = aid.crop(loc['Y'].bitmap, YROI)
         Yphotons = np.sum(Ysnip)
         loc['FRETind'][i].NG = Gphotons
         loc['FRETind'][i].NR = Rphotons
@@ -574,7 +577,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
         loc['FRETind'][i].proxRatio = Rphotons / (Gphotons + Rphotons)
         loc['FRETind'][i].stoichiometry = \
             (Gphotons + Rphotons) / (Gphotons + Rphotons + Yphotons)
-            
+        #aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
         if verbose:
             fig, (ax1, ax2, ax3) = plt.subplots(1,3)
             ax1.imshow(Gsnip)
@@ -588,14 +591,17 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
         loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
         loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
         GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
-        loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))[Ggate:150]
-        loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC, 0.128, verbose)
+        loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC[Ggate:150], \
+                                        0.128, verbose)
         RlifetimeSnip = aid.crop(CLR.workLifetime.R, RROI)
-        loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))[Rgate:150]
-        loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC, 0.128, verbose)
+        loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC[Rgate:150], \
+                                        0.128, verbose)
         YlifetimeSnip = aid.crop(CLR.workLifetime.Y, YROI)      
-        loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))[Ygate:150]
-        loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC, 0.128, verbose)
+        loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC[Ygate:150], \
+                                        0.128, verbose)
         distx = (loc['G'].spotLst[i].posx - loc['Y'].spotLst[i].posx )* pxSize
         disty = (loc['G'].spotLst[i].posy - loc['Y'].spotLst[i].posy )* pxSize
         loc['FRETind'][i].distx = distx

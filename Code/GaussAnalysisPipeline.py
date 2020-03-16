@@ -3,7 +3,15 @@ import matplotlib.pyplot as plt
 import os
 import findPeaksLib
 import GaussFits
-
+#############################axes declarations#######################
+#the x naming refers to the first dimension of the image
+#the y naming refers to the second dimension of the image
+#the c code has the reverse logic:
+#where the first dimension (outer loop) is referred as y
+#the second dimension (inner loop) is referred to as x
+#the plt.imshow has the following convention:
+#the first dimension selects the rows, corresponding to y
+#the second dimension selects columns, corresponding to x
 ######################class declarations#######################
 
 class optionsCluster:
@@ -47,21 +55,22 @@ class Channel:
         eps = params[4]
         bg = params[5]
         for i in range(params[16].astype(np.int) + 1):
+            # params originates in c code and inherits other x, y convention
             if i == 0:
-                posx = params[0] + ROI[1]
-                posy = params[1] + ROI[0]
+                posx = params[1] + ROI[0]
+                posy = params[0] + ROI[1]
                 A = params[2]
                 self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
                 self.spotLst[-1].setROI(*ROI)
             if i == 1:
-                posx = params[6] + ROI[1]
-                posy = params[7] + ROI[0]
+                posx = params[7] + ROI[0]
+                posy = params[6] + ROI[1]
                 A = params[8]
                 self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
                 self.spotLst[-1].setROI(*ROI)
             if i == 2:
-                posx = params[9] + ROI[1]
-                posy = params[10] + ROI[0]
+                posx = params[10] + ROI[0]
+                posy = params[9] + ROI[1]
                 A = params[11]
                 self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
                 self.spotLst[-1].setROI(*ROI)

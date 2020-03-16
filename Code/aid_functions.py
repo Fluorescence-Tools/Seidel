@@ -9,12 +9,14 @@ from matplotlib import patches
 
 def pos2ROI(xpos, ypos, winSigma):
     """convert center position and width to ROI"""
-    xstart = xpos -winSigma
+    xstart = xpos - winSigma
     xstop = xpos + winSigma +1
     ystart = ypos - winSigma
     ystop = ypos + winSigma + 1
     #ROI is column major
-    ROI = np.array([ystart, xstart, ystop, xstop], dtype = np.int).transpose()
+    #ROI = np.array([ystart, xstart, ystop, xstop], dtype = np.int).transpose()
+    #some confusion occurred whether data is row or column major, for row major:
+    ROI = np.array([xstart, ystart, xstop, ystop], dtype = np.int).transpose()
     return ROI
     
 ##########helper functions from Gauss Analysis Pipeline#########################
@@ -61,9 +63,9 @@ def crop(image, ROI):
     """crop ROI from image
     ROI: roi parameters as taken from getROI
     returns cropped image"""
-    xshape, yshape, *_ = image.shape #*= is wildcard in case of lifetime image
+    xshape, yshape, *_ = image.shape #*_ is wildcard in case of lifetime image
     if ROI[0] < 0 or ROI[1] < 0 or ROI[2] >= xshape or ROI[3] >= yshape:
-        raise IndexError
+        raise IndexError ('ROI outside of image borders')
     return image[ROI[0]: ROI[2], ROI[1]: ROI[3]]
     
     
@@ -71,11 +73,13 @@ def crop(image, ROI):
 def plotBitmapROI(bitmap, spotLst):
     fig,ax = plt.subplots(1)
     ax.imshow(bitmap)
+    #x index is the first index and refers to columns in image
+    #y index is the seconf index and refers to rows in image
     for spot in spotLst:
         rect = patches.Rectangle((spot.ystart, spot.xstart), 
                                 spot.ystop - spot.ystart,
                                 spot.xstop - spot.xstart,
                                 linewidth = 1, edgecolor = 'r', facecolor='none')
         ax.add_patch(rect)
-        ax.plot(spot.posx, spot.posy, 'r.')
+        ax.plot(spot.posy, spot.posx, 'r.')
     plt.show()
