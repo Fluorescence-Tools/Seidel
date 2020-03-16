@@ -577,7 +577,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
         loc['FRETind'][i].proxRatio = Rphotons / (Gphotons + Rphotons)
         loc['FRETind'][i].stoichiometry = \
             (Gphotons + Rphotons) / (Gphotons + Rphotons + Yphotons)
-        aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
+        if verbose: aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
         if verbose:
             fig, (ax1, ax2, ax3) = plt.subplots(1,3)
             ax1.imshow(Gsnip)
@@ -588,6 +588,8 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
             ax3.set_title('Yellow channel')
             plt.show()
 
+        #reload ungated data for lifetime information
+        CLR.loadLifetime()
         loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
         loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
         GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
@@ -767,6 +769,40 @@ def saveDict(dictionary, outfile):
                 line += str(dictionary[key][i]) + '\t'
             line += '\n'
             f.write(line)
+            
+def subensembleTAC(locLst, ntacs = None, outfile = None):
+    #get length of tac array
+    if not ntacs:
+        for loc in locLst:
+            try:
+                ntacs = len(loc['FRETind'][0].GTAC)
+                break
+            except:
+                continue
+    print(ntacs)
+    eGTAC = np.zeros(ntacs)
+    eRTAC = np.zeros(ntacs)
+    eYTAC = np.zeros(ntacs)
+    dummy_IRF = np.zeros(2 * ntacs)
+    for loc in locLst:
+        for spot in loc['FRETind']:
+            eGTAC += spot.GTAC
+            eRTAC += spot.RTAC
+            eYTAC += spot.YTAC
+    eGTAC = np.concatenate((eGTAC, np.zeros(ntacs)))
+    eRTAC = np.concatenate((eRTAC, np.zeros(ntacs)))
+    eYTAC = np.concatenate((eYTAC, np.zeros(ntacs)))
+    dummy_IRF[0] = 1
+    if outfile:
+        outG = outfile[:-4] + '_eGTAC.txt'
+        outR = outfile[:-4] + '_eRTAC.txt'
+        outY = outfile[:-4] + '_eYTAC.txt'
+        outIRF = outfile[:-4] + '_dummy_IRF.txt'
+        np.savetxt(outG, eGTAC, fmt = '%i', delimiter = '\t')
+        np.savetxt(outR, eRTAC, fmt = '%i', delimiter = '\t')
+        np.savetxt(outY, eYTAC, fmt = '%i', delimiter = '\t')
+        np.savetxt(outIRF, dummy_IRF, fmt = '%i', delimiter = '\t')
+    return eGTAC, eRTAC, eYTAC
             
 def AnIExport(locLst, outfolder, rebin = 1, sizex = 100):
     """export analysed locLst to AnI compatible format
