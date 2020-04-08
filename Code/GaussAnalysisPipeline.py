@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import findPeaksLib
 import GaussFits
+import aid_functions as aid
 #############################axes declarations#######################
 #the x naming refers to the first dimension of the image
 #the y naming refers to the second dimension of the image
@@ -125,18 +126,21 @@ def fitNGauss(image, OptionsCluster,
     param3Gauss = GaussFits.Fit2DGauss(param3Gauss, image)
     
     if verbose or outdir:
-        pltSpotFit(image, param1Gauss, '1 Gauss Fit', 
-            verbose = verbose, outdir = outdir)
+        outfile = os.path.join(outdir, 'contourfits.png')
+        fig, axs = plt.subplots(1,3, figsize = (12,3))
+        drawSpotFit(axs[0], image, param1Gauss, '1 Gauss Fit')
        # pltFitResiduals(image, param1Gauss, '1 Gauss Fit', 
        #     verbose = verbose, outdir = outdir)
-        pltSpotFit(image, param2Gauss, '2 Gauss Fit', 
-            verbose = verbose, outdir = outdir)
+        drawSpotFit(axs[1], image, param2Gauss, '2 Gauss Fit')
        # pltFitResiduals(image, param2Gauss, '2 Gauss Fit', 
        #     verbose = verbose, outdir = outdir)
-        pltSpotFit(image, param3Gauss, '3 Gauss Fit', 
-            verbose = verbose, outdir = outdir)
+        drawSpotFit(axs[2], image, param3Gauss, '3 Gauss Fit')
        # pltFitResiduals(image, param3Gauss, '3 Gauss Fit', 
        #     verbose = verbose, outdir = outdir)
+        plt.show()
+        if outdir:
+           aid.createPath(outfile)
+           plt.savefig(outfile, dpi = 300, bbox_inches = 'tight')
     
     #choose best fit
     bestfit, twoIstar, brightness = chooseBestfit(param1Gauss, param2Gauss, param3Gauss, 
@@ -194,15 +198,16 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     fullfillsAll = np.logical_and(isSignificantlyLower, isNoJunkIstar)
     fullfillsAll = np.logical_and(fullfillsAll, isNoGarbagePeaks)
     
+    np.set_printoptions(precision=3)
     msgLst = []
-    msgLst.append('optimised 1 Gauss fit is: ' + str(param1Gauss) + '\n')
-    msgLst.append('optimised 2 Gauss fit is: ' + str(param2Gauss) + '\n')
-    msgLst.append('optimised 3 Gauss fit is: ' + str(param3Gauss) + '\n')
-    msgLst.append('isSignificantlyLower : ' + str(isSignificantlyLower) + '\n')
-    msgLst.append('isNoJunkIstar : ' + str(isNoJunkIstar) + '\n')
-    msgLst.append('isNoGarbagePeaks : ' + str(isNoGarbagePeaks) + '\n')
-    msgLst.append('2I* : ' + str(twoIstar) + '\n')
-    msgLst.append('fullfills all conditions' + str(fullfillsAll) + '\n')
+    msgLst.append('optimised 1 Gauss fit is: \n' + str(param1Gauss) + '\n')
+    msgLst.append('optimised 2 Gauss fit is: \n' + str(param2Gauss) + '\n')
+    msgLst.append('optimised 3 Gauss fit is: \n' + str(param3Gauss) + '\n')
+    msgLst.append('isSignificantlyLower : ' + str(isSignificantlyLower))
+    msgLst.append('isNoJunkIstar : ' + str(isNoJunkIstar))
+    msgLst.append('isNoGarbagePeaks : ' + str(isNoGarbagePeaks))
+    msgLst.append('2I* : ' + str(twoIstar))
+    msgLst.append('fullfills all conditions' + str(fullfillsAll))
     
     if verbose:
         for msg in msgLst:
@@ -280,7 +285,7 @@ def genParamEstimate(image):
 
 ###################plotting functions #########################
 
-def pltSpotFit(image, fit, title, verbose = True, outdir = None):
+def drawSpotFit(ax, image, fit, title):
 #add docstring
     model= np.zeros(image.shape)
     if fit[16] == 0:
@@ -289,18 +294,12 @@ def pltSpotFit(image, fit, title, verbose = True, outdir = None):
         model = GaussFits.modelTwo2DGaussian(fit, model)
     if fit[16] == 2:
         model = GaussFits.modelTwo2DGaussian(fit, model)
-    plt.contour(model, levels = np.array([0.01, 0.5, 1, 3, 5, 10, 20, 30, 40], dtype = np.double))
-    plt.imshow(image, cmap = 'hot')
-    plt.colorbar()
-    if outdir:
-        try:
-            os.mkdir(outdir)
-        except:
-            pass
-        plt.savefig(os.path.join(outdir, 'Fit_%iSpots.png' % fit[16]), dpi = 300, bbox_inches = 'tight')
-    if verbose:
-        plt.show()
-    plt.clf()
+    ax.contour(model, levels = np.array([0.01, 0.5, 1, 3, 5, 10, 20, 30, 40], \
+        dtype = np.double))
+    im = ax.imshow(image, cmap = 'hot')
+    ax.set_title(title)
+    plt.colorbar(im, ax = ax)
+    return True
 
 def pltFitResiduals(image, fit, title, verbose = True, outdir = None):
 #add docstring

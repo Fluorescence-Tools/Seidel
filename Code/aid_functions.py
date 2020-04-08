@@ -6,6 +6,7 @@ import findPeaksLib
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
+import os
 
 def pos2ROI(xpos, ypos, winSigma):
     """convert center position and width to ROI"""
@@ -67,10 +68,19 @@ def crop(image, ROI):
     if ROI[0] < 0 or ROI[1] < 0 or ROI[2] >= xshape or ROI[3] >= yshape:
         raise IndexError ('ROI outside of image borders')
     return image[ROI[0]: ROI[2], ROI[1]: ROI[3]]
+
+def createPath(ffile):
+    """creates path of ffile if it does not exist already"""
+    path, file = os.path.split(ffile)
+    try:
+        os.mkdir(path)
+    except FileExistsError: 
+        pass
+    return True
     
     
 ########################plotting functions#####################################
-def plotBitmapROI(bitmap, spotLst):
+def plotBitmapROI(bitmap, spotLst, title = ''):
     fig,ax = plt.subplots(1)
     ax.imshow(bitmap)
     #x index is the first index and refers to columns in image
@@ -82,4 +92,5 @@ def plotBitmapROI(bitmap, spotLst):
                                 linewidth = 1, edgecolor = 'r', facecolor='none')
         ax.add_patch(rect)
         ax.plot(spot.posy, spot.posx, 'r.')
+    ax.set_title(title)
     plt.show()

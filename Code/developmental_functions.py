@@ -128,7 +128,9 @@ def analyseDir(
                     )
                 #this function appends each time it is called
                 loc[color].fillSpotLst(bestfit, ROI)
-            if verbose: aid.plotBitmapROI(bitmap, loc[color].spotLst)
+            if verbose: 
+                aid.plotBitmapROI(bitmap, loc[color].spotLst, \
+                    title = color + ' channel:' + file)
         locLst.append(loc)
     
     if outname:
@@ -334,7 +336,7 @@ def NncChidistr(x, p):
     model += v['bg']
     return model
     
-def genPeakEst(Npeaks, x, y, fixsigma = None):
+def genPeakEst(Npeaks, x, y):
     """
     returns lmfit parameter object for Npeaks ncChidistr
     """
@@ -347,12 +349,9 @@ def genPeakEst(Npeaks, x, y, fixsigma = None):
     p.add('bg', bg, True, 0, A_max)
     for i in range(Npeaks):
         p.add_many(('mu%i' % i, mu, True, 0, np.amax(y)),
-                   ('A%i' % i, A, True, 0, A_max))
-        if fixsigma:
-            p.add('sig%i' % i, fixsigma, False, 0, np.inf)
-        else:
-            p.add('sig%i' % i, sig, True, 0, np.inf)
-        p.add
+                   ('A%i' % i, A, True, 0, A_max),
+                   ('sig%i' % i, sig, True, 0, np.inf)
+                   )
     return p
 
 def expDecay(r, tau, A):
@@ -377,18 +376,12 @@ def estChiSigma(Gsigma, Ysigma, Gphotons, Yphotons, Gbg, Ybg, pxSize, posprecisi
     chiSigma = np.sqrt(Gprecision**2 + Yprecision**2 + posprecision**2)
     return chiSigma
 
-def fitNChidistr(dist, N = 1, outfile = '', binwidth = 2, 
-                maxbin = 60, plotshow = True, p = None, fixsigma = None):
+def fitNChidistr(dist, p, bins, counts):
     """fits a chi distribution to a set of distances
     params are ordered: mu, sigma, amplitude, offset"""
-    counts, bin_edges, _ = plt.hist(dist, bins = np.arange(0, maxbin, binwidth))
-    plt.clf()
-    Nbins = bin_edges.shape[0] - 1
-    bins = np.zeros(Nbins)
-    for i in range(Nbins):
-        bins[i] = (bin_edges[i] + bin_edges[i + 1]) / 2
-    if not p:
-        p = genPeakEst(N, bins, counts, fixsigma = fixsigma)
+    #issue: unexpected behaviour that N is ignored if p is provided
+    #solution: split p generation function and elimate dependancy on N
+    #even better: create object that contains the data, binwidth, maxbins etc.
     fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = 'nelder',
         args = (NncChidistr, bins, counts, -1))
     logLikelihood = get_logLikelihood1DPoisson(fitres.params, NncChidistr, 
@@ -396,18 +389,18 @@ def fitNChidistr(dist, N = 1, outfile = '', binwidth = 2,
     AIC = get_AIC(fitres.nvarys, logLikelihood)
     AICc = get_AICc(fitres.nvarys, logLikelihood, len(dist))
     BIC = get_BIC(fitres.nvarys, logLikelihood, len(dist))
-    return fitres, AIC, AICc, BIC
-def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '', 
-                plotout = '', modelout = '', p = None, fixsigma = None,
-                maxbin = 60):
+    return fitres, AIC, AICc, BIC, logLikelihood
+    
+def whichChiIsBest(dist, bins, counts, verbose = False):
+    """utility function"""
+    binwidth = bins[1]-bins[0]
     fitresL = []
     AICL = []
     BICL = []
     for N in range(4):
         try:
-            fitres, AIC, _, BIC = fitNChidistr(
-                dist, N = N, binwidth = binwidth, p = p, fixsigma = fixsigma,
-                maxbin = maxbin)
+            p = genPeakEst(N, bins, counts)
+            fitres, AIC, _, BIC, _ = fitNChidistr(dist, p, bins, counts)
         except ValueError:
             print('fit for %i peaks failed' %N)
             break
@@ -422,27 +415,56 @@ def whichChiIsBest(dist, verbose = False, binwidth = 2, title = '',
         for i, BIC in enumerate(BICL):
             print('BIC is %.1f for %i peaks' % (BIC, i))
             
-        x = np.arange(0,maxbin,.1)
-        p = fitresL[bestfit].params
+        # x = np.arange(0,max(bins),.1)
+        # p = fitresL[bestfit].params
+        # model = NncChidistr(x, p)
+        # plt.plot(x, model)
+        # plt.plot()
+        # plt.hist(dist, bins = bins)
+        # plt.xlabel('distance (nm)')
+        # plt.ylabel('localisation events / %.0f nm' % binwidth)
+        # plt.title(title)
+        # if plotout:
+            # plt.savefig(plotout, dpi = 300, bbox_inches = 'tight')
+        # if modelout:
+            # dictout = {}
+            # dictout['grid'] = x
+            # dictout['model'] = model
+            # saveDict(dictout, modelout)
+            # fpath = os.path.splitext(modelout)[0] + '_fit_parameters.txt'
+            # with open(fpath, 'wt') as f:
+                # f.write(lmfit.fit_report(fitresL[bestfit]))
+        # plt.show()
+    return fitresL[bestfit]
+    
+def plotdistr(dist, bins, fit = None, title = '', modelout = '', 
+    plotout = ''):
+    """plots a histogrammed disttribution with bin position bins and 
+    counts in each bin. fit is an lmfit.MinimizerResult object, if it is given,
+    a model is plotted too.
+    plot and data export modalities are integrated."""
+    binwidth = bins[1] - bins[0]
+    if fit:
+        x = np.arange(0,max(bins),.1)
+        p = fit.params
         model = NncChidistr(x, p)
         plt.plot(x, model)
-        plt.plot()
-        plt.hist(dist, bins = np.arange(0, maxbin, binwidth))
-        plt.xlabel('distance (nm)')
-        plt.ylabel('localisation events / %.0f nm' % binwidth)
-        plt.title(title)
-        if plotout:
-            plt.savefig(plotout, dpi = 300, bbox_inches = 'tight')
-        if modelout:
-            dictout = {}
-            dictout['grid'] = x
-            dictout['model'] = model
-            saveDict(dictout, modelout)
-            fpath = os.path.splitext(modelout)[0] + '_fit_parameters.txt'
-            with open(fpath, 'wt') as f:
-                f.write(lmfit.fit_report(fitresL[bestfit]))
-        plt.show()
-    return fitresL[bestfit]
+        #plt.plot()
+    plt.hist(dist, bins = bins)
+    plt.xlabel('distance (nm)')
+    plt.ylabel('localisation events / %.0f nm' % binwidth)
+    plt.title(title)
+    if plotout:
+        plt.savefig(plotout, dpi = 300, bbox_inches = 'tight')
+    if modelout:
+        dictout = {}
+        dictout['grid'] = x
+        dictout['model'] = model
+        saveDict(dictout, modelout)
+        fpath = os.path.splitext(modelout)[0] + '_fit_parameters.txt'
+        with open(fpath, 'wt') as f:
+            f.write(lmfit.fit_report(fit))
+    plt.show()
 
 def fitChiDistr(dist, params0, bounds = None, outfile = '', binwidth = 2, 
                 maxbin = 60, plotshow = True):
@@ -547,7 +569,8 @@ def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2]):
 
 def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
     """calc FRET indicators based on intensity and lifetime information
-    Takes a loc dict and edits properties of the 'FRETind' entry"""
+    Takes a loc dict and edits properties of the 'FRETind' entry
+    2 winSigma + 1 is the siye of the integration area"""
     npairs = len(loc['G'].spotLst)
     loc['FRETind'] = []
     for i in range(npairs):
@@ -747,6 +770,7 @@ def filterStats(stats, indicator, vmin, vmax):
     stats must be dict with equal length entries
     select rows of stats[indicator] that are between vmin and vmax
     """
+    #ISSUE: pop utility deletes original list. Unexpected behaviour.
     #loop from last to first
     for i in range(len(stats[indicator]) -1, -1, -1):
         if stats[indicator][i] < vmin or stats[indicator][i] > vmax:
@@ -779,7 +803,6 @@ def subensembleTAC(locLst, ntacs = None, outfile = None):
                 break
             except:
                 continue
-    print(ntacs)
     eGTAC = np.zeros(ntacs)
     eRTAC = np.zeros(ntacs)
     eYTAC = np.zeros(ntacs)
