@@ -299,10 +299,13 @@ class processLifetimeImage:
         self.workIntensity = IntensityObject
         return 0
         
-    def saveGRYTif(GRYobj, outfolder, preposition = '', xmin = 0, xmax = -1, ymin = 0, ymax = -1): 
+    def saveWorkIntensityToTiff(
+        self, outfolder, preposition = '', 
+        xmin = 0, xmax = -1, ymin = 0, ymax = -1): 
         """function takes GRY object and saves to outfolder in tif format in 32bit float .tif format
             preposition allows adding identifier to default filenames.
             xmin. xmax, ymin, ymax allow saving snip of np array"""
+        #issue: takes only workintensity, would also like baseIntensity
         #convert all strings to bytes
         try: outfolder = outfolder.encode()
         except: pass
@@ -311,14 +314,14 @@ class processLifetimeImage:
         try:
             os.mkdir(outfolder)
             print('creating new folder %s\n' %os.path.join(outfolder))
-        except: 'folder already exists'
-        im = Image.fromarray(GRYobj.G[xmin:xmax, ymin:ymax])
+        except: 'folder already exists'  
+        im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax])
         outname = os.path.join(outfolder, preposition + b'imG.tif').decode()
         im.save(outname)
-        im = Image.fromarray(GRYobj.R[xmin:xmax, ymin:ymax])
+        im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax])
         outname = os.path.join(outfolder, preposition + b'imR.tif').decode()
         im.save(outname)
-        im = Image.fromarray(GRYobj.Y[xmin:xmax, ymin:ymax])
+        im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax])
         outname = os.path.join(outfolder, preposition + b'imY.tif').decode()
         im.save(outname)
         return 0

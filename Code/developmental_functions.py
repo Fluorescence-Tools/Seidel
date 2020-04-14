@@ -16,6 +16,7 @@ import copy
 import lmfit
 import aid_functions as aid
 from skimage import feature
+from itertools import product
 
 class FRETind:
     def __init__(self):
@@ -233,6 +234,7 @@ def kickvector(v, maxval):
     
 def filterVec(v, maxval = 50, verbose = True, center = None):
     """kick outlier and center coordinates of LocLst"""
+    #issue: give maxval a more descriptive name. max_dist?
     v = kickvector(v, maxval)
     if not center: center = np.mean(v, axis = 0)
     if verbose:
@@ -376,22 +378,78 @@ def estChiSigma(Gsigma, Ysigma, Gphotons, Yphotons, Gbg, Ybg, pxSize, posprecisi
     chiSigma = np.sqrt(Gprecision**2 + Yprecision**2 + posprecision**2)
     return chiSigma
 
-def fitNChidistr(dist, p, bins, counts):
+def fitNChidistr(p, bins, counts):
     """fits a chi distribution to a set of distances
     params are ordered: mu, sigma, amplitude, offset"""
-    #issue: unexpected behaviour that N is ignored if p is provided
-    #solution: split p generation function and elimate dependancy on N
+    #possible to make function generic to fit any distribution?
     #even better: create object that contains the data, binwidth, maxbins etc.
     fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = 'nelder',
         args = (NncChidistr, bins, counts, -1))
     logLikelihood = get_logLikelihood1DPoisson(fitres.params, NncChidistr, 
                                                 bins, counts)
+    samplesize = np.sum(counts)
     AIC = get_AIC(fitres.nvarys, logLikelihood)
-    AICc = get_AICc(fitres.nvarys, logLikelihood, len(dist))
-    BIC = get_BIC(fitres.nvarys, logLikelihood, len(dist))
+    AICc = get_AICc(fitres.nvarys, logLikelihood, samplesize)
+    BIC = get_BIC(fitres.nvarys, logLikelihood, samplesize)
     return fitres, AIC, AICc, BIC, logLikelihood
     
-def whichChiIsBest(dist, bins, counts, verbose = False):
+def scanLikelihoodSurface(param_ranges, p, bins, counts):
+    print
+    param_ticks=[]
+    param_names=param_ranges.keys()
+    for param_name in param_names:
+        param_ticks.append(param_ranges[param_name])
+        
+    nDshape = [len(sublist) for sublist in param_ticks]
+    length = np.product(nDshape)
+    logLikelihoodSurface = np.zeros(length)
+
+    for i, point in enumerate(product(*param_ticks)):
+        for j, name in enumerate(param_names):
+            p[name].set(value = point[j], vary = False)
+        try:
+            *_, logLikelihood = fitNChidistr(p, bins, counts)
+        except ValueError:
+            print ('fit failed for ' + str(point))
+            logLikelihood = np.nan
+        logLikelihoodSurface[i] = logLikelihood
+        if(i % 10 == 0):
+            print ('calculating point ' + str(point))
+    return logLikelihoodSurface.reshape(nDshape)
+    
+def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '', 
+    title = ''):
+    """utility function, works only in 2D"""
+    keyy, keyx = param_ranges.keys()
+    bestfit = max(surface.flatten())
+    contourlevels = [bestfit -2, bestfit - 1, bestfit-0.5, bestfit]
+    fig, ax = plt.subplots(1,1)
+    
+    #img = ax.imshow(surface, cmap = 'hot')
+    plt.imshow(surface, cmap = 'hot')
+    CS = ax.contour(surface, levels = contourlevels)
+    labels = ['13.5% as likely','36% as likely', '60% as likely', 'most likely']
+    fmt = {}
+    for l, s in zip(CS.levels, labels):
+        fmt[l] = s
+    ax.clabel(CS, fmt = fmt, fontsize = 6)
+    x_label_list = param_ranges[keyx][::skip]
+    ax.set_xticks(np.arange(len(param_ranges[keyx]))[::skip])
+    ax.set_xticklabels(x_label_list)
+    ax.set_xlabel(keyx)
+    y_label_list = param_ranges[keyy][::skip]
+    ax.set_yticks(np.arange(len(param_ranges[keyy]))[::skip])
+    ax.set_yticklabels(y_label_list)
+    ax.set_ylabel(keyy)
+    plt.title(title)
+    plt.text
+    plt.colorbar()
+    if outname:
+        plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
+    plt.show()
+    
+    
+def whichChiIsBest(bins, counts, verbose = False):
     """utility function"""
     binwidth = bins[1]-bins[0]
     fitresL = []
@@ -400,7 +458,7 @@ def whichChiIsBest(dist, bins, counts, verbose = False):
     for N in range(4):
         try:
             p = genPeakEst(N, bins, counts)
-            fitres, AIC, _, BIC, _ = fitNChidistr(dist, p, bins, counts)
+            fitres, AIC, _, BIC, _ = fitNChidistr(p, bins, counts)
         except ValueError:
             print('fit for %i peaks failed' %N)
             break
@@ -414,27 +472,6 @@ def whichChiIsBest(dist, bins, counts, verbose = False):
             print('AIC is %.1f for %i peaks' % (AIC, i))
         for i, BIC in enumerate(BICL):
             print('BIC is %.1f for %i peaks' % (BIC, i))
-            
-        # x = np.arange(0,max(bins),.1)
-        # p = fitresL[bestfit].params
-        # model = NncChidistr(x, p)
-        # plt.plot(x, model)
-        # plt.plot()
-        # plt.hist(dist, bins = bins)
-        # plt.xlabel('distance (nm)')
-        # plt.ylabel('localisation events / %.0f nm' % binwidth)
-        # plt.title(title)
-        # if plotout:
-            # plt.savefig(plotout, dpi = 300, bbox_inches = 'tight')
-        # if modelout:
-            # dictout = {}
-            # dictout['grid'] = x
-            # dictout['model'] = model
-            # saveDict(dictout, modelout)
-            # fpath = os.path.splitext(modelout)[0] + '_fit_parameters.txt'
-            # with open(fpath, 'wt') as f:
-                # f.write(lmfit.fit_report(fitresL[bestfit]))
-        # plt.show()
     return fitresL[bestfit]
     
 def plotdistr(dist, bins, fit = None, title = '', modelout = '', 
