@@ -306,6 +306,7 @@ class processLifetimeImage:
             preposition allows adding identifier to default filenames.
             xmin. xmax, ymin, ymax allow saving snip of np array"""
         #issue: takes only workintensity, would also like baseIntensity
+        #issue: Huygens accepts only export mode uint8 or 'L'
         #convert all strings to bytes
         try: outfolder = outfolder.encode()
         except: pass
@@ -315,13 +316,14 @@ class processLifetimeImage:
             os.mkdir(outfolder)
             print('creating new folder %s\n' %os.path.join(outfolder))
         except: 'folder already exists'  
-        im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax])
+        print(self.workIntensity.G.dtype)
+        im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
         outname = os.path.join(outfolder, preposition + b'imG.tif').decode()
         im.save(outname)
-        im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax])
+        im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
         outname = os.path.join(outfolder, preposition + b'imR.tif').decode()
         im.save(outname)
-        im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax])
+        im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
         outname = os.path.join(outfolder, preposition + b'imY.tif').decode()
         im.save(outname)
         return 0

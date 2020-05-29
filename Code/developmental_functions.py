@@ -44,7 +44,8 @@ def analyseDir(
     DTwoIstar = 0.03, garbageBrightness = 20, junkIstar = 0.30,
     outname = '', framestop = -1, ntacs = 256, ROIsize = 20,
     rebin = None, verbose = False, saveplot = False,
-    min_distance = 15, ROI_threshold_rel = 0.3, ROI_threshold_abs = 1):
+    min_distance = 15, ROI_threshold_rel = 0.3, ROI_threshold_abs = 1,
+    gateStop = 150):
     """
     Analyse all ptu files listed in files. A single ROI is found in each file.
     In this ROI, either one, two or Three Gaussians are fitted.
@@ -89,7 +90,7 @@ def analyseDir(
 
         CLR = loadGRYimage(ffile, Ggate = Ggate, Rgate = Rgate,
             Ygate = Ygate, ntacs = ntacs, framestop = framestop,
-            rebin = rebin)
+            rebin = rebin, gateStop = gateStop)
         #make smooth intensity image to select ROIs
         CLR_smooth = copy.deepcopy(CLR)
         CLR_smooth.smoothIntensity(sigma = 2)
@@ -201,6 +202,7 @@ def analyseLocLst(locLst, Ggate = 0, Rgate = 0, Ygate = 0,
         outloc, cntr = analyseLoc(loc, cntr, Ggate = Ggate, Rgate = Rgate, 
             Ygate = Ygate, winSigma = winSigma, framestop = framestop,
             rebin = rebin, verbose = verbose)
+        print('analysing localisation %i' %cntr)
         outLst.append(outloc)
     if outname:
         with open(outname, 'wb') as output:
@@ -210,7 +212,8 @@ def analyseLocLst(locLst, Ggate = 0, Rgate = 0, Ygate = 0,
     
 def loadGRYimage(
     ffile, Ggate = 0, Rgate = 0, Ygate = 0, 
-    uselines = np.array([1,2]), ntacs = 256, framestop = -1, rebin = None):
+    uselines = np.array([1,2]), ntacs = 256, framestop = -1, rebin = None,
+    gateStop = 150):
     #load image, gate
     CLR = IM.processLifetimeImage(
         ffile.encode(), uselines = uselines, ntacs = ntacs,
@@ -218,9 +221,9 @@ def loadGRYimage(
     CLR.loadLifetime()
     if rebin:
         CLR.rebin(rebin, rebin)
-    CLR.gate(Ggate, 150, channel = 'G')
-    CLR.gate(Rgate, 150, channel = 'R')
-    CLR.gate(Ygate, 150, channel = 'Y')
+    CLR.gate(Ggate, gateStop, channel = 'G')
+    CLR.gate(Rgate, gateStop, channel = 'R')
+    CLR.gate(Ygate, gateStop, channel = 'Y')
     CLR.loadIntensity()
     return CLR
     
@@ -486,7 +489,6 @@ def plotdistr(dist, bins, fit = None, title = '', modelout = '',
         p = fit.params
         model = NncChidistr(x, p)
         plt.plot(x, model)
-        #plt.plot()
     plt.hist(dist, bins = bins)
     plt.xlabel('distance (nm)')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
@@ -502,6 +504,25 @@ def plotdistr(dist, bins, fit = None, title = '', modelout = '',
         with open(fpath, 'wt') as f:
             f.write(lmfit.fit_report(fit))
     plt.show()
+
+def exportChiComponents(outname, bins, p_all):
+    """utility function"""
+    dataFrame = pd.DataFrame({'xgrid':bins})
+    for i in range(10):#no more than ten populations are exported
+        try:
+            p = lmfit.Parameters()
+            p.add('bg', 0, False, 0, 10)
+            p['mu0'] = p_all['mu' + str(i)]
+            p['sig0'] = p_all['sig' + str(i)]
+            p['A0'] = p_all['A' + str(i)]
+            model = NncChidistr(bins, p)
+            dataFrame['ncChi_pop'+str(i)] = model
+            print(p)
+            #gen fit and export
+        except KeyError:
+            break
+    dataFrame.to_csv(outname)
+    return dataFrame
 
 def fitChiDistr(dist, params0, bounds = None, outfile = '', binwidth = 2, 
                 maxbin = 60, plotshow = True):
@@ -832,6 +853,7 @@ def saveDict(dictionary, outfile):
             f.write(line)
             
 def subensembleTAC(locLst, ntacs = None, outfile = None):
+    """sum all TAC decays to do subensemblefitting"""
     #get length of tac array
     if not ntacs:
         for loc in locLst:
