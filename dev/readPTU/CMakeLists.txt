@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.5)
 project(readPTU
 	LANGUAGES CXX C
 	VERSION 1.0)
+
+set_property(TARGET readPTU PROPERTY CXX_STANDARD 11)
 #######################################################
 # create a library
 #######################################################
