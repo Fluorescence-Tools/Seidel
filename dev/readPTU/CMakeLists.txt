@@ -4,18 +4,19 @@ project(readPTU
 	LANGUAGES CXX C
 	VERSION 1.0)
 
-set_property(TARGET readPTU PROPERTY CXX_STANDARD 11)
 #######################################################
 # create a library
 #######################################################
 
 #generate a static library from the library sources
-add_library(readPTU SHARED
+add_library(readPTU_c SHARED
 	src/ProcessPhotonStream.cpp
 	)
 
+set_property(TARGET readPTU_c PROPERTY CXX_STANDARD 11)
 
-target_include_directories(readPTU PUBLIC
+
+target_include_directories(readPTU_c PUBLIC
 	${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/thirdparty
 	)
