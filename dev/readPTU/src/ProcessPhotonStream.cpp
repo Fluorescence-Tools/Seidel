@@ -4,10 +4,11 @@
 
 
 typedef struct{
-	std::vector<int> line_ids; //e.g. line_ids = [1,2]. 1 codes for FRET, 2 for PIE (by convention)
+	//e.g. line_ids = [1,2]. 1 codes for FRET, 2 for PIE (by convention)
+	std::vector<int> line_ids; 
 	float dwelltime;
 	float counttime;//laser rep rate
-	int NumRecords;
+	long long NumRecords;
 	float linestep; //e.g. 10nm px, 2 lines makes linstep 5e-9m
 	float pxsize;
 } imOpts;
@@ -16,7 +17,7 @@ typedef struct{
 	int tac;
 	long long t;
 	unsigned __int8 can;
-	int n; //check if correct type in pq ptu imreading
+	long long n; 
 	float posx;//in m
 	float posy;//in m
 	int frame;
@@ -40,8 +41,8 @@ void ProcessPhotonStream(
 		std::vector<imChannel> Channels
 		)
 {
-	int i, mode_iter;
-	long long startline;
+	int mode_iter;
+	long long startline, i;
 	int currentline = 0;
 	int currentframe = 0;
 	int currentline_id = 0;
@@ -110,7 +111,7 @@ extern "C"
 		int dimY,
 		float dwelltime,
 		float counttime,
-		int NumRecords,
+		long long NumRecords,
 		int gate,
 		int nlines,
 		char * uselines,
@@ -161,7 +162,7 @@ extern "C"
 		int tac_range,
 		float dwelltime,
 		float counttime,
-		int NumRecords,
+		long long NumRecords,
 		int nlines,
 		int framestop,
 		char * uselines,
