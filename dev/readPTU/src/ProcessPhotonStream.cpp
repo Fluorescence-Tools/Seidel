@@ -1,42 +1,17 @@
+//author: Nicolaas van der Voort
+//AG Seidel, HHU Dusseldorf
+//May 2019
+#include "ProcessPhotonStream.h"
 #include <stdio.h>
-#include <Eigen/Eigen>
+//#include <Eigen/Eigen>
 #include <vector>
+#include <algorithm>
 
-
-typedef struct{
-	//e.g. line_ids = [1,2]. 1 codes for FRET, 2 for PIE (by convention)
-	std::vector<int> line_ids; 
-	float dwelltime;
-	float counttime;//laser rep rate
-	long long NumRecords;
-	float linestep; //e.g. 10nm px, 2 lines makes linstep 5e-9m
-	float pxsize;
-} imOpts;
-
-typedef struct{
-	int tac;
-	long long t;
-	unsigned __int8 can;
-	long long n; 
-	float posx;//in m
-	float posy;//in m
-	int frame;
-} ph;
-
-typedef struct {
-	std::vector<unsigned __int8> can;
-	int tacmin;//microtime range
-	int tacmax;
-	long long tmin;// macrotime range
-	long long tmax; 
-	int line_id;//e.g. line_id = 1
-	std::vector<ph> phstream;
-} imChannel;
 
 void ProcessPhotonStream(
 		int * tac,
 		long long * t,
-		unsigned __int8 * can,
+		unsigned char * can,
 		imOpts ImOpts,
 		std::vector<imChannel> Channels
 		)
@@ -87,8 +62,8 @@ void ProcessPhotonStream(
 			Ph.t = t[i];
 			Ph.can = can[i];
 			Ph.n = 	i;
-			Ph.posx = (t[i]-startline) * macrot2pos;
-			Ph.posy = currentline * ImOpts.linestep;
+			Ph.x = (t[i]-startline) * macrot2pos;
+			Ph.y = currentline * ImOpts.linestep;
 			Ph.frame = currentframe;	
 			
 			Ch.phstream.push_back(Ph);
@@ -106,7 +81,7 @@ extern "C"
 	__declspec(dllexport) int SplitOnTacs(long long * eventN,
 		int * tac,
 		long long * t,
-		unsigned __int8 * can,
+		unsigned char * can,
 		int dimX,
 		int dimY,
 		float dwelltime,
@@ -155,7 +130,7 @@ extern "C"
 		long long * eventN,
 		int * tac,
 		long long * t,
-		unsigned __int8 * can,
+		unsigned char * can,
 		int dimX,
 		int dimY,
 		int ntacs,
