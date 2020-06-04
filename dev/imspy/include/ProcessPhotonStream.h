@@ -16,7 +16,7 @@ typedef struct{
 	float pxsize;
 } imOpts;
 
-struct ph{
+typedef struct{
 	int tac;
 	long long t;
 	unsigned char can;
@@ -24,7 +24,7 @@ struct ph{
 	float x;//in m
 	float y;//in m
 	int frame;
-} ;
+} ph;
 
 typedef struct {
 	std::vector<unsigned char> can;
