@@ -1,6 +1,8 @@
 //Author: Nicolaas van der Voort
 //AG Seidel, HHU Dusseldorf
 //June 3, 2020
+//TODO add description
+//TODO change to readonly when applicable
 
 #include "ProcessPhotonStream.h"
 #include <pybind11/pybind11.h>
@@ -14,11 +16,6 @@ namespace py = pybind11;
 PYBIND11_PLUGIN(imspy) {
 	py::module m("imspy");
 
-	m.def("ProcessPhotonStream", &ProcessPhotonStream);
-	m.def("Eigen_array", &Eigen_array);
-
-	//to enable dynamic attributes, replace
-	//py::class_<imOpts>(m, "imOpts", py::dynamic_attr())
 	py::class_<imOpts>(m, "imOpts")
 		.def(py::init<>())
 		.def_readwrite("line_ids", &imOpts::line_ids)
@@ -51,5 +48,14 @@ PYBIND11_PLUGIN(imspy) {
 		.def_readwrite("phstream", &imChannel::phstream)
 		;
 
+	py::class_<imspy>(m, "imspy")
+		.def(py::init<>())
+		.def("ProcessPhotonStream", &imspy::ProcessPhotonStream)
+		.def_readwrite("tac", &imspy::tac)
+		.def_readwrite("t", &imspy::t)
+		.def_readwrite("can", &imspy::can)
+		.def_readwrite("ImOpts", &imspy::ImOpts)
+		.def_readwrite("Channels", &imspy::Channels)
+		;
 	return m.ptr();
 }

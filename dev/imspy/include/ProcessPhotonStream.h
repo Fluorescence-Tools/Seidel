@@ -1,6 +1,7 @@
 //Author: Nicolaas van der Voort
 //AG Seidel, HHU Dusseldorf
 //June 3, 2020
+//TODO: build constructors to take the needed arguments
 #ifndef PPS_H
 #define PPS_H
 
@@ -45,17 +46,16 @@ public:
 	std::vector<ph> phstream;
 };
 
-ph Eigen_array(
-	Eigen::Array<long long, Eigen::Dynamic, 1> t
-	, Eigen::ArrayXi tac
-	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
-);
+class imspy {
+public:
+	imspy() {};
+	void ProcessPhotonStream();
 
-std::vector<imChannel> ProcessPhotonStream(
-	Eigen::ArrayXi tac
-	, Eigen::Array<long long, Eigen::Dynamic, 1> t
-	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
-	, imOpts ImOpts
-	, std::vector<imChannel> Channels
-);
+	Eigen::ArrayXi tac;
+	Eigen::Array<long long, Eigen::Dynamic, 1> t;
+	Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can;
+	imOpts ImOpts;
+	std::vector<imChannel> Channels;
+};
+
 #endif

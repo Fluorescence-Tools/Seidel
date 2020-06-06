@@ -12,13 +12,10 @@ import numpy as np
 import os
 from importlib import reload
 
-import sys.path
-sys.path.append("K:\vanderVoortN\FRC\dev\imspy\build\Debug\")
+import sys
+sys.path.append(r"K:\vanderVoortN\FRC\dev\imspy\build\Debug")
 import imspy as spy
-#%%
-reload(spy)
-
-#%%build channels
+#%% data file
 fname = r'K:\vanderVoortN\FRC\dev\imspy\test\images\PQSpcm_2019-02-01_15-59-23.ptu'.encode()
 #%% gen header and build channels
 assert type(fname) == bytes, 'Error, fname is not bytes type'
@@ -36,18 +33,35 @@ ImOpts = spy.imOpts()
 ImOpts.line_ids = [1, 2]
 ImOpts.dwelltime = dwelltime
 ImOpts.counttime = counttime
-ImOpts.NumRecords = 100
+#ImOpts.NumRecords = NumRecords
+ImOpts.NumRecords = 1000
 ImOpts.linestep = 25e-9
 ImOpts.pxsize = 50
 
+
 G = spy.imChannel()
 G.line_id = 1
-G.can = [0, 3]
+G.can = [0,2]
+G.tacmax = 8000
+G.tmax = 2212679116095
+Channels = [G]
 
+test_image = spy.imspy()
+test_image.t = t
+test_image.can = can
+test_image.tac = tac
+test_image.Channels = Channels
+test_image.ImOpts = ImOpts
 #%% execute func
-spy.ProcessPhotonStream(tac, t, can, ImOpts, [G])
-print(G.phstream)
+#Channels = spy.ProcessPhotonStream(tac, t, can, ImOpts, Channels)
+test_image.ProcessPhotonStream()
 
+
+#%%
+phstream_l = len(test_image.Channels[0].phstream)
+for i in range(phstream_l):
+    print(test_image.Channels[0].phstream[i].t)
+print(phstream_l)
 #%%
 a = np.ones(2)
 b = np.ones(2)
