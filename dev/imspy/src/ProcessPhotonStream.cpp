@@ -4,21 +4,35 @@
 
 #include "ProcessPhotonStream.h"
 #include <stdio.h>
-//#include <Eigen/Eigen>
+#include <Eigen/Core>
 #include <vector>
 #include <algorithm>
 
-//class constructors
-//imOpts::imOpts() {}
-//ph::ph() {}
-//imChannel::imChannel() :tacmin(0), tacmax(32768), tmin(0), tmax(9223372036854775807) {}
+//typedef Eigen::Array<unsigned char, Eigen::Dynamic, 1> ArrayXu;
 
-void ProcessPhotonStream(
-	int * tac,
-	long long * t,
-	unsigned char * can,
-	imOpts ImOpts,
-	std::vector<imChannel> Channels
+ph Eigen_array(
+	Eigen::Array<long long, Eigen::Dynamic, 1> t
+	, Eigen::ArrayXi tac
+	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
+) {
+	ph Ph;
+	tac[0] = 2;
+	if (t[0] == 1) {
+		tac[0] = 3;
+	}
+	Ph.tac = tac[0];
+	Ph.t = t[0];
+	Ph.can = can[0];
+	printf("hellow world! \n");
+	return Ph;
+}
+
+std::vector<imChannel> ProcessPhotonStream(
+	Eigen::ArrayXi tac
+	, Eigen::Array<long long, Eigen::Dynamic, 1> t
+	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
+	, imOpts ImOpts
+	, std::vector<imChannel> Channels
 )
 {
 	int mode_iter;
@@ -26,12 +40,14 @@ void ProcessPhotonStream(
 	int currentline = 0;
 	int currentframe = 0;
 	int currentline_id = 0;
-	bool incan, intac, in_t, inmode, inscan;
+	bool incan, intac, in_t, inmode, inscan = false;
+	//bool incan = true, intac = true, in_t = true, inscan = true, inmode = true;
 	//scanspeed = pxxsize / dwelltime.
 	// time_since_line_start = macrot_since_line_start * counttime
 	// pos = scanspeed * time_since_line_start
 	float macrot2pos = ImOpts.pxsize * ImOpts.counttime / ImOpts.dwelltime;
-	for (i = 0; i < ImOpts.NumRecords; i++) {
+
+	for (i = 0; i < ImOpts.NumRecords - 1; i++) {
 		if (can[i] == 65) {
 			inscan = true;
 			startline = t[i];
@@ -76,5 +92,7 @@ void ProcessPhotonStream(
 			//channel
 			break;
 		}
+		
 	}
+	return Channels;
 }

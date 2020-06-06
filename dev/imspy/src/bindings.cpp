@@ -5,44 +5,17 @@
 #include "ProcessPhotonStream.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h>
 #include <vector>
 
 
 namespace py = pybind11;
 
-int add(int i, int j) {
-	return i + j;
-}
-
-ph make_ph(int val) {
-	ph Ph;
-	Ph.tac = val;
-	return Ph;
-}
-
-imOpts make_imOpts(){
-	imOpts ImOpts;
-	return ImOpts;
-}
-
-imChannel make_imChannel() {
-	imChannel ImChannel;
-	return ImChannel;
-}
-
-int gettac(ph Ph) {
-	return Ph.tac;
-}
-
 PYBIND11_PLUGIN(imspy) {
 	py::module m("imspy");
 
-	m.def("add", &add);
-	m.def("make_ph", &make_ph);
-	m.def("make_imOpts", &make_imOpts);
-	m.def("make_imChannel", &make_imChannel);
-	m.def("gettac", &gettac);
 	m.def("ProcessPhotonStream", &ProcessPhotonStream);
+	m.def("Eigen_array", &Eigen_array);
 
 	//to enable dynamic attributes, replace
 	//py::class_<imOpts>(m, "imOpts", py::dynamic_attr())

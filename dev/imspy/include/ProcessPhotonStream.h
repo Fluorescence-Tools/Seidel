@@ -5,6 +5,7 @@
 #define PPS_H
 
 #include<vector>
+#include <Eigen/Core>
 
 class imOpts{
 public:
@@ -20,7 +21,6 @@ public:
 
 class ph{
 public:
-	//note-to-self: is it also possible to declar constructor here?
 	ph() {};
 	int tac;
 	long long t;
@@ -41,15 +41,21 @@ public:
 	long long tmin;// macrotime range
 	long long tmax; 
 	int line_id;//e.g. line_id = 1
+	//for some reason this variable gets really slow when accessed from Python
 	std::vector<ph> phstream;
 };
 
+ph Eigen_array(
+	Eigen::Array<long long, Eigen::Dynamic, 1> t
+	, Eigen::ArrayXi tac
+	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
+);
 
-void ProcessPhotonStream(
-	int * tac,
-	long long * t,
-	unsigned char * can,
-	imOpts ImOpts,
-	std::vector<imChannel> Channels
+std::vector<imChannel> ProcessPhotonStream(
+	Eigen::ArrayXi tac
+	, Eigen::Array<long long, Eigen::Dynamic, 1> t
+	, Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can
+	, imOpts ImOpts
+	, std::vector<imChannel> Channels
 );
 #endif
