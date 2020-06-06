@@ -35,6 +35,7 @@ public:
 
 class imChannel {
 public:
+	void gentacdecay(int ntacs);
 	imChannel() :tacmin(0), tacmax(32768), tmin(0), tmax(9223372036854775807) {};
 	std::vector<unsigned char> can;
 	int tacmin;//microtime range
@@ -43,7 +44,17 @@ public:
 	long long tmax; 
 	int line_id;//e.g. line_id = 1
 	//for some reason this variable gets really slow when accessed from Python
+	//Idea 1: change to Eigen vector like so:
+	//Eigen::Vector<ph, Eigen::Dynamic, 1> phstream;
+	//Idea 2: get rid of the photon class and just replace it with a series
+	//of arrays for each tac, t, can, x, y etc.
+	//Then, a protected mechanism is needed to delete from all arrays 
+	//simultaneously
 	std::vector<ph> phstream;
+	Eigen::ArrayXi tacdecay;
+private:
+	int log2(int n);
+
 };
 
 class imspy {

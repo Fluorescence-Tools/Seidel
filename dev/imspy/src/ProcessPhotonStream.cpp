@@ -8,6 +8,31 @@
 #include <vector>
 #include <algorithm>
 
+void imChannel::gentacdecay(int ntacs) {
+	//unsigned char bitshift;
+	int divider = 32768 / ntacs;
+	int i, tac;
+	//bitshift = log2(32768 / ntacs);
+	tacdecay = Eigen::ArrayXi::Zero(ntacs);
+	
+	for (i = 0; i < phstream.size(); i++) {
+		//need to declar all vars unsigned for this to work
+		//tac = phstream[i] >>= bitshift;
+		tac = phstream[i].tac / divider;
+		tacdecay[tac]++;
+	}
+	
+}
+
+int imChannel::log2(int n) {
+	int count = 0;
+	while (n) {
+		count += n > 1;
+		n >>= 1;
+	}
+	return count;
+}
+
 void imspy::ProcessPhotonStream()
 {
 	ph Ph;

@@ -11,6 +11,7 @@ import cpp_wrappers
 import numpy as np
 import os
 from importlib import reload
+import matplotlib.pyplot as plt
 
 import sys
 sys.path.append(r"K:\vanderVoortN\FRC\dev\imspy\build\Debug")
@@ -39,12 +40,17 @@ ImOpts.linestep = 25e-9
 ImOpts.pxsize = 50
 
 
+
+GP = spy.imChannel()
+GP.line_id = 1
+GP.can = [0]
+GS = spy.imChannel()
+GS.line_id = 1
+GS.can = [2]
 G = spy.imChannel()
 G.line_id = 1
 G.can = [0,2]
-G.tacmax = 8000
-G.tmax = 2212679116095
-Channels = [G]
+Channels = [GP, GS, G]
 
 test_image = spy.imspy()
 test_image.t = t
@@ -58,13 +64,6 @@ test_image.ProcessPhotonStream()
 
 
 #%%
-phstream_l = len(test_image.Channels[0].phstream)
-for i in range(phstream_l):
-    print(test_image.Channels[0].phstream[i].t)
-print(phstream_l)
-#%%
-a = np.ones(2)
-b = np.ones(2)
-c = np.ones(2)
-Ph1 = spy.Eigen_array(a, b, c)
-print(Ph1.tac)
+
+test_image.Channels[0].gentacdecay(257)
+print(test_image.Channels[0].tacdecay)

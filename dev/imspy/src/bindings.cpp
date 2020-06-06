@@ -3,6 +3,7 @@
 //June 3, 2020
 //TODO add description
 //TODO change to readonly when applicable
+//TODO add setters and getters for all setting variables
 
 #include "ProcessPhotonStream.h"
 #include <pybind11/pybind11.h>
@@ -39,6 +40,7 @@ PYBIND11_PLUGIN(imspy) {
 
 	py::class_<imChannel>(m, "imChannel", py::dynamic_attr())
 		.def(py::init<>())
+		.def("gentacdecay", &imChannel::gentacdecay)
 		.def_readwrite("can", &imChannel::can)
 		.def_readwrite("tacmin", &imChannel::tacmin)
 		.def_readwrite("tacmax", &imChannel::tacmax)
@@ -46,6 +48,7 @@ PYBIND11_PLUGIN(imspy) {
 		.def_readwrite("tmax", &imChannel::tmax)
 		.def_readwrite("line_id", &imChannel::line_id)
 		.def_readwrite("phstream", &imChannel::phstream)
+		.def_readwrite("tacdecay", &imChannel::tacdecay)
 		;
 
 	py::class_<imspy>(m, "imspy")
