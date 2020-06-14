@@ -8,16 +8,17 @@ Created on Fri Mar 29 11:53:04 2019
 import numpy as np
 import ctypes
 import os
+wdir = os.path.dirname(__file__)
+readPTU = ctypes.WinDLL (os.path.join(wdir, "wrapped", "PQ_PTU.dll"))
 
-readPTU = ctypes.WinDLL (r"S:\64bit dll 's\PQ_PTU_sf\release\PQ_PTU.dll")
 #_SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\ProcessPhotonStream.dll').SplitOnTacs
 debug = False
 if debug:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
 else:
     wdir = os.path.dirname(__file__)
-    _SplitOnTacs = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).SplitOnTacs
-    _genGRYlifetime = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).genGRYlifetime
+    _SplitOnTacs = ctypes.CDLL(os.path.join(wdir, "wrapped", 'ProcessPhotonStream.dll')).SplitOnTacs
+    _genGRYlifetime = ctypes.CDLL(os.path.join(wdir, "wrapped", 'ProcessPhotonStream.dll')).genGRYlifetime
 
 
 def ptuHeader_wrap (fname):
