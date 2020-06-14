@@ -14,8 +14,7 @@
 
 namespace py = pybind11;
 
-PYBIND11_PLUGIN(imspy) {
-	py::module m("imspy");
+PYBIND11_MODULE(imspy, m) {
 
 	py::class_<imOpts>(m, "imOpts")
 		.def(py::init<>())
@@ -60,5 +59,5 @@ PYBIND11_PLUGIN(imspy) {
 		.def_readwrite("ImOpts", &imspy::ImOpts)
 		.def_readwrite("Channels", &imspy::Channels)
 		;
-	return m.ptr();
+	//return m.ptr();
 }
