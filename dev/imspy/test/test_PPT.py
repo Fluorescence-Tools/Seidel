@@ -14,10 +14,11 @@ from importlib import reload
 import matplotlib.pyplot as plt
 
 import sys
-sys.path.append(r"K:\vanderVoortN\FRC\dev\imspy\build\Debug")
+root = r"C:\Users\Niek\work\FRC\dev\imspy"
+sys.path.append(os.path.join(root, r"build\Debug"))
 import imspy as spy
 #%% data file
-fname = r'K:\vanderVoortN\FRC\dev\imspy\test\images\PQSpcm_2019-02-01_15-59-23.ptu'.encode()
+fname = os.path.join(root, r'test\images\PQSpcm_2019-02-01_15-59-23.ptu').encode()
 #%% gen header and build channels
 assert type(fname) == bytes, 'Error, fname is not bytes type'
 
