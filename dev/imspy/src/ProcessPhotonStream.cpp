@@ -33,6 +33,13 @@ int imChannel::log2(int n) {
 	return count;
 }
 
+//idea: instead of sorting the photons directly, keep index lists
+//pass the original tac, t, can by reference or store in object.
+//the sorting function appends the photon number to the index file.
+//functions exist to return a tac, t or can based on an index list
+//other functions exist to generate these indexes. E.g. to select
+//only gated data, intensity threshold, macrotime selection.
+//also add function that calculated posx and posy and puts in array
 void imspy::ProcessPhotonStream()
 {
 	ph Ph;

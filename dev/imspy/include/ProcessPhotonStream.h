@@ -8,6 +8,8 @@
 #include<vector>
 #include <Eigen/Core>
 
+typedef std::vector<long long int> int64vec;
+
 class imOpts{
 public:
 	imOpts() {};
@@ -20,6 +22,7 @@ public:
 	float pxsize;
 } ;
 
+/*
 class ph{
 public:
 	ph() {};
@@ -31,6 +34,7 @@ public:
 	float y;//in m
 	int frame;
 };
+*/
 
 
 class imChannel {
@@ -60,13 +64,24 @@ private:
 class imspy {
 public:
 	imspy() {};
-	void ProcessPhotonStream();
+	void getpos(); //calculate x, y for each photon
 
-	Eigen::ArrayXi tac;
-	Eigen::Array<long long, Eigen::Dynamic, 1> t;
-	Eigen::Array<unsigned char, Eigen::Dynamic, 1>  can;
+	 //build indexes for each imChannel
+	int64vec indexchannels(std::vector<imChannel> Channels);
+	void ProcessPhotonStream(); //obsolete
 	imOpts ImOpts;
-	std::vector<imChannel> Channels;
+
+	//get functions
+	Eigen::ArrayXi get_tac(int64vec index);
+	Eigen::Array< long long, Eigen::Dynamic, 1> get_t(int64vec index);
+	Eigen::Array< unsigned char, Eigen::Dynamic, 1> get_can(int64vec index);
+
+	//class variables
+	const std::vector<int> tac;
+	const int64vec t;
+	const std::vector<unsigned char> can;
+	const std::vector<float> x;
+	const std::vector<float> y;
 };
 
 #endif
