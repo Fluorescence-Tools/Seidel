@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 
+/*
 void imChannel::gentacdecay(int ntacs) {
 	//unsigned char bitshift;
 	int divider = 32768 / ntacs;
@@ -23,6 +24,8 @@ void imChannel::gentacdecay(int ntacs) {
 	}
 	
 }
+*/
+void imChannel::gentacdecay(int ntacs) {}
 
 int imChannel::log2(int n) {
 	int count = 0;
@@ -40,6 +43,7 @@ int imChannel::log2(int n) {
 //other functions exist to generate these indexes. E.g. to select
 //only gated data, intensity threshold, macrotime selection.
 //also add function that calculated posx and posy and puts in array
+/*
 void imspy::ProcessPhotonStream()
 {
 	ph Ph;
@@ -105,4 +109,52 @@ void imspy::ProcessPhotonStream()
 
 		}
 	}
+}
+*/
+void imspy::ProcessPhotonStream() {}
+void imspy::calcxyslice() {
+	long long startline, i;
+	int currentline = 0;
+	int currentslice = 0;
+	bool inscan = false;
+	//scanspeed = pxxsize / dwelltime.
+	// time_since_line_start = macrot_since_line_start * counttime
+	// pos = scanspeed * time_since_line_start
+	float macrot2pos = ImOpts.pxsize * ImOpts.counttime / ImOpts.dwelltime;
+
+
+	for (i = 0; i < ImOpts.NumRecords - 1; i++) {
+
+		if (can[i] == 65) {
+			inscan = true;
+			startline = t[i];
+		}
+		else if (can[i] == 66) {
+			inscan = false;
+			currentline++;//line numbers start with 0
+		}
+		//The first frame marker comes before the first frame
+		//and the last frame marker comes after the last frame
+		//for n frames, there are n+1 frame markers
+		//the first frame has label '1'
+		else if (can[i] == 68) {
+			currentslice++;
+			currentline = 0;
+		}
+		slice[i] = currentslice;
+		if (inscan) {
+			x[i] = (t[i] - startline) * macrot2pos;
+			y[i] = currentline * ImOpts.linestep;
+		}
+		else {
+			x[i] = -1;
+			y[i] = -1;
+		}		
+	}
+}
+
+Eigen::ArrayXi imspy::gettac() {
+	const int* tacptr = &tac[0];
+	Eigen::Map<Eigen::ArrayXi> outtac(tacptr, tac.size());
+	return outtac;
 }

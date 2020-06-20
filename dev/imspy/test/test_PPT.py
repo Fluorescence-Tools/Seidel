@@ -52,13 +52,11 @@ G = spy.imChannel()
 G.line_id = 1
 G.can = [0,2]
 Channels = [GP, GS, G]
+#pass vars as list
 
-test_image = spy.imspy()
-test_image.t = t
-test_image.can = can
-test_image.tac = tac
-test_image.Channels = Channels
-test_image.ImOpts = ImOpts
+
+#%%
+test_image = spy.imspy(list(tac), list(t), list(can), ImOpts)
 #%% execute func
 #Channels = spy.ProcessPhotonStream(tac, t, can, ImOpts, Channels)
 test_image.ProcessPhotonStream()

@@ -26,7 +26,7 @@ PYBIND11_MODULE(imspy, m) {
 		"e.g. 1 FRET line, 1 PIE line, 10nm px: linstep = 5")
 		.def_readwrite("pxsize", &imOpts::pxsize);
 	
-
+/*
 	py::class_<ph>(m, "ph")
 		.def(py::init<>())
 		.def_readwrite("tac", &ph::tac)
@@ -36,6 +36,7 @@ PYBIND11_MODULE(imspy, m) {
 		.def_readwrite("x", &ph::x)
 		.def_readwrite("y", &ph::y)
 		.def_readwrite("frame", &ph::frame);
+*/
 
 	py::class_<imChannel>(m, "imChannel", py::dynamic_attr())
 		.def(py::init<>())
@@ -46,18 +47,22 @@ PYBIND11_MODULE(imspy, m) {
 		.def_readwrite("tmin", &imChannel::tmin)
 		.def_readwrite("tmax", &imChannel::tmax)
 		.def_readwrite("line_id", &imChannel::line_id)
-		.def_readwrite("phstream", &imChannel::phstream)
-		.def_readwrite("tacdecay", &imChannel::tacdecay)
 		;
 
 	py::class_<imspy>(m, "imspy")
-		.def(py::init<>())
+		.def(py::init<
+			std::vector<int>, 
+			int64vec, 
+			std::vector<unsigned char>,
+			imOpts
+		>())
 		.def("ProcessPhotonStream", &imspy::ProcessPhotonStream)
-		.def_readwrite("tac", &imspy::tac)
-		.def_readwrite("t", &imspy::t)
-		.def_readwrite("can", &imspy::can)
-		.def_readwrite("ImOpts", &imspy::ImOpts)
-		.def_readwrite("Channels", &imspy::Channels)
+		//.def("gettac", (Eigen::ArrayXi (imspy::*)()) &imspy::gettac, "get all tacs")
+		.def("gettac", &imspy::gettac)
+//		.def_readonly("tac", &imspy::tac)
+//		.def_readonly("t", &imspy::t)
+//		.def_readonly("can", &imspy::can)
+//		.def_readonly("ImOpts", &imspy::ImOpts)
 		;
 	//return m.ptr();
 }

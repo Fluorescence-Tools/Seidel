@@ -15,11 +15,11 @@ public:
 	imOpts() {};
 	//e.g. line_ids = [1,2]. 1 codes for FRET, 2 for PIE (by convention)
 	std::vector<int> line_ids; 
-	float dwelltime;
 	float counttime;//laser rep rate
 	long long NumRecords;
 	float linestep; //e.g. 10nm px, 2 lines makes linstep 5e-9m
-	float pxsize;
+	float dwelltime; //not an image constant, move?
+	float pxsize; //not an image const, move?
 } ;
 
 /*
@@ -54,34 +54,59 @@ public:
 	//of arrays for each tac, t, can, x, y etc.
 	//Then, a protected mechanism is needed to delete from all arrays 
 	//simultaneously
-	std::vector<ph> phstream;
-	Eigen::ArrayXi tacdecay;
 private:
 	int log2(int n);
 
 };
 
 class imspy {
+private:
+	//class variables
+	//variables are passed in initialization list
+	const std::vector<int> tac;
+	const int64vec t;
+	const std::vector<unsigned char> can;
+	const imOpts ImOpts;
+	//x, y, frame are calculated in constructor and cannot be const
+	std::vector<float> x;
+	std::vector<float> y;
+	std::vector<int> slice;//t-slice or z-slice
+
+	//member functions
+	void calcxyslice();
+
 public:
-	imspy() {};
-	void getpos(); //calculate x, y for each photon
+	//constructor
+	imspy(
+		std::vector<int> tac,
+		int64vec t,
+		std::vector<unsigned char> can,
+		imOpts Imopts
+		) 
+		: tac(tac), t(t), can(can), ImOpts(Imopts) {
+		x.reserve(ImOpts.NumRecords);
+		y.reserve(ImOpts.NumRecords);
+		slice.reserve(ImOpts.NumRecords);
+		void calcxyslice();
+	};
+
 
 	 //build indexes for each imChannel
 	int64vec indexchannels(std::vector<imChannel> Channels);
 	void ProcessPhotonStream(); //obsolete
-	imOpts ImOpts;
+
 
 	//get functions
-	Eigen::ArrayXi get_tac(int64vec index);
-	Eigen::Array< long long, Eigen::Dynamic, 1> get_t(int64vec index);
-	Eigen::Array< unsigned char, Eigen::Dynamic, 1> get_can(int64vec index);
+	//Eigen::ArrayXi gettac(int64vec index);
+	Eigen::ArrayXi gettac();
+	Eigen::Array< long long, Eigen::Dynamic, 1> gett(int64vec index);
+	Eigen::Array< unsigned char, Eigen::Dynamic, 1> getcan(int64vec index);
+	Eigen::ArrayXf getx(int64vec index);
+	Eigen::ArrayXf gety(int64vec index);
+	Eigen::ArrayXi getslice(int64vec index);
 
-	//class variables
-	const std::vector<int> tac;
-	const int64vec t;
-	const std::vector<unsigned char> can;
-	const std::vector<float> x;
-	const std::vector<float> y;
+
+
 };
 
 #endif
