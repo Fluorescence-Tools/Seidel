@@ -51,12 +51,14 @@ PYBIND11_MODULE(imspy, m) {
 
 	py::class_<imspy>(m, "imspy")
 		.def(py::init<
-			std::vector<int>, 
-			int64vec, 
-			std::vector<unsigned char>,
+			Eigen::ArrayXi, 
+			Eigen::Array<uint64_t, Eigen::Dynamic, 1>,
+			Eigen::Array<unsigned char, Eigen::Dynamic, 1>,
 			imOpts
 		>())
+
 		.def("ProcessPhotonStream", &imspy::ProcessPhotonStream)
+		.def("indexchannel", &imspy::indexchannel)
 		//.def("gettac", (Eigen::ArrayXi (imspy::*)()) &imspy::gettac, "get all tacs")
 		.def("gettac", &imspy::gettac)
 //		.def_readonly("tac", &imspy::tac)
