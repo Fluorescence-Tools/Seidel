@@ -146,7 +146,7 @@ def analyseLoc(
     loc, cntr, Ggate = 0, Rgate = 0, Ygate = 0, 
     winSigma = 3, framestop = 20, rebin = None,
     TACCal = 0.0128, ntacs = 256,
-    verbose = False, pxSize = 10):
+    verbose = False, pxSize = 10, bgphotons = [0,0,0]):
     """finds all closest spot pairs
     for each pair the following are calculate:
         pair distance dist
@@ -188,20 +188,20 @@ def analyseLoc(
     sortSpots(outloc)    
 
     cntr = calcFRETind(CLR, outloc, winSigma, cntr, verbose, 
-        Ggate, Rgate, Ygate, pxSize)
+        Ggate, Rgate, Ygate, pxSize, rebin, bgphotons)
     return outloc, cntr
     
 def analyseLocLst(locLst, Ggate = 0, Rgate = 0, Ygate = 0, 
     winSigma = 3, framestop = 20, rebin = None,
     TACCal = 0.0128, ntacs = 256,
-    verbose = False, pxSize = 10, outname = ''):
+    verbose = False, pxSize = 10, outname = '', bgphotons = [0,0,0]):
     #add saving functionality
     outLst = []
     cntr = 0
     for loc in locLst:
         outloc, cntr = analyseLoc(loc, cntr, Ggate = Ggate, Rgate = Rgate, 
             Ygate = Ygate, winSigma = winSigma, framestop = framestop,
-            rebin = rebin, verbose = verbose)
+            rebin = rebin, verbose = verbose, bgphotons = bgphotons)
         print('analysing localisation %i' %cntr)
         outLst.append(outloc)
     if outname:
@@ -397,7 +397,6 @@ def fitNChidistr(p, bins, counts):
     return fitres, AIC, AICc, BIC, logLikelihood
     
 def scanLikelihoodSurface(param_ranges, p, bins, counts):
-    print
     param_ticks=[]
     param_names=param_ranges.keys()
     for param_name in param_names:
@@ -610,22 +609,27 @@ def sortSpots(loc):
 #                                   ycenter + winSigma]
 #    return bitmap[xstart : xstop + 1, ystart : ystop + 1]
     
-def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2]):
+def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2], bgphotons = 0):
         """simple fitting and plotting function that fits 
         a monoexponential decay to a TAC decay using MLE optimization
         No boundaries are implemented.
         """
         tactimes = np.arange(len(TAC)) * TACCal
+        bgArrivalTime = len(TAC) * TACcal / 2
         # add TACcal/2 because average arrival time in first bin is TACcal / 2
-        meantac = np.sum(tactimes * TAC) / np.sum(TAC) + TACCal / 2 
+        #meantac = np.sum(tactimes * TAC) / np.sum(TAC) + TACCal / 2 
+        bgcorTAC = (np.sum(tactimes * TAC) - bgphotons * bgArrivalTime) /
+                    (np.sum(TAC) - bgphotons)
         if verbose:
             plt.plot(tactimes, TAC)
             plt.plot(tactimes, expDecay(tactimes, meantac, \
                     np.sum(TAC) / meantac * TACCal))
+            plt.plot(tactimes, np.ones(len(TAC)) * bgphotons / len(TAC))
             plt.show()
         return meantac
 
-def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
+def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize,
+                rebin, bgphotons = [0,0,0]):
     """calc FRET indicators based on intensity and lifetime information
     Takes a loc dict and edits properties of the 'FRETind' entry
     2 winSigma + 1 is the siye of the integration area"""
@@ -671,20 +675,22 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize):
 
         #reload ungated data for lifetime information
         CLR.loadLifetime()
+        if rebin:
+            CLR.rebin(rebin, rebin)
         loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
         loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
         GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
         loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))
         loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC[Ggate:150], \
-                                        0.128, verbose)
+                                        0.128, verbose, bgphotons = bgphotons[0])
         RlifetimeSnip = aid.crop(CLR.workLifetime.R, RROI)
         loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))
         loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC[Rgate:150], \
-                                        0.128, verbose)
+                                        0.128, verbose, bgphotons = bgphotons[1])
         YlifetimeSnip = aid.crop(CLR.workLifetime.Y, YROI)      
         loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))
         loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC[Ygate:150], \
-                                        0.128, verbose)
+                                        0.128, verbose, bgphotons = bgphotons[2])
         distx = (loc['G'].spotLst[i].posx - loc['Y'].spotLst[i].posx )* pxSize
         disty = (loc['G'].spotLst[i].posy - loc['Y'].spotLst[i].posy )* pxSize
         loc['FRETind'][i].distx = distx
