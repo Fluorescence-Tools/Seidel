@@ -103,17 +103,33 @@ def batchAnalyseDA(Gfiles, Yfiles, D0_fname, plotoutDir, paramout, dtime = 0.064
     return names, S_y, x0, tau_fret, chi2red_lst
     
 
-def analyzeRuler1D1A(locLst, resdir, identifier, ntacs = 256):
+def analyzeRuler1D1A(locLst, resdir, identifier, ntacs = 256, 
+    select11stoic = True):
     """set of analysis parameters that should be applied to all Rulers"""
     outname = os.path.join(resdir, identifier + '_an.spots')
     TACout = os.path.join(resdir, identifier + '_1D1A_PS.dat')
     statsout = os.path.join(resdir, identifier + '.pg4')
 
-    locLst_s = df.selectSpotOccurence(locLst, [1], [1])
-    locLst_s_an = df.analyseLocLst(locLst_s, Igate = [0,0,0], ltgate = [25, 25, 25],
+    if select11stoic:
+        locLst = df.selectSpotOccurence(locLst, [1], [1])
+    locLst_an = df.analyseLocLst(locLst, Igate = [0,0,0], ltgate = [25, 25, 25],
                                     verbose = False, framestop = 20, outname = outname,
                                     ntacs = ntacs, bgphotons = [1.1, 5.0, 5.6])
     #an data contains always the full TCSPC decay
-    df.subensembleTAC(locLst_s_an, ntacs = ntacs, outfile = TACout)
-    stats = df.genStats(locLst_s_an, outfile = statsout)
-    return locLst_s_an, stats
+    df.subensembleTAC(locLst_an, ntacs = ntacs, outfile = TACout)
+    stats = df.genStats(locLst_an, outfile = statsout)
+    return locLst_an, stats
+    
+def analyzeOrigami(locLst, resdir, identifier, ntacs = 256):
+    """set of analysis parameters that should be applied to all Origamis"""
+    outname = os.path.join(resdir, identifier + '_an.spots')
+    TACout = os.path.join(resdir, identifier + '_all_PS.dat')
+    statsout = os.path.join(resdir, identifier + '.pg4')
+
+    locLst_an = df.analyseLocLst(locLst, Igate = [0,0,0], ltgate = [29, 29, 29],
+                                    verbose = False, framestop = 20, outname = outname,
+                                    ntacs = ntacs, bgphotons = [1.1, 5.0, 5.6])
+    #an data contains always the full TCSPC decay
+    df.subensembleTAC(locLst_an, ntacs = ntacs, outfile = TACout)
+    stats = df.genStats(locLst_an, outfile = statsout)
+    return locLst_an, stats

@@ -582,31 +582,41 @@ def sortSpots(loc):
     Then, the second closest (if present).
     if the localisations are not equally long, those matching a pair are taken.
     """
-    loc_copy = copy.deepcopy(loc)
     NG = len(loc['G'].spotLst)
     NY = len(loc['Y'].spotLst)
+    unsortedG = [x for x in range(NG)]
+    unsortedY = [x for x in range(NY)]
+    sortedG = []
+    sortedY = []
     Ndist = min (NG, NY)
     Gcoords = np.zeros([NG, 2])
     Ycoords = np.zeros([NY, 2])
     alldist = np.zeros([NG, NY])
-    for i, el in enumerate(loc_copy['G'].spotLst):
+
+    for i, el in enumerate(loc['G'].spotLst):
         Gcoords[i] = np.array([el.posx, el.posy])
-    for i, el in enumerate(loc_copy['Y'].spotLst):
+    for i, el in enumerate(loc['Y'].spotLst):
         Ycoords[i] = np.array([el.posx, el.posy])
     
     for i in range(NG):
         for j in range(NY):
             alldist[i, j] = np.linalg.norm(Gcoords[i] - Ycoords[j])
-    loc['G'].spotLst = []
-    loc['Y'].spotLst = []
+
     for i in range(Ndist):
-        NG, NY = alldist.shape
         Gpos, Ypos = [alldist.argmin() // NY , alldist.argmin() % NY]
-        #re-build channel objects with paired spots
-        loc['G'].spotLst.append(loc_copy['G'].spotLst[Gpos])
-        loc['Y'].spotLst.append(loc_copy['Y'].spotLst[Ypos])
+        #do bookkeeping
+        sortedG.append(Gpos)
+        unsortedG.remove(Gpos)
+        sortedY.append(Ypos)
+        unsortedY.remove(Ypos)
         alldist[Gpos] = 1e6
         alldist[:, Ypos] = 1e6
+    #unpaired spots are appended
+    sortedG += unsortedG
+    sortedY += unsortedY
+    #re-order
+    loc['G'].spotLst[:] = [loc['G'].spotLst[i] for i in sortedG]
+    loc['Y'].spotLst[:] = [loc['Y'].spotLst[i] for i in sortedY]
 
 
 #def cropSpot(xcenter, ycenter, bitmap, winSigma):
@@ -647,7 +657,8 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
     """calc FRET indicators based on intensity and lifetime information
     Takes a loc dict and edits properties of the 'FRETind' entry
     2 winSigma + 1 is the siye of the integration area"""
-    npairs = len(loc['G'].spotLst)
+    
+    npairs = min(len(loc['G'].spotLst), len(loc['Y'].spotLst))
     loc['FRETind'] = []
     #reload ungated data for lifetime information
     CLR.loadLifetime()
@@ -755,41 +766,43 @@ def genStats(locLst, outfile = ''):
     saves al FRET indicators of locLst in a Margarita-readable file.
     If there are more spots in a single localisation, they are treated as 
     independant.
+    If unpaired spots exist in a localisation, all unreachable parameters are
+    set to 0.
     If the locLst has paired Green and Yellow entries, each line represents a pair
     If it is unordered, columns are also unordered.
     """
-    FRETind = {}
+    #issue:fnames should also be included
+    statsdict = {}
     spotNames = genSpotNames(locLst)
     #FRETnames contains only single variable FRET indicators
     #empty when locLst['FRETind'] does not exist
     FRETnames = getFRETnames(locLst)
     #ROInames = ['ROI_xstart', 'ROI_ystart', 'ROI_xstop', 'ROI_ystop']
     names = spotNames + FRETnames #+ ROInames# + ['filepath']
-
     for name in names:
-        FRETind[name] = []
+        statsdict[name] = []
     
     for loc in locLst:
-        for spotName in spotNames:
-            attr = spotName[:-1]
-            color = spotName[-1]
-            for spot in loc[color].spotLst:
-                FRETind[spotName].append(getattr(spot, attr))
-        for FRETname in FRETnames:
-            for spot in loc['FRETind']:
-                FRETind[FRETname].append( getattr(spot, FRETname) )
-        #repeat to create equal length lists
-        #for dummy in range(len(loc['G'].spotLst)):
-        #    for i, ROIname in enumerate(ROInames):
-        #        FRETind[ROIname].append( loc['ROI'][i] )
-        #    #FRETind['filepath'].append( loc['filepath'] )
+        maxdyes = max(len(loc['G'].spotLst),len(loc['Y'].spotLst))
+        for i in range(maxdyes):
+            for spotName in spotNames:
+                attr = spotName[:-1]
+                color = spotName[-1]
+                #need to take care of all the possible errors when object does not exist
+                try: attr = getattr(loc[color].spotLst[i], attr)
+                except: attr = 0
+                statsdict[spotName].append(attr)
+            for FRETname in FRETnames:
+                try: attr = getattr(loc['FRETind'][i], FRETname)
+                except: attr = 0
+                statsdict[FRETname].append( attr )
                     
     if outfile:
         print('saving FRET indicators to disc for Margarita')
         header = ''
         values = []
         fmt = ''
-        for name, value in FRETind.items():
+        for name, value in statsdict.items():
             header += name + '\t'
             values.append(np.array(value))
             if np.array(value).dtype == 'float64':
@@ -806,7 +819,14 @@ def genStats(locLst, outfile = ''):
                     fmt = fmt
                    )
         
-    return FRETind
+    return statsdict
+    
+def tryGetattr(obj, attrName):
+    try: 
+        attr = getattr(obj, attrName)
+    except AttributeError:
+        attr = 0
+    return attr
     
 def loadpickle(outname):
     with open(outname, 'rb') as f:
