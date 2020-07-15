@@ -143,7 +143,7 @@ def analyseDir(
 
 
 def analyseLoc(
-    loc, cntr, Ggate = 0, Rgate = 0, Ygate = 0, 
+    loc, cntr, Igate = [0,0,0], ltgate = [0,0,0], 
     winSigma = 3, framestop = 20, rebin = None,
     TACCal = 0.0128, ntacs = 256,
     verbose = False, pxSize = 10, bgphotons = [0,0,0]):
@@ -170,8 +170,8 @@ def analyseLoc(
     outloc = copy.deepcopy(loc)
     
     #reload ptu file
-    CLR = loadGRYimage(outloc['filepath'], Ggate = Ggate, Rgate = Rgate,
-        Ygate = Ygate, ntacs = ntacs, framestop = framestop,
+    CLR = loadGRYimage(outloc['filepath'], Ggate = Igate[0], Rgate = Igate[1],
+        Ygate = Igate[2], ntacs = ntacs, framestop = framestop,
         rebin = rebin)
     #override existing snips with new snips
     for color, bitmap in CLR.workIntensity.__dict__.items():
@@ -188,10 +188,10 @@ def analyseLoc(
     sortSpots(outloc)    
 
     cntr = calcFRETind(CLR, outloc, winSigma, cntr, verbose, 
-        Ggate, Rgate, Ygate, pxSize, rebin, bgphotons)
+        Igate, ltgate, pxSize, rebin, bgphotons)
     return outloc, cntr
     
-def analyseLocLst(locLst, Ggate = 0, Rgate = 0, Ygate = 0, 
+def analyseLocLst(locLst, Igate = [0,0,0], ltgate = [0,0,0],
     winSigma = 3, framestop = 20, rebin = None,
     TACCal = 0.0128, ntacs = 256,
     verbose = False, pxSize = 10, outname = '', bgphotons = [0,0,0]):
@@ -199,8 +199,8 @@ def analyseLocLst(locLst, Ggate = 0, Rgate = 0, Ygate = 0,
     outLst = []
     cntr = 0
     for loc in locLst:
-        outloc, cntr = analyseLoc(loc, cntr, Ggate = Ggate, Rgate = Rgate, 
-            Ygate = Ygate, winSigma = winSigma, framestop = framestop,
+        outloc, cntr = analyseLoc(loc, cntr, Igate = Igate, ltgate = ltgate, 
+            winSigma = winSigma, framestop = framestop,
             rebin = rebin, verbose = verbose, bgphotons = bgphotons)
         print('analysing localisation %i' %cntr)
         outLst.append(outloc)
@@ -396,7 +396,7 @@ def fitNChidistr(p, bins, counts):
     BIC = get_BIC(fitres.nvarys, logLikelihood, samplesize)
     return fitres, AIC, AICc, BIC, logLikelihood
     
-def scanLikelihoodSurface(param_ranges, p, bins, counts):
+def scanLikelihoodSurface(param_ranges, p, bins, counts, verbose = False):
     param_ticks=[]
     param_names=param_ranges.keys()
     for param_name in param_names:
@@ -412,23 +412,25 @@ def scanLikelihoodSurface(param_ranges, p, bins, counts):
         try:
             *_, logLikelihood = fitNChidistr(p, bins, counts)
         except ValueError:
-            print ('fit failed for ' + str(point))
+            if verbose: print ('fit failed for ' + str(point))
             logLikelihood = np.nan
         logLikelihoodSurface[i] = logLikelihood
         if(i % 10 == 0):
-            print ('calculating point ' + str(point))
+            if verbose: print ('calculating point ' + str(point))
     return logLikelihoodSurface.reshape(nDshape)
     
 def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '', 
     title = ''):
     """utility function, works only in 2D"""
     keyy, keyx = param_ranges.keys()
-    bestfit = max(surface.flatten())
+    bestfit = np.nanmax(surface.flatten())
     contourlevels = [bestfit -2, bestfit - 1, bestfit-0.5, bestfit]
     fig, ax = plt.subplots(1,1)
     
     #img = ax.imshow(surface, cmap = 'hot')
-    plt.imshow(surface, cmap = 'hot')
+    vmin = bestfit-5
+    plt.imshow(surface, cmap = 'hot', vmin = vmin, vmax = bestfit)
+    #plt.imshow(surface, cmap = 'hot')
     CS = ax.contour(surface, levels = contourlevels)
     labels = ['13.5% as likely','36% as likely', '60% as likely', 'most likely']
     fmt = {}
@@ -437,11 +439,11 @@ def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '',
     ax.clabel(CS, fmt = fmt, fontsize = 6)
     x_label_list = param_ranges[keyx][::skip]
     ax.set_xticks(np.arange(len(param_ranges[keyx]))[::skip])
-    ax.set_xticklabels(x_label_list)
+    ax.set_xticklabels(['%.1f' % x for x in x_label_list])
     ax.set_xlabel(keyx)
     y_label_list = param_ranges[keyy][::skip]
     ax.set_yticks(np.arange(len(param_ranges[keyy]))[::skip])
-    ax.set_yticklabels(y_label_list)
+    ax.set_yticklabels(['%.1f' % x for x in y_label_list])
     ax.set_ylabel(keyy)
     plt.title(title)
     plt.text
@@ -487,8 +489,20 @@ def plotdistr(dist, bins, fit = None, title = '', modelout = '',
         x = np.arange(0,max(bins),.1)
         p = fit.params
         model = NncChidistr(x, p)
-        plt.plot(x, model)
-    plt.hist(dist, bins = bins)
+        plt.plot(x, model, 'k')
+        i = 0
+        while True:
+            try:
+                model = ncChidistr(x, p['mu%i' % i], p['sig%i' % i], p['A%i' % i], 0)
+                plt.plot(x,model, '--')
+                i+=1
+            except KeyError:
+                bg = np.ones(len(x))*p['bg']
+                plt.plot(x, bg, '--')
+                break
+
+        
+    plt.hist(dist, bins = bins, color = 'c')
     plt.xlabel('distance (nm)')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
     plt.title(title)
@@ -615,26 +629,30 @@ def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2], bgphotons = 0
         No boundaries are implemented.
         """
         tactimes = np.arange(len(TAC)) * TACCal
-        bgArrivalTime = len(TAC) * TACcal / 2
+        bgArrivalTime = len(TAC) * TACCal / 2
         # add TACcal/2 because average arrival time in first bin is TACcal / 2
         #meantac = np.sum(tactimes * TAC) / np.sum(TAC) + TACCal / 2 
-        bgcorTAC = (np.sum(tactimes * TAC) - bgphotons * bgArrivalTime) /
+        bgcorTAC = (np.sum(tactimes * TAC) - bgphotons * bgArrivalTime) / \
                     (np.sum(TAC) - bgphotons)
         if verbose:
             plt.plot(tactimes, TAC)
-            plt.plot(tactimes, expDecay(tactimes, meantac, \
-                    np.sum(TAC) / meantac * TACCal))
+            plt.plot(tactimes, expDecay(tactimes, bgcorTAC, \
+                    np.sum(TAC) / bgcorTAC * TACCal))
             plt.plot(tactimes, np.ones(len(TAC)) * bgphotons / len(TAC))
             plt.show()
-        return meantac
+        return bgcorTAC
 
-def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize,
+def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
                 rebin, bgphotons = [0,0,0]):
     """calc FRET indicators based on intensity and lifetime information
     Takes a loc dict and edits properties of the 'FRETind' entry
     2 winSigma + 1 is the siye of the integration area"""
     npairs = len(loc['G'].spotLst)
     loc['FRETind'] = []
+    #reload ungated data for lifetime information
+    CLR.loadLifetime()
+    if rebin:
+        CLR.rebin(rebin, rebin)
     for i in range(npairs):
         loc['FRETind'].append(FRETind())
     for i in range(npairs):
@@ -653,15 +671,38 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize,
         except IndexError:
             print('ROI touches image borders, skipping')
             continue
-        Gphotons = np.sum(Gsnip)
-        Rphotons = np.sum(Rsnip)
-        Yphotons = np.sum(Ysnip)
+        GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
+        RlifetimeSnip = aid.crop(CLR.workLifetime.R, RROI)
+        YlifetimeSnip = aid.crop(CLR.workLifetime.Y, YROI)
+        Gsnip = np.sum(GlifetimeSnip[:,:,Igate[0]:150], axis = 2)
+        Rsnip = np.sum(RlifetimeSnip[:,:,Igate[1]:150], axis = 2)
+        Ysnip = np.sum(YlifetimeSnip[:,:,Igate[2]:150], axis = 2)
+        #intensity based indicators
+        loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
+        loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
+        Gphotons = np.sum(GlifetimeSnip[:,:,Igate[0]:150])
+        Rphotons = np.sum(RlifetimeSnip[:,:,Igate[1]:150])
+        Yphotons = np.sum(YlifetimeSnip[:,:,Igate[2]:150])
         loc['FRETind'][i].NG = Gphotons
         loc['FRETind'][i].NR = Rphotons
         loc['FRETind'][i].NY = Yphotons
         loc['FRETind'][i].proxRatio = Rphotons / (Gphotons + Rphotons)
         loc['FRETind'][i].stoichiometry = \
             (Gphotons + Rphotons) / (Gphotons + Rphotons + Yphotons)
+        loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))
+        loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC[ltgate[0]:150], \
+                                        0.128, verbose, bgphotons = bgphotons[0])
+        loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC[ltgate[1]:150], \
+                                        0.128, verbose, bgphotons = bgphotons[1])
+        loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC[ltgate[2]:150], \
+                                        0.128, verbose, bgphotons = bgphotons[2])
+        distx = (loc['G'].spotLst[i].posx - loc['Y'].spotLst[i].posx )* pxSize
+        disty = (loc['G'].spotLst[i].posy - loc['Y'].spotLst[i].posy )* pxSize
+        loc['FRETind'][i].distx = distx
+        loc['FRETind'][i].disty = disty
+        loc['FRETind'][i].dist = np.linalg.norm([distx, disty])
         if verbose: aid.plotBitmapROI( loc['G'].bitmap, loc['G'].spotLst)
         if verbose:
             fig, (ax1, ax2, ax3) = plt.subplots(1,3)
@@ -672,30 +713,9 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Ggate, Rgate, Ygate, pxSize,
             ax3.imshow(Ysnip)
             ax3.set_title('Yellow channel')
             plt.show()
+            
 
-        #reload ungated data for lifetime information
-        CLR.loadLifetime()
-        if rebin:
-            CLR.rebin(rebin, rebin)
-        loc['FRETind'][i].Gbg = loc['G'].spotLst[i].bg
-        loc['FRETind'][i].Ybg = loc['Y'].spotLst[i].bg
-        GlifetimeSnip = aid.crop(CLR.workLifetime.G, GROI)
-        loc['FRETind'][i].GTAC = np.sum(GlifetimeSnip, axis = (0,1))
-        loc['FRETind'][i].tauG = fitTau(loc['FRETind'][i].GTAC[Ggate:150], \
-                                        0.128, verbose, bgphotons = bgphotons[0])
-        RlifetimeSnip = aid.crop(CLR.workLifetime.R, RROI)
-        loc['FRETind'][i].RTAC = np.sum(RlifetimeSnip, axis = (0,1))
-        loc['FRETind'][i].tauR = fitTau(loc['FRETind'][i].RTAC[Rgate:150], \
-                                        0.128, verbose, bgphotons = bgphotons[1])
-        YlifetimeSnip = aid.crop(CLR.workLifetime.Y, YROI)      
-        loc['FRETind'][i].YTAC = np.sum(YlifetimeSnip, axis = (0,1))
-        loc['FRETind'][i].tauY = fitTau(loc['FRETind'][i].YTAC[Ygate:150], \
-                                        0.128, verbose, bgphotons = bgphotons[2])
-        distx = (loc['G'].spotLst[i].posx - loc['Y'].spotLst[i].posx )* pxSize
-        disty = (loc['G'].spotLst[i].posy - loc['Y'].spotLst[i].posy )* pxSize
-        loc['FRETind'][i].distx = distx
-        loc['FRETind'][i].disty = disty
-        loc['FRETind'][i].dist = np.linalg.norm([distx, disty])
+
 
         cntr += 1
     return cntr
@@ -872,11 +892,13 @@ def subensembleTAC(locLst, ntacs = None, outfile = None):
     eRTAC = np.zeros(ntacs)
     eYTAC = np.zeros(ntacs)
     dummy_IRF = np.zeros(2 * ntacs)
+    
     for loc in locLst:
         for spot in loc['FRETind']:
             eGTAC += spot.GTAC
             eRTAC += spot.RTAC
             eYTAC += spot.YTAC
+   
     eGTAC = np.concatenate((eGTAC, np.zeros(ntacs)))
     eRTAC = np.concatenate((eRTAC, np.zeros(ntacs)))
     eYTAC = np.concatenate((eYTAC, np.zeros(ntacs)))

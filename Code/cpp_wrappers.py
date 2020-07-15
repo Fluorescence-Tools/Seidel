@@ -8,16 +8,17 @@ Created on Fri Mar 29 11:53:04 2019
 import numpy as np
 import ctypes
 import os
+wdir = os.path.dirname(__file__)
+readPTU = ctypes.WinDLL (os.path.join(wdir, "wrapped", "PQ_PTU.dll"))
 
-readPTU = ctypes.WinDLL (r"S:\64bit dll 's\PQ_PTU_sf\release\PQ_PTU.dll")
 #_SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\ProcessPhotonStream.dll').SplitOnTacs
 debug = False
 if debug:
     _SplitOnTacs = ctypes.CDLL(r'K:\vanderVoortN\FRC\dev\readPTU\x64\Debug\ProcessPhotonStream.dll').SplitOnTacs
 else:
     wdir = os.path.dirname(__file__)
-    _SplitOnTacs = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).SplitOnTacs
-    _genGRYlifetime = ctypes.CDLL(os.path.join(wdir, r'ProcessPhotonStream.dll')).genGRYlifetime
+    _SplitOnTacs = ctypes.CDLL(os.path.join(wdir, "wrapped", 'ProcessPhotonStream.dll')).SplitOnTacs
+    _genGRYlifetime = ctypes.CDLL(os.path.join(wdir, "wrapped", 'ProcessPhotonStream.dll')).genGRYlifetime
 
 
 def ptuHeader_wrap (fname):
@@ -105,7 +106,7 @@ def SplitOnTacs_wrap(eventN, tac, t, can, dimX, dimY, dwelltime, counttime, NumR
     C_dimY = ctypes.c_int(dimY)
     C_dwelltime = ctypes.c_float(dwelltime)
     C_counttime = ctypes.c_float(counttime)
-    C_NumRecords = ctypes.c_int(NumRecords)
+    C_NumRecords = ctypes.c_longlong(NumRecords)
     uselines_p = uselines.ctypes.data_as(c_ubyte_p)
     C_gate = ctypes.c_int(gate)
     C_nlines = ctypes.c_int(uselines.shape[0])
@@ -212,7 +213,7 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range,
     C_TAC_range = ctypes.c_int(TAC_range)
     C_dwelltime = ctypes.c_float(dwelltime)
     C_counttime = ctypes.c_float(counttime)
-    C_NumRecords = ctypes.c_int(NumRecords)
+    C_NumRecords = ctypes.c_longlong(NumRecords)
     uselines_p = uselines.ctypes.data_as(c_ubyte_p)
     Gchan_p = Gchan.ctypes.data_as(c_ushort_p)
     Rchan_p = Rchan.ctypes.data_as(c_ushort_p)
