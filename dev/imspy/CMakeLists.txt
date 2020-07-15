@@ -8,9 +8,7 @@ project(imspy
 add_library(imspy_c SHARED
 	src/ProcessPhotonStream.cpp
 	)
-
 set_property(TARGET imspy_c PROPERTY CXX_STANDARD 11)
-
 
 target_include_directories(imspy_c PUBLIC
 	${PROJECT_SOURCE_DIR}/include
