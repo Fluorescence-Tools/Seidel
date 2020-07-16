@@ -798,26 +798,9 @@ def genStats(locLst, outfile = ''):
                 statsdict[FRETname].append( attr )
                     
     if outfile:
-        print('saving FRET indicators to disc for Margarita')
-        header = ''
-        values = []
-        fmt = ''
-        for name, value in statsdict.items():
-            header += name + '\t'
-            values.append(np.array(value))
-            if np.array(value).dtype == 'float64':
-                fmt += '%.3f\t'
-            elif np.array(value).dtype == 'int32':
-                fmt += '%d\t'
-            elif np.array(value).dtype == '<U104':
-                fmt += '%U\t'
-        values = np.array(values).transpose()
-        np.savetxt(outfile,
-                    values,
-                    #delimiter = '\t',
-                    header = header,
-                    fmt = fmt
-                   )
+        print('saving spectroscopic parameters to disc for Margarita')
+        statsDataFrame = pd.DataFrame(statsdict)
+        statsDataFrame.to_csv(outfile, sep = '\t', float_format = '%.3f')
         
     return statsdict
     
