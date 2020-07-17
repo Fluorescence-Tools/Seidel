@@ -480,7 +480,7 @@ def whichChiIsBest(bins, counts, verbose = False):
     return fitresL[bestfit]
     
 def plotdistr(dist, bins, fit = None, title = '', modelout = '', 
-    plotout = ''):
+    plotout = '', grid = False):
     """plots a histogrammed disttribution with bin position bins and 
     counts in each bin. fit is an lmfit.MinimizerResult object, if it is given,
     a model is plotted too.
@@ -507,6 +507,8 @@ def plotdistr(dist, bins, fit = None, title = '', modelout = '',
     plt.xlabel('distance (nm)')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
     plt.title(title)
+    if grid:
+        plt.grid()
     if plotout:
         plt.savefig(plotout, dpi = 300, bbox_inches = 'tight')
     if modelout:
