@@ -17,6 +17,7 @@ import lmfit
 import aid_functions as aid
 from skimage import feature
 from itertools import product
+import arcane
 
 class FRETind:
     def __init__(self):
@@ -761,7 +762,7 @@ def genSpotNames(locLst):
             names.append(name + color)
     return names
     
-def genStats(locLst, outfile = ''):
+def genStats(locLst, outfile = '', isforMargarita = False):
     """
     saves al FRET indicators of locLst in a Margarita-readable file.
     If there are more spots in a single localisation, they are treated as 
@@ -778,7 +779,7 @@ def genStats(locLst, outfile = ''):
     #empty when locLst['FRETind'] does not exist
     FRETnames = getFRETnames(locLst)
     #ROInames = ['ROI_xstart', 'ROI_ystart', 'ROI_xstop', 'ROI_ystop']
-    names = spotNames + FRETnames #+ ROInames# + ['filepath']
+    names = spotNames + FRETnames + ['filepath']#+ ROInames# + ['filepath']
     for name in names:
         statsdict[name] = []
     
@@ -796,10 +797,13 @@ def genStats(locLst, outfile = ''):
                 try: attr = getattr(loc['FRETind'][i], FRETname)
                 except: attr = 0
                 statsdict[FRETname].append( attr )
+            statsdict['filepath'].append(loc['filepath'])
                     
     if outfile:
         print('saving spectroscopic parameters to disc for Margarita')
         statsDataFrame = pd.DataFrame(statsdict)
+        if isforMargarita:
+            statsDataFrame = arcane.renameDataFrameForMargarita(statsDataFrame)
         statsDataFrame.to_csv(outfile, sep = '\t', float_format = '%.3f')
         
     return statsdict
@@ -878,6 +882,22 @@ def saveDict(dictionary, outfile):
                 line += str(dictionary[key][i]) + '\t'
             line += '\n'
             f.write(line)
+            
+def export_position(locLst, outdir):
+    """writes all fitted positions to text files in outdir. Each entry gets one text file.
+    Data columns: (name, posx, posy)"""
+    try:
+        os.mkdir(outdir)
+    except FileExistsError:
+        pass
+    for loc in locLst:
+        ext = loc['filepath'][-24:-4]
+        fname = os.path.join(outdir, ext + '_position.txt')
+        with open(fname, 'w') as f:
+            f.write('name\tposx(pixels)\tposy(pixels)\n')
+            for color in ['G', 'R', 'Y']:
+                for i, spot in enumerate(loc[color].spotLst):
+                    f.write('%s\t%.3f\t%.3f\n' % (color + str(i), spot.posx, spot.posy))
             
 def subensembleTAC(locLst, ntacs = None, outfile = None):
     """sum all TAC decays to do subensemblefitting"""
