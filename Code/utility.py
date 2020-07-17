@@ -115,6 +115,8 @@ def analyzeRuler1D1A(locLst, resdir, identifier, ntacs = 256,
     locLst_an = df.analyseLocLst(locLst, Igate = [0,0,0], ltgate = [25, 25, 25],
                                     verbose = False, framestop = 20, outname = outname,
                                     ntacs = ntacs, bgphotons = [1.1, 5.0, 5.6])
+    posdir = os.path.join(resdir, 'positions')
+    df.export_position(locLst, posdir)
     #an data contains always the full TCSPC decay
     df.subensembleTAC(locLst_an, ntacs = ntacs, outfile = TACout)
     stats = df.genStats(locLst_an, outfile = statsout)
@@ -129,6 +131,8 @@ def analyzeOrigami(locLst, resdir, identifier, ntacs = 256):
     locLst_an = df.analyseLocLst(locLst, Igate = [0,0,0], ltgate = [29, 29, 29],
                                     verbose = False, framestop = 20, outname = outname,
                                     ntacs = ntacs, bgphotons = [1.1, 5.0, 5.6])
+    posdir = os.path.join(resdir, 'positions')
+    df.export_position(locLst, posdir)
     #an data contains always the full TCSPC decay
     df.subensembleTAC(locLst_an, ntacs = ntacs, outfile = TACout)
     stats = df.genStats(locLst_an, outfile = statsout)
