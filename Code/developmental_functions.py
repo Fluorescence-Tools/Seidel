@@ -594,10 +594,10 @@ def sortSpots(loc):
     Ycoords = np.zeros([NY, 2])
     alldist = np.zeros([NG, NY])
 
-    for i, el in enumerate(loc['G'].spotLst):
-        Gcoords[i] = np.array([el.posx, el.posy])
-    for i, el in enumerate(loc['Y'].spotLst):
-        Ycoords[i] = np.array([el.posx, el.posy])
+    for i, spot in enumerate(loc['G'].spotLst):
+        Gcoords[i] = getCoordFromSpot(spot)
+    for i, spot in enumerate(loc['Y'].spotLst):
+        Ycoords[i] = getCoordFromSpot(spot)
     
     for i in range(NG):
         for j in range(NY):
@@ -619,6 +619,8 @@ def sortSpots(loc):
     loc['G'].spotLst[:] = [loc['G'].spotLst[i] for i in sortedG]
     loc['Y'].spotLst[:] = [loc['Y'].spotLst[i] for i in sortedY]
 
+def getCoordFromSpot(spot):
+    return np.array([spot.posx, spot.posy])
 
 #def cropSpot(xcenter, ycenter, bitmap, winSigma):
 #    """crops 2D or 3D data in 2D
@@ -925,6 +927,10 @@ def subensembleTAC(locLst, ntacs = None, outfile = None):
     eYTAC = np.concatenate((eYTAC, np.zeros(ntacs)))
     dummy_IRF[0] = 1
     if outfile:
+        outdir = os.path.split(outfile)[0]
+        print(outdir)
+        try: os.mkdir(outdir)
+        except: pass
         outG = outfile[:-4] + '_eGTAC.txt'
         outR = outfile[:-4] + '_eRTAC.txt'
         outY = outfile[:-4] + '_eYTAC.txt'
