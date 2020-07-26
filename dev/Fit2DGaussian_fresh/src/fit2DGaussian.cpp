@@ -25,8 +25,8 @@ static double* bg_surface = NULL;
 static int* threshold_surface = NULL;
 static int last_threshold = -108;
 
-int osize;																		//object size
-int osize_sq;																	//object area
+int osize;//object size
+int osize_sq;//object area
 int* icut;
 
 void save_array(double *a, int l)

@@ -8,7 +8,7 @@
 #include<vector>
 #include <Eigen/Core>
 
-typedef std::vector<long long int> int64vec;
+typedef std::vector<uint64_t> uint64vec;
 
 class imOpts{
 public:
@@ -44,8 +44,8 @@ public:
 	std::vector<unsigned char> can;
 	int tacmin;//microtime range
 	int tacmax;
-	long long tmin;// macrotime range
-	long long tmax; 
+	uint64_t tmin;// macrotime range
+	uint64_t tmax; 
 	int line_id;//e.g. line_id = 1
 	//for some reason this variable gets really slow when accessed from Python
 	//Idea 1: change to Eigen vector like so:
@@ -63,9 +63,9 @@ class imspy {
 private:
 	//class variables
 	//variables are passed in initialization list
-	const std::vector<int> tac;
-	const int64vec t;
-	const std::vector<unsigned char> can;
+	const Eigen::ArrayXi tac;
+	const Eigen::Array<uint64_t, Eigen::Dynamic, 1> t;
+	const Eigen::Array<unsigned char, Eigen::Dynamic, 1> can;
 	const imOpts ImOpts;
 	//x, y, frame are calculated in constructor and cannot be const
 	std::vector<float> x;
@@ -78,9 +78,9 @@ private:
 public:
 	//constructor
 	imspy(
-		std::vector<int> tac,
-		int64vec t,
-		std::vector<unsigned char> can,
+		Eigen::ArrayXi tac,
+		Eigen::Array<uint64_t, Eigen::Dynamic, 1> t,
+		Eigen::Array<unsigned char, Eigen::Dynamic, 1> can,
 		imOpts Imopts
 		) 
 		: tac(tac), t(t), can(can), ImOpts(Imopts) {
@@ -91,19 +91,20 @@ public:
 	};
 
 
-	 //build indexes for each imChannel
-	int64vec indexchannels(std::vector<imChannel> Channels);
+	//build indexes for each imChannel
+	uint64vec indexchannel(imChannel Channel);
 	void ProcessPhotonStream(); //obsolete
 
 
 	//get functions
 	//Eigen::ArrayXi gettac(int64vec index);
 	Eigen::ArrayXi gettac();
-	Eigen::Array< long long, Eigen::Dynamic, 1> gett(int64vec index);
-	Eigen::Array< unsigned char, Eigen::Dynamic, 1> getcan(int64vec index);
-	Eigen::ArrayXf getx(int64vec index);
-	Eigen::ArrayXf gety(int64vec index);
-	Eigen::ArrayXi getslice(int64vec index);
+	Eigen::ArrayXi gettac(uint64vec index);
+	Eigen::Array< long long, Eigen::Dynamic, 1> gett(uint64vec index);
+	Eigen::Array< unsigned char, Eigen::Dynamic, 1> getcan(uint64vec index);
+	Eigen::ArrayXf getx(uint64vec index);
+	Eigen::ArrayXf gety(uint64vec index);
+	Eigen::ArrayXi getslice(uint64vec index);
 
 
 

@@ -14,7 +14,14 @@ from importlib import reload
 import matplotlib.pyplot as plt
 
 import sys
-root = r"C:\Users\Niek\work\FRC\dev\imspy"
+import socket
+host = socket.gethostname()
+if host == 'ncp2-32r32c':
+    root = r'K:\vanderVoortN\FRC\dev\imspy'
+elif host == 'spinvis':
+    root = r"C:\Users\Niek\work\FRC\dev\imspy"
+else:
+    raise NotImplemented
 sys.path.append(os.path.join(root, r"build\Debug"))
 import imspy as spy
 #%% data file
@@ -35,8 +42,8 @@ ImOpts = spy.imOpts()
 ImOpts.line_ids = [1, 2]
 ImOpts.dwelltime = dwelltime
 ImOpts.counttime = counttime
-#ImOpts.NumRecords = NumRecords
-ImOpts.NumRecords = 1000
+ImOpts.NumRecords = NumRecords
+#ImOpts.NumRecords = 1000
 ImOpts.linestep = 25e-9
 ImOpts.pxsize = 50
 
@@ -52,17 +59,8 @@ G = spy.imChannel()
 G.line_id = 1
 G.can = [0,2]
 Channels = [GP, GS, G]
-#pass vars as list
+test_image = spy.imspy(tac, t, can, ImOpts)
 
 
-#%%
-test_image = spy.imspy(list(tac), list(t), list(can), ImOpts)
 #%% execute func
-#Channels = spy.ProcessPhotonStream(tac, t, can, ImOpts, Channels)
-test_image.ProcessPhotonStream()
-
-
-#%%
-
-test_image.Channels[0].gentacdecay(257)
-print(test_image.Channels[0].tacdecay)
+index = test_image.indexchannel(G)

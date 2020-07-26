@@ -5,6 +5,7 @@
 #include "ProcessPhotonStream.h"
 #include <stdio.h>
 #include <Eigen/Core>
+//#include <Eigen/Dense>
 #include <vector>
 #include <algorithm>
 
@@ -122,9 +123,8 @@ void imspy::calcxyslice() {
 	// pos = scanspeed * time_since_line_start
 	float macrot2pos = ImOpts.pxsize * ImOpts.counttime / ImOpts.dwelltime;
 
-
 	for (i = 0; i < ImOpts.NumRecords - 1; i++) {
-
+		//this code appears twice. That is bad.
 		if (can[i] == 65) {
 			inscan = true;
 			startline = t[i];
@@ -153,8 +153,55 @@ void imspy::calcxyslice() {
 	}
 }
 
+uint64vec imspy::indexchannel(imChannel Ch)
+{
+	uint64vec index;
+	index.reserve(1024);
+	int mode_iter;
+	long long i;
+	int currentline = 0;
+	int currentline_id = 0;
+	bool incan, intac, in_t, inmode, inscan = false;
+
+	for (i = 0; i < ImOpts.NumRecords - 1; i++) {
+		//this code appears twice. That is bad.
+		//do line bookkeeping to know if the photon is inscan and
+		//to select alternating line modes
+		if (can[i] == 65) {
+			inscan = true;
+			continue;
+		}
+		else if (can[i] == 66) {
+			inscan = false;
+			currentline++;//line numbers start with 0
+			mode_iter = currentline % ImOpts.line_ids.size();
+			currentline_id = ImOpts.line_ids[mode_iter];
+			continue;
+		}
+		else if (can[i] == 68) {
+			currentline = 0;
+			continue;
+		}
+
+		intac = tac[i] > Ch.tacmin && tac[i] < Ch.tacmax;
+		in_t = t[i] > Ch.tmin && t[i] < Ch.tmax;
+		inmode = Ch.line_id == currentline_id;
+		incan = std::find(Ch.can.begin(), Ch.can.end(), can[i])
+			!= Ch.can.end();
+		if (intac && in_t && incan && inscan && inmode) {
+			index.push_back(i);
+		}
+	}
+	return index;
+}
+
 Eigen::ArrayXi imspy::gettac() {
-	const int* tacptr = &tac[0];
-	Eigen::Map<Eigen::ArrayXi> outtac(tacptr, tac.size());
-	return outtac;
+	return tac;
+}
+
+Eigen::ArrayXi imspy::gettac(uint64vec index) {
+	//std::vector<int> ind{ 4,2,5,3,2 }; //test
+	//return tac(ind);
+	Eigen::ArrayXi A = Eigen::ArrayXi::Random(10);
+	return A(Eigen::all);
 }

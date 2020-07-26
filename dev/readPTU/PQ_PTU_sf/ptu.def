@@ -1,7 +1,0 @@
-; ptu.def : Deklariert die Modulparameter für die DLL.
-
-LIBRARY      "PQ_PTU"
-
-EXPORTS
-      PQ_ptu_sf
-	  PQ_ptuHeader_sf

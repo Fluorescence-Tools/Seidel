@@ -40,8 +40,11 @@ class GaussSpot:
         self.ystart = ystart
         self.xstop = xstop
         self.ystop = ystop
+    def setNspots(self, Nspots):
+        self.Nspots = Nspots
     def getROI(self):
         return np.array([self.xstart, self.ystart, self.xstop, self.ystop])
+
         
 class Channel:
     def __init__(self, bitmap):
@@ -52,26 +55,28 @@ class Channel:
         sigma = params[3]
         eps = params[4]
         bg = params[5]
-        for i in range(params[16].astype(np.int) + 1):
+        Nspots = params[16].astype(np.int) + 1
+        for i in range(Nspots):
             if i == 0:
                 posx = params[0] + ROI[0]
                 posy = params[1] + ROI[1]
                 A = params[2]
-                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
-                self.spotLst[-1].setROI(*ROI)
+                self.fillSpot(posx, posy, A, sigma, eps, bg, ROI, Nspots)
             if i == 1:
                 posx = params[6] + ROI[0]
                 posy = params[7] + ROI[1]
                 A = params[8]
-                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
-                self.spotLst[-1].setROI(*ROI)
+                self.fillSpot(posx, posy, A, sigma, eps, bg, ROI, Nspots)
             if i == 2:
                 posx = params[9] + ROI[0]
                 posy = params[10] + ROI[1]
                 A = params[11]
-                self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
-                self.spotLst[-1].setROI(*ROI)
-                
+                self.fillSpot(posx, posy, A, sigma, eps, bg, ROI, Nspots)
+
+    def fillSpot(self, posx, posy, A, sigma, eps, bg, ROI, Nspots):
+        self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
+        self.spotLst[-1].setROI(*ROI)
+        self.spotLst[-1].setNspots(Nspots)
                 
 ################## Gauss fitting and judging functions ############
 
