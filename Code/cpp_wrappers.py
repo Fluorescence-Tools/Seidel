@@ -40,6 +40,9 @@ def ptuHeader_wrap (fname):
     return readPTU.PQ_ptuHeader_sf(fpin,fpout)
 
 def ptu_wrap(fname, NumRecords):
+	#issue: for new imspy reading lists are more convenient and this
+	#is more close to ctypes anyway
+	#need to write a function that returns list types
     #initialize variables in memory for the c routine to write in
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
