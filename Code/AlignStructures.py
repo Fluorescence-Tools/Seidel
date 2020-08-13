@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rmsd
 import copy
+import developmental_functions as df
 
 ################################################################################
 class fourPointSet:
@@ -227,7 +228,7 @@ class ensemblePointSet:
         self.callBatchFun('plotPoints', self.pxSize)
         if hasattr(self, 'anchor'):
             anchor = copy.deepcopy(self.anchor) #localbound var
-            anchor *= pxSize
+            anchor *= self.pxSize
             plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 100)
         plt.axis('equal')
         plt.grid(True)
