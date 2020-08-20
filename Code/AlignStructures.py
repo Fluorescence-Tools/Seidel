@@ -7,6 +7,7 @@ import numpy as np
 import rmsd
 import copy
 import developmental_functions as df
+from matplotlib import patches
 
 ################################################################################
 class fourPointSet:
@@ -29,12 +30,22 @@ class fourPointSet:
         m = np.dot(j, [x, y])
         return float(m.T[0]), float(m.T[1])
     
-    def __init__(self, loc):
-        self.points = dict.fromkeys(self.keys, 0)
-        self.points['D1'] = np.array([ loc['G'].spotLst[0].posx, loc['G'].spotLst[0].posy ])
-        self.points['D2'] = np.array([ loc['G'].spotLst[1].posx, loc['G'].spotLst[1].posy ])
-        self.points['A1'] = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
-        self.points['A2'] = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
+
+        
+    def __init__(self, pointArr):
+        assert(len(self.keys) == pointArr.shape[0])
+        self.points = {}
+        for key, point in zip(self.keys, pointArr):
+            self.points[key] = point
+        
+    @classmethod
+    def fromLoc(cls, loc):
+        D1 = np.array([ loc['G'].spotLst[0].posx, loc['G'].spotLst[0].posy ])
+        D2 = np.array([ loc['G'].spotLst[1].posx, loc['G'].spotLst[1].posy ])
+        A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
+        A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
+        pointArr = np.array([D1, D2, A1, A2])
+        return cls(pointArr)
                                      
     def RepositionToPoint(self, pointname):
         """pointname is e.g. 'A1'"""
@@ -126,8 +137,22 @@ class fourPointSet:
         plt.scatter(*self.points['A1'] * pxSize, c = c[2], marker = '.')
         plt.scatter(*self.points['A2'] * pxSize, c = c[3], marker = '.')
         return
-        
-        
+    def getDistance(self, name1, name2):
+        return np.linalg.norm(self.getDisplacement(name1, name2))
+    def getDisplacement(self, name1, name2):
+        return self.points[name2] - self.points[name1]
+    def getFourPointAngle(self, name1, name2, name3, name4):
+        """
+        calculates angle between AB and CD vectors where points ABCD are denoted
+        by name1, name2, name3, name 4 respectively.
+        Rotates the whole structure such that AB has angle 0. Then the angle of 
+        CD denotes the angle of AB and CD.
+        """
+        self.calcAngle(name1, name2)
+        self.rotate()
+        CD = self.getDisplacement(name3, name4)
+        #arctan2 takes first y, then x.
+        return np.arctan2(CD[1], CD[0])
 ################################################################################
 class ensemblePointSet:
     """operates on an ensemble of point structures, E.g. an ensemble of origami 
@@ -160,9 +185,9 @@ class ensemblePointSet:
     """
     def __init__(self, locLst, pxSize):
         self.pointsets = []
-        self.locLst = locLst # keeping the raw data for now
+        #self.locLst = locLst # keeping the raw data for now
         for loc in locLst:
-            self.pointsets.append(fourPointSet(loc))
+            self.pointsets.append(fourPointSet.fromLoc(loc))
         self.Nentries = len(self.pointsets)
         self.pxSize = pxSize
         return
@@ -185,7 +210,8 @@ class ensemblePointSet:
         return out #out can be anything
     def batchRmsd(self):
         """uses an external rmsd library to align all structures to an anchor"""
-        self.anchor -= rmsd.centroid(self.anchor)
+        anchor = self.anchor.getPoints() #convert to np arr
+        anchor -= rmsd.centroid(anchor)
         self.scores = []
         for ps in self.pointsets:
             #convert to numpy array for rmsd lib
@@ -193,9 +219,9 @@ class ensemblePointSet:
             #potentially the fun rmsd.kabsch_rmsd does multiple steps in one
             #but I don't understand what it does exatly
             psArr -= rmsd.centroid(psArr)
-            U = rmsd.kabsch(psArr, self.anchor)
+            U = rmsd.kabsch(psArr, anchor)
             psArr = np.dot(psArr, U)
-            self.scores.append(rmsd.rmsd(psArr, self.anchor))
+            self.scores.append(rmsd.rmsd(psArr, anchor))
             ps.setPoints(psArr)
         return
     def pruneByScore(self, minscore):
@@ -209,25 +235,29 @@ class ensemblePointSet:
         return prunedIds
     def genAnchorFromMean(self):
         pointsetArr = np.array(self.callBatchFun('getPoints'))
-        self.anchor = np.mean(pointsetArr, axis = 0)
+        pointArr = np.mean(pointsetArr, axis = 0)
+        self.anchor = fourPointSet(pointArr)
         return
-    def genAnchorFromModel(self, H2H = 2.7, pxSize = 10):
+    def genAnchorFromModel(self, H2H = 2.7):
         """distances based on calculations made by Anders based on the number 
         of strands and helices separating the dyes"""
         A1 = np.array([0,0])
         A2 = A1 + np.array([74.59, - 5*H2H])
         D1 = A1 + np.array([0, 2 * H2H])
         D2 = A2 + np.array([0, 6 * H2H])
-        self.anchor = np.array([A1, A2, D1, D2]) / pxSize
+        pointArr = np.array([D1, D2, A1, A2]) / self.pxSize
+        self.anchor = fourPointSet(pointArr)
         return
-    
+    def genAnchorFromPointset(self, pointsetID):
+        self.anchor = self.pointsets[pointsetID]
+        return
     def plotPointsets(self, c = ['orange', 'orange', 'r', 'r'], outfile = None, \
         title = None, xlim = [-60, 60]):
         fontsize = 24
         plt.figure(figsize=(10,10))
         self.callBatchFun('plotPoints', self.pxSize)
         if hasattr(self, 'anchor'):
-            anchor = copy.deepcopy(self.anchor) #localbound var
+            anchor = self.anchor.getPoints() #localbound var
             anchor *= self.pxSize
             plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 100)
         plt.axis('equal')
@@ -240,5 +270,119 @@ class ensemblePointSet:
         plt.title(title, size = fontsize)
         if outfile:
             plt.savefig(outfile, bbox_inches = 'tight', dpi = 300)
-        plt.show()
+        #plt.show()
+        return plt.gcf()
+        
+    def plotPairDistance(self, pointname1, pointname2, 
+        bins = np.arange(0,100,2), alpha = 1):
+        dist = np.array(self.callBatchFun('getDistance', pointname1, pointname2))
+        dist *= self.pxSize
+        plt.hist(dist, bins = bins, alpha = alpha)
         return
+    def plotAngle(self, pointname1, pointname2, pointname3, pointname4, **axKwargs):
+        #get all data
+        d, d_mean, d_std, d_meanstd, d_model, polar, polar_mean, polar_std, polar_meanstd, polar_model= \
+            self.getPointPairStats(pointname1, pointname2, pointname3, pointname4)
+        #plot points
+        r, phi = polar.T
+        p = plt.polar(phi, r, '.', **axKwargs)
+        #plot mean
+        r_mean, phi_mean = polar_mean
+        r_meanstd, phi_meanstd = polar_meanstd
+        darkc = lighten_color(p[0].get_color(), 1.2)
+        plt.polar(phi_mean, r_mean, '+', 
+            c = darkc, 
+            markersize = 10, markeredgewidth = 2)
+
+        #attempt to draw uncertainty range
+        # ax = plt.gca()
+        # draw_circle = patches.Ellipse(d_mean, d_meanstd[0], d_meanstd[1], 
+            # color = darkc, alpha = 0.4,
+            # transform=ax.transData._b)
+        # ax.add_artist(draw_circle)
+        
+        #plot model expectation value
+        r_model, phi_model = polar_model
+        plt.polar(phi_model, r_model, '*',
+            markersize = 10, markeredgewidth = 1,
+            c=darkc )
+        return
+    def getPointPairStats(self, axisPoint1, axisPoint2, pairPoint1, pairPoint2,
+        verbose = False, title = 'some distance'):
+        #orient the structure according to two axisPoints on the x axis
+        self.callBatchFun('calcAngle', axisPoint1, axisPoint2)
+        self.callBatchFun('rotate')
+        #get distances
+        d = self.callBatchFun('getDisplacement', pairPoint1, pairPoint2)
+        d = np.array(d) * self.pxSize
+        d_mean = np.mean(d, axis = 0)
+        d_std = np.std(d, axis = 0)
+        d_meanstd = d_std / np.sqrt(d.shape[0])
+        #unsure what the correct treatment in polar coordinates is. Have asked Oleg.
+        polar = np.array([[np.linalg.norm( el ), np.arctan2(el[1], el[0])]
+                     for el in d])
+        # polar_mean = [np.linalg.norm( d_mean ), 
+            # np.rad2deg(np.arctan2(d_mean[1], d_mean[0]))]
+        # polar_std = np.std(polar, axis = 0)
+        # polar_meanstd = polar_std / np.sqrt(d.shape[0])
+        polar_mean = cart2pol(*d_mean)
+        #take perpendicular component of std, divide by r_mean.
+        perpendicular_std = np.linalg.norm([d_std[0] * np.sin(polar_mean[1]), d_std[1] * np.cos(polar_mean[1])])
+        phi_std = np.arctan2(perpendicular_std , polar_mean[0])
+        r_std = np.linalg.norm([d_std[0] * np.cos(polar_mean[1]), d_std[1] * np.sin(polar_mean[1])])
+        polar_std = [r_std, phi_std]
+        polar_meanstd = polar_std / np.sqrt(d.shape[0])
+        
+        #calc model points
+        self.anchor.calcAngle(axisPoint1, axisPoint2)
+        self.anchor.rotate()
+        d_model = self.anchor.getDisplacement(pairPoint1, pairPoint2) * self.pxSize
+        polar_model = cart2pol(*d_model)
+        if verbose:
+            print(title)
+            print('(x,y)')
+            print('mean is (%.2f, %.2f)' % (d_mean[0], d_mean[1]))
+            print('uncertainty of mean is (%.2f, %.2f)'% (d_meanstd[0], d_meanstd[1]))
+            print('model is (%.2f, %.2f)' % (d_model[0], d_model[1]))
+            print('spread is (%.2f, %.2f)\n'% (d_std[0], d_std[1]))
+            print('!!! all polar statistics transformed from cartesian space!!!')
+            print('!!!approach unverified!!!')
+            print('(r,phi)')
+            print('mean is (%.2f, %.2f)' % (polar_mean[0], np.rad2deg(polar_mean[1])))
+            print('uncertainty of mean is (%.2f, %.2f)'% (polar_meanstd[0], np.rad2deg(polar_meanstd[1])))
+            print('model is (%.2f, %.2f)' % (polar_model[0], np.rad2deg(polar_model[1])))
+            print('spread is (%.2f, %.2f)\n'% (polar_std[0], np.rad2deg(polar_std[1])))
+        #might want to return the variables later
+        return d, d_mean, d_std, d_meanstd, d_model, polar, polar_mean, polar_std, polar_meanstd, polar_model
+        
+        
+import numpy as np
+
+def cart2pol(x, y):
+    rho = np.sqrt(x**2 + y**2)
+    phi = np.arctan2(y, x)
+    return(rho, phi)
+
+def pol2cart(rho, phi):
+    x = rho * np.cos(phi)
+    y = rho * np.sin(phi)
+    return(x, y)
+
+def lighten_color(color, amount=0.5):
+    """
+    Lightens the given color by multiplying (1-luminosity) by the given amount.
+    Input can be matplotlib color string, hex string, or RGB tuple.
+
+    Examples:
+    >> lighten_color('g', 0.3)
+    >> lighten_color('#F034A3', 0.6)
+    >> lighten_color((.3,.55,.1), 0.5)
+    """
+    import matplotlib.colors as mc
+    import colorsys
+    try:
+        c = mc.cnames[color]
+    except:
+        c = color
+    c = colorsys.rgb_to_hls(*mc.to_rgb(c))
+    return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
