@@ -228,7 +228,7 @@ def loadGRYimage(
     CLR.loadIntensity()
     return CLR
     
-
+#move this function to utility
 def kickvector(v, maxval):
     """
     filter all entries in v whose norm is larger than maxval
@@ -236,6 +236,7 @@ def kickvector(v, maxval):
     """
     return v[np.linalg.norm(v, axis = 1) < maxval]
     
+#move this function to utility
 def filterVec(v, maxval = 50, verbose = True, center = None):
     """kick outlier and center coordinates of LocLst"""
     #issue: give maxval a more descriptive name. max_dist?
@@ -623,20 +624,6 @@ def sortSpots(loc):
 
 def getCoordFromSpot(spot):
     return np.array([spot.posx, spot.posy])
-
-#def cropSpot(xcenter, ycenter, bitmap, winSigma):
-#    """crops 2D or 3D data in 2D
-#    spotcenter defines the coordinate of the spot in pixels in bitmap
-#    The total width of cropwindow is 2*winSigma + 1
-#    """
-#    #convert between float peak to pixel position
-#    xcenter = np.round(xcenter).astype(np.int)
-#    ycenter = np.round(ycenter).astype(np.int)
-#    xstart, ystart, xstop, ystop = [xcenter - winSigma,
-#                                  ycenter-winSigma,
-#                                   xcenter + winSigma,
-#                                   ycenter + winSigma]
-#    return bitmap[xstart : xstop + 1, ystart : ystop + 1]
     
 def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2], bgphotons = 0):
         """simple fitting and plotting function that fits 
@@ -733,6 +720,59 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
 
         cntr += 1
     return cntr
+    
+def GetfixedlocBrightness(locLst, loccolor = 'G', sigma = 1, ROIsize = 4,
+                         outpath = None, threshold_abs = 10, min_distance = 10):
+    """exports brightnesses of all Green, Red, Yellow channels based on the localisations in channel loccolor
+    loccolor is in ['G', 'R', 'Y']
+    Used for obtaining classical Donor only and Acceptor only stoichiometry and efficiency.
+    E.g. to obtain Aonly population, select loccolor = 'Y'
+    similarly for Donly select loccolor = 'D'
+    This will export intensity-based FRET indicators for Margarita. Also the DA population if present,
+        but not the D0 when loccolor = 'Y'.
+    ISSUE: this functionality should be integrated with general export of FRET indicators."""
+    for loc in locLst:
+        print(loc['filepath'][-20:])
+        peakimg = findPeaksLib.smooth_image(loc[loccolor].bitmap, sigma)
+        pos = feature.peak_local_max(peakimg, 
+                                     threshold_abs = threshold_abs, 
+                                     min_distance = min_distance)
+        ROIs = aid.pos2ROI(pos[:,0], pos[:,1], ROIsize / 2)
+        print(ROIs)
+        loc['FRETind'] = []
+        for i, ROI in enumerate(ROIs):
+
+        #check that ROI is not touching borders:
+            try:
+                aid.crop(loc['G'].bitmap, ROI)
+            except IndexError:
+                print('ROI touches image borders, skipping')
+                continue
+            loc['FRETind'].append(FRETind())
+            Gsnip = aid.crop(loc['G'].bitmap, ROI)
+            Rsnip = aid.crop(loc['R'].bitmap, ROI)
+            Ysnip = aid.crop(loc['Y'].bitmap, ROI)
+            loc['FRETind'][i].NG = np.sum(Gsnip)
+            loc['FRETind'][i].NR = np.sum(Rsnip)
+            loc['FRETind'][i].NY = np.sum(Ysnip)
+    
+    if outpath:
+        names = ['NG', 'NR', 'NY']
+        outdict = {}
+        for name in names:
+            outdict[name] = []
+        for loc in locLst:
+            for spot in loc['FRETind']:
+                for name in names:
+                    outdict[name].append(getattr(spot, name))
+        values = []
+        for name, value in outdict.items():
+            values.append(np.array(value))
+        values = np.array(values).transpose()
+        np.savetxt(outpath, values, 
+                   header = 'Green Count Rate (KHz)\tRed Count Rate (KHz)\tYellow Count Rate (KHz)',
+                   delimiter = '\t'
+                            )
 
 def getFRETnames(locLst):
     """aider function that returns the names of FRET indicators"""
@@ -863,13 +903,13 @@ def filterStats(stats, indicator, vmin, vmax):
     stats must be dict with equal length entries
     select rows of stats[indicator] that are between vmin and vmax
     """
-    #ISSUE: pop utility deletes original list. Unexpected behaviour.
     #loop from last to first
-    for i in range(len(stats[indicator]) -1, -1, -1):
-        if stats[indicator][i] < vmin or stats[indicator][i] > vmax:
-            for name, value in stats.items():
-                stats[name].pop(i)
-    return stats
+    stats_cp = copy.deepcopy(stats)
+    for i in range(len(stats_cp[indicator]) -1, -1, -1):
+        if stats_cp[indicator][i] < vmin or stats_cp[indicator][i] > vmax:
+            for name, value in stats_cp.items():
+                stats_cp[name].pop(i)
+    return stats_cp
 def saveDict(dictionary, outfile):
     """save dict column-wise to file."""
     keys = dictionary.keys()
