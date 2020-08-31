@@ -721,8 +721,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
         cntr += 1
     return cntr
     
-def GetfixedlocBrightness(locLst, loccolor = 'G', sigma = 1, ROIsize = 4,
-                         outpath = None, threshold_abs = 10, min_distance = 10):
+def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None):
     """exports brightnesses of all Green, Red, Yellow channels based on the localisations in channel loccolor
     loccolor is in ['G', 'R', 'Y']
     Used for obtaining classical Donor only and Acceptor only stoichiometry and efficiency.
@@ -733,11 +732,9 @@ def GetfixedlocBrightness(locLst, loccolor = 'G', sigma = 1, ROIsize = 4,
     ISSUE: this functionality should be integrated with general export of FRET indicators."""
     for loc in locLst:
         print(loc['filepath'][-20:])
-        peakimg = findPeaksLib.smooth_image(loc[loccolor].bitmap, sigma)
-        pos = feature.peak_local_max(peakimg, 
-                                     threshold_abs = threshold_abs, 
-                                     min_distance = min_distance)
-        ROIs = aid.pos2ROI(pos[:,0], pos[:,1], ROIsize / 2)
+        ROIs = []
+        for spot in loc[loccolor].spotLst:
+            ROIs.append(aid.pos2ROI(spot.posx, spot.posy, ROIsize / 2))
         print(ROIs)
         loc['FRETind'] = []
         for i, ROI in enumerate(ROIs):
