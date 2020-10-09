@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import copy
 import lmfit
 import developmental_functions as df
+import GaussAnalysisPipeline as GAP
 
 def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
                  Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
@@ -137,3 +138,53 @@ def analyzeOrigami(locLst, resdir, identifier, ntacs = 256):
     df.subensembleTAC(locLst_an, ntacs = ntacs, outfile = TACout)
     stats = df.genStats(locLst_an, outfile = statsout, isforMargarita = True)
     return locLst_an, stats
+    
+def exportImageAndFit(loc, xstart, ystart, size = 30, outdir = None, verbose = False):
+    """utility function to export attractive images for display in paper.
+    Loc is a data struct to store localisation and FRET information
+    The df.analyzeloclst routine already gates the data. Therefore the user should know what gate was used
+        to generate these images.
+    xstart, ystart and size are used to define the snapshot.
+    outdir defines an out directory. the filename is automatically inferred from from the fpath parameter
+    in the loc struct. 
+    verbose dumps what could also be saved to disc."""
+    for C in ['G', 'Y']:
+
+        #get image
+        snip = loc[C].bitmap[xstart: xstart + size, ystart: ystart + size]
+
+        #fit image
+        FitOpts = GAP.optionsCluster(fitbg = 0, setmodel = 1)
+        param_est = GAP.genParamEstimate(snip)
+        FitOpts.transferOptions(param_est)
+        param2Gauss = GAP.GaussFits.Fit2DGauss(param_est, snip)
+        model = np.zeros(snip.shape)
+        model = np.array(GAP.GaussFits.modelTwo2DGaussian(param2Gauss, model))
+        if verbose:
+            plt.imshow(loc[C].bitmap, cmap = 'hot')
+            plt.show()
+            plt.imshow(snip, cmap = 'hot')
+            plt.show()
+            plt.imshow(model, cmap = 'hot')
+            plt.colorbar()
+            plt.show()
+            print(param2Gauss)
+
+        #save fit and image
+        if outdir is not None:
+            df.aid.trymkdir(outdir)
+            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_data' + C + '.csv')
+            np.savetxt(outpath, snip, delimiter = ',')
+            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_model' + C + '.csv')
+            np.savetxt(outpath, model, fmt = '%.5e', delimiter = ',')
+            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_model_perc' + C + '.csv')
+            np.savetxt(outpath, model / np.max(model)*100, fmt = '%.5e', delimiter = ',')
+            outtext = os.path.join(outdir, 'README.txt')
+            with open(outtext, 'w') as f:
+                f.write('original file path of dataset is:\n')
+                f.write(loc['filepath']+ '\n')
+                f.write('xstart: %i\n' % xstart)
+                f.write('ystart: %i\n' % ystart)
+            pickleout = os.path.join(outdir, 'loc.spots')
+            with open(pickleout, 'wb') as output:
+                df.pickle.dump(loc, output, 1)
