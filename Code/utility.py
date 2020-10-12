@@ -139,7 +139,7 @@ def analyzeOrigami(locLst, resdir, identifier, ntacs = 256):
     stats = df.genStats(locLst_an, outfile = statsout, isforMargarita = True)
     return locLst_an, stats
     
-def exportImageAndFit(loc, xstart, ystart, size = 30, outdir = None, verbose = False):
+def exportImageAndFit(loc, xstart, ystart, size = 30, Nspots = 2, outdir = None, verbose = False):
     """utility function to export attractive images for display in paper.
     Loc is a data struct to store localisation and FRET information
     The df.analyzeloclst routine already gates the data. Therefore the user should know what gate was used
@@ -154,12 +154,17 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, outdir = None, verbose = F
         snip = loc[C].bitmap[xstart: xstart + size, ystart: ystart + size]
 
         #fit image
-        FitOpts = GAP.optionsCluster(fitbg = 0, setmodel = 1)
+        FitOpts = GAP.optionsCluster(fitbg = 0, setmodel = Nspots -1)
         param_est = GAP.genParamEstimate(snip)
         FitOpts.transferOptions(param_est)
-        param2Gauss = GAP.GaussFits.Fit2DGauss(param_est, snip)
+        param_opt = GAP.GaussFits.Fit2DGauss(param_est, snip)
         model = np.zeros(snip.shape)
-        model = np.array(GAP.GaussFits.modelTwo2DGaussian(param2Gauss, model))
+        if Nspots ==1: 
+            model = np.array(GAP.GaussFits.model2DGaussian(param_opt, model))
+        if Nspots == 2:
+            model = np.array(GAP.GaussFits.modelTwo2DGaussian(param_opt, model))
+        if Nspots == 3:
+            model = np.array(GAP.GaussFits.modelThree2DGaussian(param_opt, model))
         if verbose:
             plt.imshow(loc[C].bitmap, cmap = 'hot')
             plt.show()
@@ -168,16 +173,17 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, outdir = None, verbose = F
             plt.imshow(model, cmap = 'hot')
             plt.colorbar()
             plt.show()
-            print(param2Gauss)
+            print(param_opt)
 
         #save fit and image
         if outdir is not None:
             df.aid.trymkdir(outdir)
-            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_data' + C + '.csv')
+            fid = loc['filepath'][-20:]
+            outpath = os.path.join(outdir, fid + '_data' + C + '.csv')
             np.savetxt(outpath, snip, delimiter = ',')
-            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_model' + C + '.csv')
+            outpath = os.path.join(outdir, fid + '_model' + C + '.csv')
             np.savetxt(outpath, model, fmt = '%.5e', delimiter = ',')
-            outpath = os.path.join(outdir, loc['filepath'][-20:] + '_model_perc' + C + '.csv')
+            outpath = os.path.join(outdir, fid + '_model_perc' + C + '.csv')
             np.savetxt(outpath, model / np.max(model)*100, fmt = '%.5e', delimiter = ',')
             outtext = os.path.join(outdir, 'README.txt')
             with open(outtext, 'w') as f:
@@ -185,6 +191,6 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, outdir = None, verbose = F
                 f.write(loc['filepath']+ '\n')
                 f.write('xstart: %i\n' % xstart)
                 f.write('ystart: %i\n' % ystart)
-            pickleout = os.path.join(outdir, 'loc.spots')
+            pickleout = os.path.join(outdir, 'loc' +fid+ '.spots')
             with open(pickleout, 'wb') as output:
                 df.pickle.dump(loc, output, 1)
