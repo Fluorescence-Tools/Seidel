@@ -15,6 +15,8 @@ import copy
 import lmfit
 import developmental_functions as df
 import GaussAnalysisPipeline as GAP
+import aid_functions as aid
+
 
 def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
                  Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
@@ -194,3 +196,102 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, Nspots = 2, outdir = None,
             pickleout = os.path.join(outdir, 'loc' +fid+ '.spots')
             with open(pickleout, 'wb') as output:
                 df.pickle.dump(loc, output, 1)
+                
+def analyzeLSMCells(ffiles, TACoutdir, statsOut, ntacs, pulsetime, 
+    dwelltime, Nframes, threshold = 50, TAC_range = 4096):
+    """
+    This script is intended to automate image analysis for cellular data to avoid 
+    tim-consuming manual work in AnI.
+    To work, this script neads a functioncal copy of Seidel in the pythonpath
+    The processLifetimeImage is not build for Anisotropy, but it can if one 
+        mis-uses the channels. I.e. processlifetimeImage takes up to 3 channels 
+        labelled Green, Red, Yellow. Now we will abuse by doing:
+            Green = parallel
+            Red = perpendicular
+            Yellow = unused
+            Then repeating for both channels
+    This workaround should hold for the forseeable future, but should ultimately be 
+        replaced.
+    output:
+        TACPS channel for Green (could add Yellow also)
+        intensity, surface, brightness, Countrate for Green, Red+Yellow
+    input:
+        ffiles: full file path of all cells to be analysed
+        TACoutdir: location where TAC PS decays are saved
+        ntacs: number of TAC channels
+        pulsetime: inverse of laser repetition rate, in ns
+        dwelltime: pixel dwell time in seconds
+        Nframes: number taken in imreading and for calculating total 
+            illumination time
+        threshold: all pixels below this threshold are set to zero
+        TAC_range: set in hydraharp
+        
+    """
+    #init
+    df = pd.DataFrame(columns = ['intensity_G',
+                                 'surface_G', 
+                                 'brightness_G',
+                                 'countrate_G',
+                                 'intensity_Y',
+                                 'surface_Y',
+                                 'brightness_Y',
+                                 'countrate_Y'])
+    aid.trymkdir(TACoutdir)
+    uselines = np.array([1]) 
+    #loop over each cell
+    for index, ffile in enumerate(ffiles):
+        ffile = ffiles[index]
+        #load GRY object
+        imD = IM.processLifetimeImage(
+                ffile, 
+                uselines = uselines, 
+                Gchan = np.array([1]),
+                Rchan = np.array([0]),
+                ntacs = ntacs,
+                TAC_range = TAC_range,
+                pulsetime = pulsetime,
+                dwelltime = dwelltime,
+                framestop = int(Nframes)) #some bug changed type of Nframes to float
+        imA = IM.processLifetimeImage(
+                ffile, 
+                uselines = uselines, 
+                Gchan = np.array([5]),
+                Rchan = np.array([4]),
+                ntacs = ntacs,
+                TAC_range = TAC_range,
+                pulsetime = pulsetime,
+                dwelltime = dwelltime,
+                framestop = int(Nframes))
+        
+        #need to build a dict row for adding to DataFrame
+        pdrow = {}
+        TACout = os.path.join(TACoutdir, 'cell%i_G_PS.dat' % index)
+        #load each channel, calculate parameters and store in dict
+        for image, label in zip([imD, imA], ['_G', '_Y']):
+            image.loadLifetime()
+            image.loadIntensity()
+            mask = image.buildMaskFromIntensityThreshold(threshold = 50, sumchannels = ['G', 'R'])
+            image.mask(mask)
+            image.loadIntensity()
+            #extract lifetime decays
+            TACP, TACS, _ = image.getTACS()
+            TACPS = np.zeros(ntacs*2)
+            TACPS[:ntacs] = TACP
+            TACPS[ntacs:] = TACS
+            #extract intensity
+            Nphot = np.sum(TACP +TACS)
+            #extract surface
+            surface = np.sum(mask)
+            #calculated derived variables intensity and countrate
+            brightness = Nphot / surface
+            countrate = brightness / (dwelltime * Nframes)
+            pdrow.update({'intensity'+label: Nphot,
+                       'surface'+label: surface,
+                       'brightness'+label: brightness,
+                       'countrate'+label: countrate}
+                )
+        #transfer dict to dataframe
+        df = df.append(pdrow, ignore_index = True)
+        np.savetxt(TACout, TACPS, fmt = '%i')
+        print('finished with file %s\n' % ffile[-20:])
+    df.to_csv(statsOut)
