@@ -161,6 +161,17 @@ class processLifetimeImage:
             mask[ROI[2] : ROI[2] + ROI[3], ROI[0] : ROI[0] + ROI[1] ] = 1
         return mask
         
+    def buildMaskFromIntensityThreshold(self, threshold, sumchannels = ['G', 'R', 'Y']):
+        """sums all photons of workintensity in listeSd channels, 
+        Compares the intensity with threshold.
+        returns boolean array of dimension image size"""
+        #buggy, got stuck in a loop eating memory
+        #make numpy array and sum in there
+        sumimg = np.zeros(getattr(self.workIntensity, sumchannels[0]).shape)
+        for channel in sumchannels:
+                sumimg += getattr(self.workIntensity, channel)
+        return sumimg > threshold
+        
     def filterLifetime(self, mode = 'xyz', window = 3):
         if mode == 'smear_lifetime':
             # even sized window, weighted toward + direction

@@ -16,30 +16,10 @@ import lmfit
 import developmental_functions as df
 import GaussAnalysisPipeline as GAP
 import aid_functions as aid
+import batchplot
 
 
-def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
-                 Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
-                ntacs = 1024, TAC_range = 4096, PIE_gate = 440):
-    """utility function to export GRY (P+S) TAC histogram for LSM microscope"""
-    #issue: when Rchan and Ychan are identical (i.e. true PIE), then Y channel
-    #remains empty. Workaround implemented. ugly
-    _, file = os.path.split(fname)
-    data = IM.processLifetimeImage(fname.encode(), uselines = uselines, Gchan = Gchan, 
-                                   Rchan = Rchan, 
-                                   Ychan = Ychan, ntacs = ntacs, TAC_range = TAC_range, \
-                                   pulsetime = pulsetime, dwelltime = dwelltime)
-    data.loadLifetime()
-    if (Rchan == Ychan).all(): # workaround in case of PIE
-       data.workLifetime.Y = copy.deepcopy(data.workLifetime.R)
-    data.gate(0,PIE_gate, channel = 'R')
-    data.gate(PIE_gate, -1, channel = 'Y')
-    GTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'G'))).transpose()
-    RTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'R'))).transpose()
-    YTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'Y'))).transpose()
-    np.savetxt(os.path.join(outdir, file[:-4] + '_G.dat'), GTACS, fmt = '%i')
-    np.savetxt(os.path.join(outdir, file[:-4] + '_R.dat'), RTACS, fmt = '%i')
-    np.savetxt(os.path.join(outdir, file[:-4] + '_Y.dat'), YTACS, fmt = '%i')
+
     
 def genGYfnames(wdir):
     """utility function to get all matching G and Y TAC decays in a list
@@ -197,101 +177,269 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, Nspots = 2, outdir = None,
             with open(pickleout, 'wb') as output:
                 df.pickle.dump(loc, output, 1)
                 
-def analyzeLSMCells(ffiles, TACoutdir, statsOut, ntacs, pulsetime, 
-    dwelltime, Nframes, threshold = 50, TAC_range = 4096):
-    """
-    This script is intended to automate image analysis for cellular data to avoid 
-    tim-consuming manual work in AnI.
-    To work, this script neads a functioncal copy of Seidel in the pythonpath
-    The processLifetimeImage is not build for Anisotropy, but it can if one 
-        mis-uses the channels. I.e. processlifetimeImage takes up to 3 channels 
-        labelled Green, Red, Yellow. Now we will abuse by doing:
-            Green = parallel
-            Red = perpendicular
-            Yellow = unused
-            Then repeating for both channels
-    This workaround should hold for the forseeable future, but should ultimately be 
-        replaced.
-    output:
-        TACPS channel for Green (could add Yellow also)
-        intensity, surface, brightness, Countrate for Green, Red+Yellow
-    input:
-        ffiles: full file path of all cells to be analysed
-        TACoutdir: location where TAC PS decays are saved
-        ntacs: number of TAC channels
-        pulsetime: inverse of laser repetition rate, in ns
-        dwelltime: pixel dwell time in seconds
-        Nframes: number taken in imreading and for calculating total 
-            illumination time
-        threshold: all pixels below this threshold are set to zero
-        TAC_range: set in hydraharp
+class sampleSet():
+    """collection of attributes specific to either Donor only, or acceptor only"""
+    def __init__(self, wdir):
+        self.wdir = wdir
+        self.TACdir = os.path.join(wdir, 'TAC')
+        aid.trymkdir(self.TACdir)
+        self.ptufiles = bp.appendOnPattern(wdir, 'ptu')
+        self.getTACfiles()
+        self.TACs = []
+    def getTACfiles(self):
+        self.TACfiles = bp.appendOnPattern(self.TACdir, '_G_PS.dat')
+    def appendTAC(self, TAC):
+        assert type(TAC) == np.ndarray
+        self.TACs.append(TAC)
+
+class lsm_analysis():
+    """contains some shared stuff for LSM analysis functions"""
+    def __init__(self, 
+        wdir, 
+        ntacs = 1024, 
+        pulsetime = 50, 
+        dwelltime = 20e-6,
+        TACrange = 4096):
+        """        
+        input:
+            ntacs: number of TAC channels
+            pulsetime: inverse of laser repetition rate, in ns
+            dwelltime: pixel dwell time in seconds
+            Nframes: number taken in imreading and for calculating total 
+                illumination time
+            threshold: all pixels below this threshold are set to zero
+            TAC_range: set in hydraharp
+        """
+        self.imStatsHeader = ['name', 'I_G', 'surface_G', 'Br_G', 'rate_G', 'I_Y', 'surface_Y', 'Br_Y', 'rate_Y']
+        self.wdir = wdir
+        D0dir = os.path.join(wdir, 'D0')
+        DAdir = os.path.join(wdir, 'DA')
+        self.D0 = sampleSet(D0dir)
+        self.DA = sampleSet(DAdir)
+        self.ntacs = ntacs
+        self.pulsetime = pulsetime
+        self.dwelltime = dwelltime
+        self.TACrange = TACrange
+        self.resdir = os.path.join(wdir, 'results')
+        aid.trymkdir(self.resdir)
+    def genOldStyleHeader(self):
+        self.imStatsHeader =  ['name', 'surface', 'I_G', 'Br_G', 'rate_G', 'I_Y', 'Br_Y', 'rate_Y']
         
-    """
-    #init
-    df = pd.DataFrame(columns = ['intensity_G',
-                                 'surface_G', 
-                                 'brightness_G',
-                                 'countrate_G',
-                                 'intensity_Y',
-                                 'surface_Y',
-                                 'brightness_Y',
-                                 'countrate_Y'])
-    aid.trymkdir(TACoutdir)
-    uselines = np.array([1]) 
-    #loop over each cell
-    for index, ffile in enumerate(ffiles):
-        ffile = ffiles[index]
-        #load GRY object
-        imD = IM.processLifetimeImage(
-                ffile, 
-                uselines = uselines, 
-                Gchan = np.array([1]),
-                Rchan = np.array([0]),
-                ntacs = ntacs,
-                TAC_range = TAC_range,
-                pulsetime = pulsetime,
-                dwelltime = dwelltime,
-                framestop = int(Nframes)) #some bug changed type of Nframes to float
-        imA = IM.processLifetimeImage(
-                ffile, 
-                uselines = uselines, 
-                Gchan = np.array([5]),
-                Rchan = np.array([4]),
-                ntacs = ntacs,
-                TAC_range = TAC_range,
-                pulsetime = pulsetime,
-                dwelltime = dwelltime,
-                framestop = int(Nframes))
+    def analyzeGYLSMCells(self,
+        sampleSetID,
+        imStatsOut = None,
+        threshold = 50,
+        Nframes = -1):
+        """
+        This script is intended to automate image analysis for cellular data to avoid 
+        time-consuming manual work in AnI.
+        To work, this script neads a functioncal copy of Seidel in the pythonpath
+        The processLifetimeImage is not build for Anisotropy, but it can if one 
+            mis-uses the channels. I.e. processlifetimeImage takes up to 3 channels 
+            labelled Green, Red, Yellow. Now we will abuse by doing:
+                Green = parallel
+                Red = perpendicular
+                Yellow = unused
+                Then repeating for both channels
+        This workaround should hold for the forseeable future, but should ultimately be 
+            replaced.
+        output:
+            TACPS channel for Green (could add Yellow also)
+            intensity, surface, brightness, Countrate for Green, Red+Yellow
+        input: (partly given in sampleSet object)
+            ffiles: full file path of all cells to be analysed
+            ntacs: number of TAC channels
+            pulsetime: inverse of laser repetition rate, in ns
+            dwelltime: pixel dwell time in seconds
+            Nframes: number taken in imreading and for calculating total 
+                illumination time
+            threshold: all pixels below this threshold are set to zero
+            TAC_range: set in hydraharp
+            sampleSetID is e.g. 'D0' or 'DA' for self.D0 and self.DA respectively
+        """
         
-        #need to build a dict row for adding to DataFrame
-        pdrow = {}
-        TACout = os.path.join(TACoutdir, 'cell%i_G_PS.dat' % index)
-        #load each channel, calculate parameters and store in dict
-        for image, label in zip([imD, imA], ['_G', '_Y']):
-            image.loadLifetime()
-            image.loadIntensity()
-            mask = image.buildMaskFromIntensityThreshold(threshold = 50, sumchannels = ['G', 'R'])
-            image.mask(mask)
-            image.loadIntensity()
-            #extract lifetime decays
-            TACP, TACS, _ = image.getTACS()
-            TACPS = np.zeros(ntacs*2)
-            TACPS[:ntacs] = TACP
-            TACPS[ntacs:] = TACS
-            #extract intensity
-            Nphot = np.sum(TACP +TACS)
-            #extract surface
-            surface = np.sum(mask)
-            #calculated derived variables intensity and countrate
-            brightness = Nphot / surface
-            countrate = brightness / (dwelltime * Nframes)
-            pdrow.update({'intensity'+label: Nphot,
-                       'surface'+label: surface,
-                       'brightness'+label: brightness,
-                       'countrate'+label: countrate}
-                )
-        #transfer dict to dataframe
-        df = df.append(pdrow, ignore_index = True)
-        np.savetxt(TACout, TACPS, fmt = '%i')
-        print('finished with file %s\n' % ffile[-20:])
-    df.to_csv(statsOut)
+        #init
+        setID = sampleSetID # shorthand
+        files = getattr(self, setID).ptufiles
+        ffu
+        df = pd.DataFrame(columns = self.imStatsHeader)
+        uselines = np.array([1]) 
+        #loop over each cell
+        for index, file in enumerate(files):
+            ffile = os.path.join(getattr(self, setID).wdir, file)
+            #load GRY object
+            try: ffile.encode()
+            except: pass
+            imD = IM.processLifetimeImage(
+                    ffile, 
+                    uselines = uselines, 
+                    Gchan = np.array([1]),
+                    Rchan = np.array([0]),
+                    ntacs = self.ntacs,
+                    TAC_range = self.TAC_range,
+                    pulsetime = self.pulsetime,
+                    dwelltime = self.dwelltime,
+                    framestop = int(Nframes)) #some bug changed type of Nframes to float
+            imA = IM.processLifetimeImage(
+                    ffile, 
+                    uselines = uselines, 
+                    Gchan = np.array([5]),
+                    Rchan = np.array([4]),
+                    ntacs = self.ntacs,
+                    TAC_range = self.TAC_range,
+                    pulsetime = self.pulsetime,
+                    dwelltime = self.dwelltime,
+                    framestop = int(Nframes))
+            
+            #need to build a dict row for adding to DataFrame
+            dfrow = pd.Series()
+            TACout = os.path.join(getattr(self, setID).TACdir, file[:-4] + '_G_PS.dat')
+            #load each channel, calculate parameters and store in dict
+            for image, label in zip([imD, imA], ['_G', '_Y']):
+                image.loadLifetime()
+                image.loadIntensity()
+                mask = image.buildMaskFromIntensityThreshold(threshold = threshold, sumchannels = ['G', 'R'])
+                image.mask(mask)
+                image.loadIntensity()
+                #extract lifetime decays
+                TACP, TACS, _ = image.getTACS()
+                TACPS = np.zeros(self.ntacs*2)
+                TACPS[:self.ntacs] = TACP
+                TACPS[self.ntacs:] = TACS
+                #extract intensity
+                Nphot = np.sum(TACP +TACS)
+                #extract surface
+                surface = np.sum(mask)
+                #calculated derived variables intensity and countrate
+                brightness = Nphot / surface
+                countrate = brightness / (dwelltime * Nframes)
+                dfrow = dfrow.append(pd.Series({'I'+label: Nphot,
+                           'surface'+label: surface,
+                           'Br'+label: brightness,
+                           'rate'+label: countrate})
+                    )
+            #transfer series to dataframe
+            #I don't like the pandas ApI, it loses the Series name when another is
+            #added
+            dfrow.name = file[:-4]
+            df = df.append(dfrow)
+            np.savetxt(TACout, TACPS, fmt = '%i')
+            print('finished with file %s\n' % file[-20:])
+        try:
+            df['Sg/Sy'] = df['Br_G'] / df['Br_Y']
+        except KeyError:
+            print('keywords not found in header, skipping calculated variables')
+        if imStatsOut: df.to_csv(statsOut)
+        return df
+    
+    def batchFitD0DA(self, 
+                      D0dat,
+                      identifier,
+                      DAID = 'DA',
+                      fitrange = (0, -1),
+                      dataselect = (0, -1)):
+        """makes simple Donor Only calibrated Donor Acceptor fits
+        Reads existing csv data and returns the result.
+        overrideHeader should be true to calculate derived variables"""
+        #read all DA decays
+        DATACs = getattr(self, DAID).TACs[dataselect[0]: dataselect[1]]
+        #fit and plot DA
+        xFRET = []
+        kFRET = []
+        chi2redLst = []
+        names = []
+        
+        plotout = os.path.join(self.resdir, identifier + 'D0DAplots')
+        aid.trymkdir(plotout)
+        for i, DATAC in enumerate(DATACs):
+            D0snip = D0dat[fitrange[0]:fitrange[1]]
+            DAsnip = DATAC[fitrange[0]:fitrange[1]]
+            _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
+            popt, pcov, DAmodel, chi2red = fitDA.fitDA (DAsnip, D0snip)
+            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, DAfiles[i], popt, 
+                            chi2red, chi2red_D0, plotout)
+            xFRET.append(1-popt[1])
+            kFRET.append(1/popt[2])
+            chi2redLst.append(chi2red)
+            names.append(DAfiles[i])
+            
+        df = pd.DataFrame(index = names)
+        df['xFRET'] = xFRET
+        df['kFRET'] = kFRET
+        df['chi2red'] = chi2redLst
+        outname = os.path.join(self.resdir, identifier + 'D0DAFitData.csv')
+        df.to_csv(outname)
+        return df
+        
+    def batchFitD0(self,
+                    identifier,
+                    D0ID = 'D0'
+                    fitrange = (0, -1)):
+        """batch fit D0 data assuming twop lifetimes"""
+
+        D0TACs = getattr(self, DOID).TACs
+        
+        #prep empty arrays
+        x0Lst = []
+        x1Lst = []
+        tau0Lst = []
+        tau1Lst = []
+        chi2redLst = []
+        names = []
+        bgLst = []
+        
+        #fit all data
+        for i, D0TAC in enumerate(D0TACs):
+            D0snip = D0TAC[fitrange[0]:fitrange[1]]
+            popt, _, _, Donlymodel, chi2red = fitDA.fitDonly(D0snip)
+            #append to Lists
+            for var, val in zip([x0Lst, x1Lst, tau0Lst, tau1Lst, bgLst], popt):
+                var.append(val)
+            chi2redLst.append(chi2red)
+            names.append(D0files[i][:-len('_G_PS.dat')])
+            
+        #calc derived vars
+        taufLst = [(x0 * tau0**2 + x1 * tau1**2) / (x0 * tau0 + x1 * tau1) 
+                    for x0, x1, tau0, tau1 in zip(x0Lst, x1Lst, tau0Lst, tau1Lst)]
+        tauxLst = [(x0 * tau0 + x1 * tau1) / (x0 + x1)
+                    for x0, x1, tau0, tau1 in zip(x0Lst, x1Lst, tau0Lst, tau1Lst)]
+        #add all lists to DataFrame
+        df = pd.DataFrame({'tauf' : taufLst,
+                            'taux' : tauxLst, 
+                            'x0' : x0Lst, 
+                            'x1' : x1Lst, 
+                            'tau0' : tau0Lst, 
+                            'tau1' : tau1Lst, 
+                            'chi2red' : chi2redLst}, index = names)
+        outname = os.path.join(self.resdir, identifier + 'D0FitData.csv')
+        df.to_csv(outname)
+        return df
+
+
+
+#def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
+#                 Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
+#                ntacs = 1024, TAC_range = 4096, PIE_gate = 440):
+#    """utility function to export GRY (P+S) TAC histogram for LSM microscope,
+#    
+#    deprecated. Function was written some time in the past and then forgotten about.
+#    superceded by analyzeLSMCells
+#    """
+    ## issue: when Rchan and Ychan are identical (i.e. true PIE), then Y channel
+    ## remains empty. Workaround implemented. ugly
+    # _, file = os.path.split(fname)
+    # data = IM.processLifetimeImage(fname.encode(), uselines = uselines, Gchan = Gchan, 
+                                   # Rchan = Rchan, 
+                                   # Ychan = Ychan, ntacs = ntacs, TAC_range = TAC_range, \
+                                   # pulsetime = pulsetime, dwelltime = dwelltime)
+    # data.loadLifetime()
+    # if (Rchan == Ychan).all(): # workaround in case of PIE
+       # data.workLifetime.Y = copy.deepcopy(data.workLifetime.R)
+    # data.gate(0,PIE_gate, channel = 'R')
+    # data.gate(PIE_gate, -1, channel = 'Y')
+    # GTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'G'))).transpose()
+    # RTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'R'))).transpose()
+    # YTACS = np.stack((np.arange(ntacs), data.getTACS(mode = 'Y'))).transpose()
+    # np.savetxt(os.path.join(outdir, file[:-4] + '_G.dat'), GTACS, fmt = '%i')
+    # np.savetxt(os.path.join(outdir, file[:-4] + '_R.dat'), RTACS, fmt = '%i')
+    # np.savetxt(os.path.join(outdir, file[:-4] + '_Y.dat'), YTACS, fmt = '%i')

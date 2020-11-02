@@ -238,11 +238,14 @@ class ensemblePointSet:
         pointArr = np.mean(pointsetArr, axis = 0)
         self.anchor = fourPointSet(pointArr)
         return
-    def genAnchorFromModel(self, H2H = 2.7):
+    def genAnchorFromModel(self, H2H = 2.7, alongHelix = 74.8):
         """distances based on calculations made by Anders based on the number 
         of strands and helices separating the dyes"""
         A1 = np.array([0,0])
-        A2 = A1 + np.array([74.59, - 5*H2H])
+        #A2 = A1 + np.array([74.59, - 5*H2H])
+        #based on A-A any No. of G spot as calibration A-A: 75.8 corrected for 
+        #12nm y displacement: 74.8
+        A2 = A1 + np.array([alongHelix, - 5*H2H])
         D1 = A1 + np.array([0, 2 * H2H])
         D2 = A2 + np.array([0, 6 * H2H])
         pointArr = np.array([D1, D2, A1, A2]) / self.pxSize
@@ -250,6 +253,9 @@ class ensemblePointSet:
         return
     def genAnchorFromPointset(self, pointsetID):
         self.anchor = self.pointsets[pointsetID]
+        return
+    def selectOnPointsetIDs(self, pointsetIDs):
+        self.pointsets = [self.pointsets[ID] for ID in pointsetIDs]
         return
     def plotPointsets(self, c = ['orange', 'orange', 'r', 'r'], outfile = None, \
         title = None, xlim = [-60, 60]):
@@ -278,7 +284,7 @@ class ensemblePointSet:
         dist = np.array(self.callBatchFun('getDistance', pointname1, pointname2))
         dist *= self.pxSize
         plt.hist(dist, bins = bins, alpha = alpha)
-        return
+        return dist
     def plotAngle(self, pointname1, pointname2, pointname3, pointname4, **axKwargs):
         #get all data
         d, d_mean, d_std, d_meanstd, d_model, polar, polar_mean, polar_std, polar_meanstd, polar_model= \
@@ -293,13 +299,6 @@ class ensemblePointSet:
         plt.polar(phi_mean, r_mean, '+', 
             c = darkc, 
             markersize = 10, markeredgewidth = 2)
-
-        #attempt to draw uncertainty range
-        # ax = plt.gca()
-        # draw_circle = patches.Ellipse(d_mean, d_meanstd[0], d_meanstd[1], 
-            # color = darkc, alpha = 0.4,
-            # transform=ax.transData._b)
-        # ax.add_artist(draw_circle)
         
         #plot model expectation value
         r_model, phi_model = polar_model
@@ -308,10 +307,17 @@ class ensemblePointSet:
             c=darkc )
         return
     def getPointPairStats(self, axisPoint1, axisPoint2, pairPoint1, pairPoint2,
-        verbose = False, title = 'some distance'):
+        verbose = False, title = 'some distance', addangle = 0):
+        #isse:checked again and it is unclear which approach is best. Leave as is for now.
+            #issue: it was discovered that it is better to use overall RMSD alignment rather
+            #then aligning on A1-A2 (I guess it uses more statistics).
+            #So the axispoints can go out alltogether.
         #orient the structure according to two axisPoints on the x axis
         self.callBatchFun('calcAngle', axisPoint1, axisPoint2)
-        self.callBatchFun('rotate')
+        #I have to mangle my code to make a pretty figure
+        #self.callBatchFun('rotate')
+        for pointset in self.pointsets:
+            pointset.rotate(angle = pointset.angle + addangle)
         #get distances
         d = self.callBatchFun('getDisplacement', pairPoint1, pairPoint2)
         d = np.array(d) * self.pxSize
@@ -345,18 +351,31 @@ class ensemblePointSet:
             print('uncertainty of mean is (%.2f, %.2f)'% (d_meanstd[0], d_meanstd[1]))
             print('model is (%.2f, %.2f)' % (d_model[0], d_model[1]))
             print('spread is (%.2f, %.2f)\n'% (d_std[0], d_std[1]))
-            print('!!! all polar statistics transformed from cartesian space!!!')
-            print('!!!approach unverified!!!')
-            print('(r,phi)')
-            print('mean is (%.2f, %.2f)' % (polar_mean[0], np.rad2deg(polar_mean[1])))
-            print('uncertainty of mean is (%.2f, %.2f)'% (polar_meanstd[0], np.rad2deg(polar_meanstd[1])))
-            print('model is (%.2f, %.2f)' % (polar_model[0], np.rad2deg(polar_model[1])))
-            print('spread is (%.2f, %.2f)\n'% (polar_std[0], np.rad2deg(polar_std[1])))
+            #print('!!! all polar statistics transformed from cartesian space!!!')
+            #print('!!!approach unverified!!!')
+            #print('(r,phi)')
+            #print('mean is (%.2f, %.2f)' % (polar_mean[0], np.rad2deg(polar_mean[1])))
+            #print('uncertainty of mean is (%.2f, %.2f)'% (polar_meanstd[0], np.rad2deg(polar_meanstd[1])))
+            #print('model is (%.2f, %.2f)' % (polar_model[0], np.rad2deg(polar_model[1])))
+            #print('spread is (%.2f, %.2f)\n'% (polar_std[0], np.rad2deg(polar_std[1])))
         #might want to return the variables later
         return d, d_mean, d_std, d_meanstd, d_model, polar, polar_mean, polar_std, polar_meanstd, polar_model
         
-        
-import numpy as np
+    def savePointsetsToCsv(self, ffile):
+        """saves all coordinates, distances and model data"""
+        #probably want to move definition of keys to ensemble level
+        keys = self.pointsets[0].keys
+        header = ''
+        for key in keys:
+            header += key + 'x'
+            header += ','
+            header += key + 'y'
+            header += ','
+        pointout = np.array(self.callBatchFun('getPoints'))
+        shape = pointout.shape
+        pointout = pointout.reshape([shape[0], shape[1]* shape[2]])
+        pointout *= self.pxSize
+        np.savetxt(ffile, pointout, delimiter = ',', header = header, fmt = '%.2e')
 
 def cart2pol(x, y):
     rho = np.sqrt(x**2 + y**2)

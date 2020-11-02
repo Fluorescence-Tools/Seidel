@@ -78,6 +78,12 @@ def createPath(ffile):
         pass
     return True
     
+def trymkdir(path):
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        pass
+    
     
 ########################plotting functions#####################################
 def plotBitmapROI(bitmap, spotLst, title = ''):

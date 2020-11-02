@@ -721,7 +721,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
         cntr += 1
     return cntr
     
-def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None):
+def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose = False):
     """exports brightnesses of all Green, Red, Yellow channels based on the localisations in channel loccolor
     loccolor is in ['G', 'R', 'Y']
     Used for obtaining classical Donor only and Acceptor only stoichiometry and efficiency.
@@ -731,11 +731,11 @@ def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None):
         but not the D0 when loccolor = 'Y'.
     ISSUE: this functionality should be integrated with general export of FRET indicators."""
     for loc in locLst:
-        print(loc['filepath'][-20:])
+        if verbose: print(loc['filepath'][-20:])
         ROIs = []
         for spot in loc[loccolor].spotLst:
             ROIs.append(aid.pos2ROI(spot.posx, spot.posy, ROIsize / 2))
-        print(ROIs)
+        if verbose: print(ROIs)
         loc['FRETind'] = []
         for i, ROI in enumerate(ROIs):
 
