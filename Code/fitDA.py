@@ -47,6 +47,8 @@ def fitDA (DAdat, D0dat, dtime = 0.064):
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
     
+#add function that fits 2lts
+    
 def plteps(ax, DAdat, D0dat, x0, tau_fret, bgrange = [320,420], makeplot = True, dtime = 0.064):
     #calc backgrounds
     bgest_DA = np.mean(DAdat[bgrange[0]:bgrange[1]])

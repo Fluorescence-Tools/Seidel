@@ -1,5 +1,5 @@
 import cpp_wrappers
-import FRCfuncs
+#import FRCfuncs
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
@@ -8,12 +8,14 @@ from scipy import ndimage
 import os
 import copy
 from PIL import Image
+import aid_functions as aid
 
 debug = False
 
 class GRYLifetime():
     def __init__(self, imG, imR, imY):
-        assert (len(imG.shape) == 3 and len(imR.shape) == 3 and len(imY.shape) == 3), \
+        assert (len(imG.shape) == 3 and len(imR.shape) == 3\
+                and len(imY.shape) == 3), \
             "arrays must be 3D"
         self.G = imG
         self.R = imR
@@ -21,7 +23,8 @@ class GRYLifetime():
     
 class GRYIntensity():
     def __init__(self, imG, imR, imY):
-        assert (len(imG.shape) == 2 and len(imR.shape) == 2 and len(imY.shape) == 2), \
+        assert (len(imG.shape) == 2 and len(imR.shape) == 2\
+                and len(imY.shape) == 2), \
             "arrays must be 2D"
         self.G = imG
         self.R = imR
@@ -29,7 +32,8 @@ class GRYIntensity():
         
 class GRYDecay():
     def __init__(self, decG, decR, decY):
-        assert (len(decG.shape) == 1 and len(decR.shape) == 1 and len(decY.shape) == 1), \
+        assert (len(decG.shape) == 1 and len(decR.shape) == 1 and\
+                len(decY.shape) == 1), \
             "arrays must be 1D"
         self.G = decG
         self.R = decR
@@ -38,7 +42,8 @@ class GRYDecay():
 class processLifetimeImage:
     def __init__(self, 
         fname, uselines = np.array([1,0]), 
-        Gchan = np.array([0,2]), Rchan = np.array([1,3]), Ychan = np.array([1,3]),
+        Gchan = np.array([0,2]), Rchan = np.array([1,3]), \
+        Ychan = np.array([1,3]),
         ntacs = 256, TAC_range = 32768, pulsetime = 25, dwelltime = 10e-3, 
         framestop = -1
         ):
@@ -53,6 +58,7 @@ class processLifetimeImage:
             should be a multiple of 2, max tacs 2**15 = 32768
         pulsetime in ns.
         dwelltime in s, unused for Abberior setup"""
+        assert type(fname) == bytes, "fname must be bytes type"
         self.baseLifetime = None #immutable after initialization
         self.baseIntensity = None #immutable after initialization
         self.workLifetime = None #mutable
@@ -60,6 +66,8 @@ class processLifetimeImage:
         self.decay = None #mutable
         self.ntacs = ntacs
         self.tac2time = pulsetime / ntacs #pulsetime in ns
+        #use filename base as identifier
+        self.name = os.path.splitext(os.path.split(fname)[1])[0].decode()
         assert( type(uselines) == np.ndarray and \
                type(Gchan) == np.ndarray and\
                type(Rchan) == np.ndarray and \
@@ -106,20 +114,26 @@ class processLifetimeImage:
         mask should be interger 0 or 1.
         Channel should be 'all', 'G', 'R' or 'Y'
         mode should be 'lifetime' or intensity'"""
-        assert (np.unique(mask) == np.array([0,1])).all(), 'mask has values other than 0 and 1'
+        #have to fix this assert statement. Now it triggers if mask is e.g. only 1 or only 0
+        #assert (np.unique(mask) == np.array([0,1])).all(), 'mask has values other than 0 and 1'
         if mode == 'lifetime':
             #loop over all tacs. This avoids saving 3D mask to disk
-            for tac in range(self.ntacs):
-                if Channel == 'all':
-                    self.workLifetime.G[:,:,tac] = self.workLifetime.G[:,:,tac] * mask
-                    self.workLifetime.R[:,:,tac] = self.workLifetime.R[:,:,tac] * mask
-                    self.workLifetime.Y[:,:,tac] = self.workLifetime.Y[:,:,tac] * mask
-                elif Channel == 'G':
-                    self.workLifetime.G[:,:,tac] = self.workLifetime.G[:,:,tac] * mask
-                elif Channel == 'R':
-                    self.workLifetime.R[:,:,tac] = self.workLifetime.R[:,:,tac] * mask
-                elif Channel == 'Y':
-                    self.workLifetime.Y[:,:,tac] = self.workLifetime.Y[:,:,tac] * mask
+            if Channel == 'all':
+                self.workLifetime.G = \
+                    self.workLifetime.G * mask
+                self.workLifetime.R = \
+                    self.workLifetime.R * mask
+                self.workLifetime.Y = \
+                    self.workLifetime.Y * mask
+            elif Channel == 'G':
+                self.workLifetime.G = \
+                    self.workLifetime.G * mask
+            elif Channel == 'R':
+                self.workLifetime.R = \
+                    self.workLifetime.R * mask
+            elif Channel == 'Y':
+                self.workLifetime.Y = \
+                    self.workLifetime.Y * mask
         elif mode == 'intensity':
             if Channel == 'all':
                 self.workIntensity.G = self.workIntensity.G * mask
@@ -133,14 +147,20 @@ class processLifetimeImage:
                 self.workIntensity.Y = self.workIntensity.Y * mask
         return 0
     
-    def sumLifetime(self):
+    def sumLifetime(self, mode = 'all'):
         """Integrate over the pixels in worklifetime to generate
             a TAC decay. Operation runs over all channels and is
             stored in self.decay."""
-        decG = np.sum(self.workLifetime.G, axis = (0,1) )
-        decR = np.sum(self.workLifetime.R, axis = (0,1) )
-        decY = np.sum(self.workLifetime.Y, axis = (0,1) )
-        self.decay = GRYDecay(decG, decR, decY)
+        if mode not in ['all', 'G', 'R', 'Y']:
+            raise NotImplementedError( 'mode does not exist')
+        GTAC = RTAC = YTAC = np.array([0])
+        if mode == 'all' or mode == 'G':
+            GTAC = self.workLifetime.G.sum(axis=(0, 1))
+        if mode == 'all' or mode == 'R':
+            RTAC = self.workLifetime.R.sum(axis=(0, 1))
+        if mode == 'all' or mode == 'Y':
+            YTAC = self.workLifetime.Y.sum(axis=(0, 1))
+        self.decay = GRYDecay(GTAC, RTAC, YTAC)
         return 0
         
     def buildMaskFromROI(self, ROIS):
@@ -275,24 +295,17 @@ class processLifetimeImage:
         return 0
         
     def getTACS(self, mode = 'all'):
-        if mode == 'all' or mode == 'G':
-            GTACS = self.workLifetime.G.sum(axis=(0, 1))
-        if mode == 'all' or mode == 'R':
-            RTACS = self.workLifetime.R.sum(axis=(0, 1))
-        if mode == 'all' or mode == 'Y':
-            YTACS = self.workLifetime.Y.sum(axis=(0, 1))
-
         if mode not in ['all', 'G', 'R', 'Y']:
             raise NotImplementedError( 'mode does not exist')
-
+        self.sumLifetime(mode = mode)
         if mode == 'G':
-            return GTACS
+            return self.decay.G
         elif mode == 'R':
-            return RTACS
+            return self.decay.R
         elif mode == 'Y':
-            return YTACS
-        else:
-            return GTACS, RTACS, YTACS
+            return self.decay.Y
+        elif mode == 'all':
+            return self.decay.G, self.decay.R, self.decay.Y
     
     def getLifetime(self):
         return self.workLifetime
@@ -318,24 +331,18 @@ class processLifetimeImage:
             xmin. xmax, ymin, ymax allow saving snip of np array"""
         #issue: takes only workintensity, would also like baseIntensity
         #issue: Huygens accepts only export mode uint8 or 'L'
+        assert type(outfolder) == str and type(preposition) == str,\
+            "outfolder and preposition must be string type"
         #convert all strings to bytes
-        try: outfolder = outfolder.encode()
-        except: pass
-        try: preposition = preposition.encode()
-        except: pass
-        try:
-            os.mkdir(outfolder)
-            print('creating new folder %s\n' %os.path.join(outfolder))
-        except: 'folder already exists'  
-        print(self.workIntensity.G.dtype)
+        aid.trymkdir(outfolder)
         im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
-        outname = os.path.join(outfolder, preposition + b'imG.tif').decode()
+        outname = os.path.join(outfolder, preposition + 'imG.tif')
         im.save(outname)
         im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
-        outname = os.path.join(outfolder, preposition + b'imR.tif').decode()
+        outname = os.path.join(outfolder, preposition + 'imR.tif')
         im.save(outname)
         im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
-        outname = os.path.join(outfolder, preposition + b'imY.tif').decode()
+        outname = os.path.join(outfolder, preposition + 'imY.tif')
         im.save(outname)
         return 0
         

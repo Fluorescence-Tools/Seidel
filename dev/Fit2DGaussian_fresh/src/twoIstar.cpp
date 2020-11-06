@@ -185,6 +185,7 @@ double twoIstar_p2s(int* C, double* M, int Nchannels)
 ////////////////////////////////// overall 2I*: Cp & Cs ///////////////////////////////////////
 //NV comment: in below article they use a different approach, which is correct afaik
 //https://doi.org/10.1038/nmeth0510-338
+//comment: check that the N factorial is not calculated twice and then subtracted again.
 double twoIstar(int* C, double* M, int Nchannels)
 {
   double W = 0;
