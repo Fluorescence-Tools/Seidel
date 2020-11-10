@@ -16,9 +16,17 @@ from scipy.optimize import curve_fit
 def Donly(t, A, B, tau1, tau2, bg):
     return A * np.exp(-t/tau1) + B * np.exp(-t/tau2) + bg
 
-def DA(t, A, x0, tau_fret, bg, D0):
-    return A * ( (1-x0) * D0 * np.exp(- t / tau_fret) + x0 * D0) + bg
-
+def DA1lt(t, A, x0, kfret, bg, D0):
+    return A * ( (1-x0) * D0 * np.exp(- t * kfret) + x0 * D0) + bg
+def DA2lt(t, A, x1, x2, kfret1, kfret2, bg, D0):
+    """x1 and tau_fr1 denote the fraction and rate for FRET fraction 1
+    x2 and tau_fr2 denote the fraction and rate for FRET fraction 2
+    The no FRET fraction is calculated from (1 - x1 - x2)"""
+    return A * D0 ( (1-x1 -x2) \
+                   + x1 * np.exp(- t * kfret1)  \
+                   + x2 * np.exp(-t * kfret1)) \
+                   + bg
+DA = DA1lt #legacy name
 def eps(t, x0, tau_fret):
     return (1-x0) * np.exp(-t / tau_fret) + x0
     
@@ -34,7 +42,7 @@ def fitDonly(D0dat, dtime = 0.064):
     #print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, Donly_base, Donlymodel, chi2red
 
-def fitDA (DAdat, D0dat, dtime = 0.064):
+def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -46,8 +54,21 @@ def fitDA (DAdat, D0dat, dtime = 0.064):
     chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
-    
-#add function that fits 2lts
+def fitDA2lt (DAdat, D0dat, dtime = 0.064):
+    _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
+    Npoints = D0dat.shape[0]
+    fittime = np.arange(Npoints) * dtime
+    p0 = [np.max(DAdat), 0.6, 0.2, 1, 10, 50]
+    popt, pcov = curve_fit( lambda t, A, x0, x1, kf1, kf2, bg: \
+                                DA(t, A, x0, x1, kf1, kf2, bg, Donly_base), \
+                           fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
+                           bounds = ([0, 0, 0, 0, 0, 0], 
+                                     [np.inf, 1, 1, 1e4, 1e4, np.inf]))
+    DAmodel = DA(fittime, *popt, Donly_base)
+    chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
+    print('chi2 reduced is %.2f' % chi2red)
+    return popt, pcov, DAmodel, chi2red
+fitDA = fitDA1lt #legacy name
     
 def plteps(ax, DAdat, D0dat, x0, tau_fret, bgrange = [320,420], makeplot = True, dtime = 0.064):
     #calc backgrounds
