@@ -5,14 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ImageManipulation as IM
 import os
-import findPeaksLib
-import GaussFits
 import pickle
 import GaussAnalysisPipeline as GAP
 import precisionFuncs as pF
 from scipy.optimize import minimize
 from scipy.special import factorial
-import copy
 import lmfit
 import aid_functions as aid
 from skimage import feature
@@ -457,7 +454,6 @@ def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '',
     
 def whichChiIsBest(bins, counts, verbose = False):
     """utility function"""
-    binwidth = bins[1]-bins[0]
     fitresL = []
     AICL = []
     BICL = []
@@ -1078,8 +1074,6 @@ def mergePTUfiles(path, savepath):
         print(ii)
 
         files_ptu = []
-        files_xcoord = []
-        files_ycoord = []
         x_relative = []
         y_relative = []
         folderpath = os.path.join(path, ii)#'{}{}{}'.format(path, ii, '/')

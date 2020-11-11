@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import copy
+import matplotlib
 
 #%%
 def appendOnPattern( wdir, pattern):
@@ -28,24 +29,25 @@ def loadList(ffiles):
 def plotdecay(decay,
               dt = 0.064, 
               plotkwargs = {}, 
-              isnorm = False, 
-              normrange = (0, None), 
-              isbgsubtract = False,
-              bgrange = [0,10],
-              ax = None):
+              normrange = None, 
+              bgrange = None,
+              ax = None,
+              xlim = None):
     """pass a **decaykwargs dict to control background correction and 
     normalisation e.g.:
         decaykwargs = {'isnorm' : True, 'normrange' : (20, 25)}"""
     if ax == None:
         ax = plt.gca()
     decay = copy.deepcopy(decay)
-    if isbgsubtract:
+    if bgrange is not None:
         avgbg = np.mean(decay[bgrange[0]:bgrange[1]])
         decay -= avgbg
-    if isnorm:
+    if normrange is not None:
         decay = decay / max(decay[normrange[0]:normrange[1]])
     xdat = np.arange(len(decay)) * dt
     ax.plot(xdat, decay, **plotkwargs)
+    if xlim:
+        ax.set_xlim(xlim)
 
 def plotdecayList(decaylist, plotdecaykwargs = {}, plotkwargs = {}, ax = None,
             plotout = None):
@@ -88,22 +90,19 @@ def plotdecayList(decaylist, plotdecaykwargs = {}, plotkwargs = {}, ax = None,
 #        else:
 #            plt.plot(xdat, datasnip, pattern, label = label, alpha = alpha,
 #                    c = clist[i])
-
-def normbydecay(data_list, norm_decay, shift = 0, bgrange = None):
-    norm_list = []
-    #subtract background if specified
-    if bgrange is not None:
-        norm_decay = norm_decay - np.mean(norm_decay[bgrange[0]:bgrange[1]])
-        data_list = [data - np.mean(data[bgrange[0]:bgrange[1]])
-            for data in data_list]
-    for data in data_list:
-        shiftdata, shiftnorm = intshift(shift, data, norm_decay)
-        norm_list.append(shiftdata/shiftnorm)
-#        if shift <= 0:
-#            norm_list.append(data[0:shift-1]/norm_decay[-shift:-1])
-#        elif shift > 0:
-#            norm_list.append(data[shift:-1]/norm_decay[0:-shift-1])
-    return norm_list
+#
+#################functionality moved to sampleSet object######################
+#def normbydecay(data_list, norm_decay, shift = 0, bgrange = None):
+#    norm_list = []
+#    #subtract background if specified
+#    if bgrange is not None:
+#        norm_decay = norm_decay - np.mean(norm_decay[bgrange[0]:bgrange[1]])
+#        data_list = [data - np.mean(data[bgrange[0]:bgrange[1]])
+#            for data in data_list]
+#    for data in data_list:
+#        shiftdata, shiftnorm = intshift(shift, data, norm_decay)
+#        norm_list.append(shiftdata/shiftnorm)
+#    return norm_list
 
 def genFr(PS, g_factor, shift = 0, bgrange = None):
     """generate magic angle Fluorescence decay F
@@ -152,14 +151,13 @@ def intshift(shift, data1, data2):
 def pltD0DArisetherms(D0Set, DASet, identifier, resdir = None,
                       decaytype = 'VM',
                       plotkwargs = {}, 
-                      plotdecaykwargs = {'plotrange' : np.array([0, 30]),
-                                       'normrange' : np.array([0, 30]),
-                                       'isnorm' : True }):
-    fig, ax = plt.figure(figsize=(11,8))
+                      plotdecaykwargs = {'xlim' : (0, 2),
+                                         'normrange' : np.array([0, 30])}):
+    fig, ax = plt.subplots(figsize=(11,8))
     D0TACs = D0Set.getDecay(decaytype)
     DATACs = DASet.getDecay(decaytype)
     
-    plotdecaykwargs['dt'] = D0Set.imreadkwargs.dt_glob
+    plotdecaykwargs['dt'] = D0Set.dt_glob
     plotkwargs['c'] = 'g'
     plotdecayList(D0TACs, plotdecaykwargs, plotkwargs, ax = ax)
     plotkwargs['c'] = 'r'
@@ -172,7 +170,7 @@ def pltD0DArisetherms(D0Set, DASet, identifier, resdir = None,
     plt.title(identifier + ' risetherm')
     plt.plot(0,0, 'g', label = 'Donly (%i cells)' % len(D0TACs))
     plt.plot(0,0, 'r', label = 'D(A) (%i cells' % len(DATACs))
-    plt.ylim(1e-5, 1)
+    plt.ylim(1e-3, 1)
     plt.legend()
     if resdir:
         plt.savefig(os.path.join(resdir, identifier + '_risetherms.png'),
@@ -181,14 +179,13 @@ def pltD0DArisetherms(D0Set, DASet, identifier, resdir = None,
     
 def pltPSrisetherms(sampleSet, identifier, resdir = None,
                     plotkwargs = {}, 
-                    plotdecaykwargs = {'plotrange' : np.array([0, 30]),
-                                       'normrange' : np.array([0, 30]),
-                                       'isnorm' : True }):
-    fig, ax = plt.figure(figsize=(11,8))
+                    plotdecaykwargs = {'xlim' : (0, 2),
+                                       'normrange' : np.array([0, 30])}):
+    fig, ax = plt.subplots(figsize=(11,8))
     PTACs = sampleSet.getPropertyList('P')
     STACs = sampleSet.getPropertyList('S')
     plt.figure(figsize=(11,8))
-    plotdecaykwargs['dt'] = sampleSet.imreadkwargs.dt_glob
+    plotdecaykwargs['dt'] = sampleSet.dt_glob
     plotkwargs['c'] = 'm'
     plotdecayList(PTACs, plotdecaykwargs, plotkwargs, ax = ax)
     plotkwargs['c'] = 'c'
@@ -200,8 +197,8 @@ def pltPSrisetherms(sampleSet, identifier, resdir = None,
     plt.xlabel('time (ns)')
     plt.ylabel('normalised intensity')
     plt.title(identifier + ' PS risetherm')
-    plt.plot(0,0, 'm:', label = 'Donly P (%i cells)' % len(PTACs))
-    plt.plot(0,0, 'c:', label = 'Donly S (%i cells)' % len(STACs))
+    plt.plot(0,0, 'm', label = 'Donly P (%i cells)' % len(PTACs))
+    plt.plot(0,0, 'c', label = 'Donly S (%i cells)' % len(STACs))
     plt.legend()
     if resdir:
         plt.savefig(os.path.join(resdir, identifier +'_PS_risetherms.png'),
@@ -210,16 +207,12 @@ def pltPSrisetherms(sampleSet, identifier, resdir = None,
 def pltRelativeDecays(sampleSet, identifier, 
                     resdir = None,
                     plotkwargs_base = {}, 
-                    plotdecaykwargs = {'plotrange' : (15, 300),
-                                         'normrange' : (23, 30),
-                                         'norm' : True}
+                    plotdecaykwargs = {'xlim' : (0, 20),
+                                       'normrange' : (23, 30)},
                     decaytype = 'VM',
                     colorcoding = None, 
                     axs = None):
-    """this function has some unexpected behaviour in that it always plots
-    unnormalised: VM
-    normalised: VM or HH depending on how self.setID.TACnorms was calculated
-    """
+    """    """
     if axs == None:
         fig, ax1 = plt.subplots(figsize = (11, 8))
         ax2 = ax1.twinx()
@@ -227,42 +220,41 @@ def pltRelativeDecays(sampleSet, identifier,
     TACnorms = sampleSet.getPropertyList(decaytype + 'norm')
     TACs = sampleSet.getPropertyList(decaytype)
     #make a list of colorcoding and set brightness accordingly
-    if colorcoding:
-        plotkwargsLst = []
-        cmap = matplotlib.cm.get_cmap('autumn')
-        for i in range(len(colorcoding)):
-            plotkwargs = copy.deepcopy(plotkwargs_base)
-            c = cmap(colorcoding[i] / max1(colorcoding))
+    cmap = matplotlib.cm.get_cmap('autumn')
+    plotkwargLst = []
+    for i in range(len(TACs)):
+        #different objects
+        plotkwargs = copy.deepcopy(plotkwargs_base)
+        if colorcoding is not None:
+            c = cmap(colorcoding[i] / max(colorcoding))
             plotkwargs['c'] = c
-            #different objects
-            plotkwargsLst.append(plotkwargs)
-    else:
-        plotkwargsLst = [plotkwargs for i in range(len(TACs))]
+        plotkwargLst.append(plotkwargs)
     #all pointers to same object
     plotdecaykwargLst = [plotdecaykwargs for i in range(len(TACs))]
     
-    for el in plotkwargList:
+    for el in plotkwargLst:
         el['lineStyle'] = ':'
         
-    plotdecayList(TACnorms, plotdecaykwargsLst, plotkwargsLst, ax1 = ax1)
-    ax1.plot(0,0, **plotkwargLst[0], label = 'DA normalised')
-    ax1.set_ylabel('u03B5 (u03C4) \'......\'')
+    plotdecayList(TACnorms, plotdecaykwargLst, plotkwargLst, ax = ax1)
+    ax1.plot(0,0, **plotkwargLst[0], label = identifier + ' normalised')
+    ax1.set_ylabel('\u03B5 (\u03C4) \'......\'')
     ax1.set_xlabel('time (ns)')
-    ax1.set_ylim([0,1.2])
+    
     ax1.grid()
-    ax2 = ax1.twinx()
-    for el in plotkwargList:
+    #ax2 = ax1.twinx()
+    for el in plotkwargLst:
         el['lineStyle'] = '-'
-    plotdecayList(TACs, plotdecaykwargsLst, plotkwargsLst, ax1 = ax2)
+    plotdecayList(TACs, plotdecaykwargLst, plotkwargLst, ax = ax2)
     ax2.plot(0,0, **plotkwargLst[0], 
-             label = 'DA u03B5 (u03C4) - %i cells' % 
+             label = identifier + ' \u03B5 (\u03C4) - %i cells' % 
              len(TACs))
     ax2.set_ylabel('normalised intensity (a.u.)')
     ax2.set_yscale('log')
     ax2.set_ylim([1e-3,3.8])
+    ax1.set_ylim([0,1.2])
     plt.grid()
     plt.legend()
-    plt.title('%s %s CD95' % (decaymode, identifier))
+    plt.title('%s %s CD95' % (decaytype, identifier))
     if resdir:
         outname = os.path.join(resdir, identifier + '_epstau+normalised.png')
         plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
@@ -271,10 +263,10 @@ def pltRelativeDecays(sampleSet, identifier,
 
 def pltAnisotropies(sampleSet, identifier, resdir = None,
                     plotkwargs = {}, 
-                    plotdecaykwargs = {'plotrange' : np.array([0, 300])}
+                    plotdecaykwargs = {'xlim' : np.array([0, 25])}
                     ):
     fig, ax = plt.figure(figsize=(11,8))
-    rs = sampleSET.getPropertyList('r')
+    rs = sampleSet.getPropertyList('r')
     plt.figure(figsize=(11,8))
     plotdecaykwargs['dt'] = sampleSet.imreadkwargs.dt_glob
     plotdecayList(rs, plotdecaykwargs, plotkwargs, ax = ax)
@@ -282,11 +274,11 @@ def pltAnisotropies(sampleSet, identifier, resdir = None,
     plt.ylim(0,1)
     plt.ylabel('anisotropy')
     plt.xlabel('time (ns)')
-    plt.title(identifier + sampleSetID + 'anisotropy')
+    plt.title(identifier + 'anisotropy')
     plt.grid()
     plt.plot(0,0, **plotkwargs, label = 'anisotropy (%i cells)' % len(rs))
     plt.legend()
     if resdir:
         plt.savefig(os.path.join(resdir, identifier +'_anisotropy.png'),
                 dpi = 300, bbox_inches = 'tight')
-    return fig, ax1
+    return fig, ax
