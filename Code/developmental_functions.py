@@ -10,6 +10,7 @@ import GaussAnalysisPipeline as GAP
 import precisionFuncs as pF
 from scipy.optimize import minimize
 from scipy.special import factorial
+from scipy.special import i0e as scipyi0e
 import lmfit
 import aid_functions as aid
 from skimage import feature
@@ -267,23 +268,17 @@ def plotSinglePair(locLst, pxSize = 10):
     plt.show()
     return posx, posy
 
-def plotOccurence(locLst):
+def plotOccurence(locLst, title = ''):
     """plots a 2D histogram of how many spots have been fitted
     in the Green and red channel.
     Takes as argument a spotLst Lst"""
+    Gspots, Yspots = genOccurrence(locLst)
     #find max occurence
-    Gmax = 0
-    Ymax = 0
-    for loc in locLst:
-        Gspots = len(loc['G'].spotLst)
-        Yspots = len(loc['Y'].spotLst)
-        if Gspots + 1> Gmax: Gmax = Gspots + 1#+1 to store zero entries
-        if Yspots + 1 > Ymax: Ymax = Yspots + 1
+    Gmax = max(Gspots) + 1#+1 to store zero entries
+    Ymax = max(Yspots) + 1
     occurence = np.zeros([Gmax,Ymax], np.int)
-    for loc in locLst:
-        Gspots = len(loc['G'].spotLst)
-        Yspots = len(loc['Y'].spotLst)
-        occurence[Gspots, Yspots] += 1
+    for Gspot, Yspot in zip(Gspots, Yspots):
+        occurence[Gspot, Yspot] += 1
     plt.figure(figsize = [Ymax,Gmax])
     x, y = np.meshgrid(np.arange(Ymax),np.arange(Gmax))
     plt.scatter(x,y, s = occurence)
@@ -292,9 +287,18 @@ def plotOccurence(locLst):
     ax.set_yticks(np.arange(Gmax))
     plt.ylabel ('# Green spots identified')
     plt.xlabel ('# red spots identified')
+    plt.title(title)
     plt.show()
     return occurence
     
+def genOccurrence(locLst):
+    Gspots = []
+    Yspots = []
+    for loc in locLst:
+        Gspots.append(len(loc['G'].spotLst))
+        Yspots.append(len(loc['Y'].spotLst))
+    return Gspots, Yspots
+        
 def selectSpotOccurence(locLst, Gspots, Yspots):
     """selects from locLst those localisations that have
     Gspots and Yspots. Gspots and Spots must be lists.
@@ -310,10 +314,11 @@ def selectSpotOccurence(locLst, Gspots, Yspots):
     return locLst_copy
 
 
-def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1):
+def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1, 
+    modelkwargs = {}):
     """return log-likelihood. for 1D binned data function
     maximize this function to obtain most likely fit"""
-    model = func(xdata, params)
+    model = func(xdata, params, **modelkwargs)
     l = np.sum(-model + ydata * np.log(model) - np.log(factorial(ydata)))
     return l * sign
 def get_logLikelihood(params, func, observations, sign = 1):
@@ -325,9 +330,11 @@ def get_logLikelihood(params, func, observations, sign = 1):
     loglikelihood = np.log(np.prod(func(observations, params)))
     return loglikelihood * sign
 def ncChidistr(r, mu, sig, A, offset):
-    """calculates non-centered Chi Distribution"""
-    return A * r / sig**2 * np.exp(- (mu**2 + r**2) / (2 * sig**2)) \
-        * np.i0( r * mu / (sig**2)) + offset
+    """calculates non-centered Chi Distributionxx"""
+    return A * r / sig**2 * np.exp(- 0.5 * ((r - mu)/sig)**2) \
+        * scipyi0e( mu * r / sig**2) \
+        + offset
+    
 def NncChidistr(x, p):
     """takes lmfit Parameter object and generates as many ncChiDistr as there 
     are mu%i"""
@@ -385,6 +392,7 @@ def fitNChidistr(p, bins, counts):
     params are ordered: mu, sigma, amplitude, offset"""
     #possible to make function generic to fit any distribution?
     #even better: create object that contains the data, binwidth, maxbins etc.
+    print('Warning: function is depreciated. Instead use fitDistr()')
     fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = 'nelder',
         args = (NncChidistr, bins, counts, -1))
     logLikelihood = get_logLikelihood1DPoisson(fitres.params, NncChidistr, 
@@ -395,7 +403,21 @@ def fitNChidistr(p, bins, counts):
     BIC = get_BIC(fitres.nvarys, logLikelihood, samplesize)
     return fitres, AIC, AICc, BIC, logLikelihood
     
-def scanLikelihoodSurface(param_ranges, p, bins, counts, verbose = False):
+def fitDistr(p, modelFunc, x, y, modelkwargs = {}):
+    """fits a distribution and return fit result and logLikelihood, Aikaike 
+    and Bayesion info criteria"""
+    fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = 'nelder',
+        args = (modelFunc, x, y, -1, modelkwargs))
+    logLikelihood = get_logLikelihood1DPoisson(fitres.params, modelFunc, 
+                                                x, y, modelkwargs = modelkwargs)
+    samplesize = np.sum(y)
+    AIC = get_AIC(fitres.nvarys, logLikelihood)
+    AICc = get_AICc(fitres.nvarys, logLikelihood, samplesize)
+    BIC = get_BIC(fitres.nvarys, logLikelihood, samplesize)
+    return fitres, AIC, AICc, BIC, logLikelihood
+    
+def scanLikelihoodSurface(param_ranges, p, x, y, 
+    modelFunc = NncChidistr, verbose = False, modelkwargs = {}):
     param_ticks=[]
     param_names=param_ranges.keys()
     for param_name in param_names:
@@ -409,7 +431,7 @@ def scanLikelihoodSurface(param_ranges, p, bins, counts, verbose = False):
         for j, name in enumerate(param_names):
             p[name].set(value = point[j], vary = False)
         try:
-            *_, logLikelihood = fitNChidistr(p, bins, counts)
+            *_, logLikelihood = fitDistr(p, modelFunc, x, y, modelkwargs)
         except ValueError:
             if verbose: print ('fit failed for ' + str(point))
             logLikelihood = np.nan
@@ -476,28 +498,31 @@ def whichChiIsBest(bins, counts, verbose = False):
             print('BIC is %.1f for %i peaks' % (BIC, i))
     return fitresL[bestfit]
     
-def plotdistr(dist, bins, fit = None, title = '', modelout = '', 
-    plotout = '', grid = False):
+def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
+    modelout = '', plotout = '', grid = False, modelkwargs = {}):
     """plots a histogrammed disttribution with bin position bins and 
     counts in each bin. fit is an lmfit.MinimizerResult object, if it is given,
     a model is plotted too.
     plot and data export modalities are integrated."""
     binwidth = bins[1] - bins[0]
     if fit:
-        x = np.arange(0,max(bins),.1)
+        dstep = 0.1
+        x = np.arange(0,max(bins),dstep)
         p = fit.params
-        model = NncChidistr(x, p)
+        #unsire whether dstep is needed, debug!
+        model = fitFunc(x, p, **modelkwargs) #/ dstep
         plt.plot(x, model, 'k')
         i = 0
-        while True:
-            try:
-                model = ncChidistr(x, p['mu%i' % i], p['sig%i' % i], p['A%i' % i], 0)
-                plt.plot(x,model, '--')
-                i+=1
-            except KeyError:
-                bg = np.ones(len(x))*p['bg']
-                plt.plot(x, bg, '--')
-                break
+        if fitFunc == NncChidistr:
+            while True:
+                try:
+                    model = ncChidistr(x, p['mu%i' % i], p['sig%i' % i], p['A%i' % i], 0)
+                    plt.plot(x,model, '--')
+                    i+=1
+                except KeyError:
+                    bg = np.ones(len(x))*p['bg']
+                    plt.plot(x, bg, '--')
+                    break
 
         
     plt.hist(dist, bins = bins, color = 'c')
@@ -589,18 +614,7 @@ def sortSpots(loc):
     sortedG = []
     sortedY = []
     Ndist = min (NG, NY)
-    Gcoords = np.zeros([NG, 2])
-    Ycoords = np.zeros([NY, 2])
-    alldist = np.zeros([NG, NY])
-
-    for i, spot in enumerate(loc['G'].spotLst):
-        Gcoords[i] = getCoordFromSpot(spot)
-    for i, spot in enumerate(loc['Y'].spotLst):
-        Ycoords[i] = getCoordFromSpot(spot)
-    
-    for i in range(NG):
-        for j in range(NY):
-            alldist[i, j] = np.linalg.norm(Gcoords[i] - Ycoords[j])
+    alldist = getCrossdist(loc)
 
     for i in range(Ndist):
         Gpos, Ypos = [alldist.argmin() // NY , alldist.argmin() % NY]
@@ -617,6 +631,23 @@ def sortSpots(loc):
     #re-order
     loc['G'].spotLst[:] = [loc['G'].spotLst[i] for i in sortedG]
     loc['Y'].spotLst[:] = [loc['Y'].spotLst[i] for i in sortedY]
+
+def getCrossdist(loc):
+    NG = len(loc['G'].spotLst)
+    NY = len(loc['Y'].spotLst)
+    Gcoords = np.zeros([NG, 2])
+    Ycoords = np.zeros([NY, 2])
+    alldist = np.zeros([NG, NY])
+
+    for i, spot in enumerate(loc['G'].spotLst):
+        Gcoords[i] = getCoordFromSpot(spot)
+    for i, spot in enumerate(loc['Y'].spotLst):
+        Ycoords[i] = getCoordFromSpot(spot)
+    
+    for i in range(NG):
+        for j in range(NY):
+            alldist[i, j] = np.linalg.norm(Gcoords[i] - Ycoords[j])
+    return alldist
 
 def getCoordFromSpot(spot):
     return np.array([spot.posx, spot.posy])

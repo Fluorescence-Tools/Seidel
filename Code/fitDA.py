@@ -58,7 +58,7 @@ def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
-    p0 = [np.max(DAdat), 0.6, 0.2, 1, 10, 50]
+    p0 = [np.max(DAdat), 0.2, 0.2, 1, 10, 50]
     popt, pcov = curve_fit( lambda t, A, x0, x1, kf1, kf2, bg: \
                                 DA2lt(t, A, x0, x1, kf1, kf2, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
