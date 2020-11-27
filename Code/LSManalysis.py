@@ -8,6 +8,10 @@ import fitDA
 import gc
 import pickle 
 
+debug = False
+if debug:
+    import matplotlib.pyplot as plt
+
 def PS2PandS(TACPS):
     assert len(TACPS) %2 == 0 and len(TACPS.shape) == 1 ,\
         "array not divisible by two or not 1D."
@@ -26,8 +30,9 @@ def PandS2PS(TACP, TACS):
     return TACPS
 def calculateDerivedVariables(df, integrationtime = 1):
     """integration time is dwelltime * Nframes"""
+    df['surfaceMax'] = df[['surface_G', 'surface_Y']].max(axis = 1)
     for label in ['_G', '_Y']:
-        df['Br' + label] = df['I' + label] / df['surface' + label]
+        df['Br' + label] = df['I' + label] / df['surfaceMax']
         df['rate'+label] = df['Br' + label] / integrationtime
     df['Sg/Sy'] = df['Br_G'] / df['Br_Y']
     return df
@@ -182,17 +187,39 @@ class sampleSet():
                                    isCleanImage, label)
                 #extract intensity image variables
                 df['I'+label][image.name] = np.sum(image.P + image.S)
-                surface = np.sum(image.P[image.P > 0])
+                surface = np.sum(image.workIntensity.G > 0)
                 df['surface'+label][image.name] = surface
                 #append lt image to struct
                 self.images[label[1]].append(image)
             print('finished with file %s\n' % file[-20:])
         assert self.names == [image.name for image in self.images['G']],\
             "two sets of naming variables should be identical"
-        df = calculateDerivedVariables(df)
+        integrationtime = self.imreadkwargs['dwelltime'] * Nframes
+        df = calculateDerivedVariables(df, integrationtime)
         outdir = os.path.join(self.resdir, identifier + 'imstats.csv')
         df.to_csv(outdir)
         return df
+    
+    def genImagedf(self, image, 
+                   channels = ['G', 'Y', 'Y'], 
+                   TACranges = [[0,380], [0, 380], [380,800]],
+                   labels = ['G', 'R', 'Y']):
+        #TODO
+        #add function that loops over items in self.images[channel]
+        #renew imStatsHeader
+        df = pd.DataFrame(columns = self.imStatsHeader, index = self.names)
+        for channel, TACrange, label in zip(channels, TACranges, labels):
+            pass
+            #add intensity to df
+            #add surfaces to df
+            
+            #add derived variables
+                #brightness
+                #rate
+                #Sg/Sr, Sg/Sy, Sr/Sy
+            #either here or in separate function.
+        return df
+            
     
     def procesPSimage(self, image, threshold, isSave, isCleanImage, label):
         """only does work on image, has a lot of dependencies, unwanted"""
