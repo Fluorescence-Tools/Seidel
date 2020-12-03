@@ -78,6 +78,11 @@ def createPath(ffile):
         pass
     return True
     
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx], idx
+    
 def trymkdir(path):
     try:
         os.mkdir(path)

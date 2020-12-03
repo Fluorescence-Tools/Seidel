@@ -65,9 +65,13 @@ class fourPointSet:
         for name in self.points.keys():
             self.points[name] = \
                  np.array(self.rotate_via_numpy(self.points[name], angle))
-    def mirrorInX(self):
-        for name in self.points.keys():
-                self.points[name] *= [1,-1]
+    def mirror(self, mirrorAxis = 'horizontal'):
+        if mirrorAxis == 'horizontal':
+            for name in self.points.keys():
+                self.points[name] *= [1, -1]
+        elif mirrorAxis == 'vertical':
+            for name in self.points.keys():
+                self.points[name] *= [-1, 1]
 
     def relabelLeftToRight(self):
         """relabels the spots such that the spots that have lowest x are '1'"""
@@ -99,7 +103,7 @@ class fourPointSet:
     def applyChannelShift(self, nameset, shift):
         for name in nameset:
             self.points[name] -= shift
-    def Orient(self):
+    def Orient(self, isMirrorInY = False):
         """
         utility function for the most common case of aligning
         First: A1 point is chosen to align to origin
@@ -119,6 +123,8 @@ class fourPointSet:
         self.rotate()
         if self.isYAverageBelowZero('D'):
             self.rotate(angle = np.pi)
+        if isMirrorInY:
+            self.mirror(mirrorAxis = 'vertical')
         self.relabelLeftToRight()
         self.RepositionToPoint('A1')
         
@@ -305,6 +311,7 @@ class ensemblePointSet:
         plt.polar(phi_model, r_model, '*',
             markersize = 10, markeredgewidth = 1,
             c=darkc )
+            
         return
     def getPointPairStats(self, axisPoint1, axisPoint2, pairPoint1, pairPoint2,
         verbose = False, title = 'some distance', addangle = 0):

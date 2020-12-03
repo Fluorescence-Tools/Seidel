@@ -12,6 +12,11 @@ import aid_functions as aid
 
 debug = False
 
+#The GRY convention in this class is problematic because it is inflexible with
+#regard to multichannel images, e.g. if there are more than two color channels
+#or if there are anisotropy channels.
+#It would be better to make the number of channels generic.
+
 class GRYLifetime():
     def __init__(self, imG, imR, imY):
         assert (len(imG.shape) == 3 and len(imR.shape) == 3\

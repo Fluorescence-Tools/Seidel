@@ -318,6 +318,9 @@ def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1,
     modelkwargs = {}):
     """return log-likelihood. for 1D binned data function
     maximize this function to obtain most likely fit"""
+    #want to modify function such that it just takes modelkwargs
+    #and not xdata, ydata, then accordingly fitfunctions and surface functions
+    #can be generalised
     model = func(xdata, params, **modelkwargs)
     l = np.sum(-model + ydata * np.log(model) - np.log(factorial(ydata)))
     return l * sign
@@ -441,12 +444,16 @@ def scanLikelihoodSurface(param_ranges, p, x, y,
     return logLikelihoodSurface.reshape(nDshape)
     
 def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '', 
-    title = ''):
+    title = '', figsize = None):
     """utility function, works only in 2D"""
     keyy, keyx = param_ranges.keys()
     bestfit = np.nanmax(surface.flatten())
     contourlevels = [bestfit -2, bestfit - 1, bestfit-0.5, bestfit]
-    fig, ax = plt.subplots(1,1)
+    if figsize:
+        fig, ax = plt.subplots(1,1, figsize = figsize)
+    else:
+        fig, ax = plt.subplots(1,1)
+    
     
     #img = ax.imshow(surface, cmap = 'hot')
     vmin = bestfit-5
@@ -499,11 +506,13 @@ def whichChiIsBest(bins, counts, verbose = False):
     return fitresL[bestfit]
     
 def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
-    modelout = '', plotout = '', grid = False, modelkwargs = {}):
+    modelout = '', plotout = '', grid = False, modelkwargs = {}, figsize = None):
     """plots a histogrammed disttribution with bin position bins and 
     counts in each bin. fit is an lmfit.MinimizerResult object, if it is given,
     a model is plotted too.
     plot and data export modalities are integrated."""
+    if figsize:
+        plt.figure(figsize = figsize)
     binwidth = bins[1] - bins[0]
     if fit:
         dstep = 0.1
@@ -511,24 +520,24 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
         p = fit.params
         #unsire whether dstep is needed, debug!
         model = fitFunc(x, p, **modelkwargs) #/ dstep
-        plt.plot(x, model, 'k')
+        plt.plot(x, model, 'k', label = 'model')
         i = 0
         if fitFunc == NncChidistr:
             while True:
                 try:
                     model = ncChidistr(x, p['mu%i' % i], p['sig%i' % i], p['A%i' % i], 0)
-                    plt.plot(x,model, '--')
+                    plt.plot(x,model, '--', label = 'nc\u03C7%i' % i)
                     i+=1
                 except KeyError:
                     bg = np.ones(len(x))*p['bg']
                     plt.plot(x, bg, '--')
                     break
-
         
     plt.hist(dist, bins = bins, color = 'c')
     plt.xlabel('distance (nm)')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
     plt.title(title)
+    plt.legend()
     if grid:
         plt.grid()
     if plotout:
@@ -566,6 +575,7 @@ def fitChiDistr(dist, params0, bounds = None, outfile = '', binwidth = 2,
                 maxbin = 60, plotshow = True):
     """fits a chi distribution to a set of distances
     params are ordered: mu, sigma, amplitude, offset"""
+    print('warning: function superceded by fitNChidistr')
     counts, bin_edges, _ = plt.hist(dist, bins = np.arange(0, maxbin, binwidth))
     Nbins = bin_edges.shape[0] - 1
     bins = np.zeros(Nbins)
