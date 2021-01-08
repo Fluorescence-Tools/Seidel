@@ -13,6 +13,19 @@ from scipy.optimize import curve_fit
 #issue dtime value is shared over all functions. Better to make it a class 
 #variable
 
+def VisualizeRuntimeError(func):
+    """decorator to catch common error when bad data causes a fit to fail"""
+    def inner(data, *args, **kwargs):
+        try: return func(data, *args, **kwargs)
+        except RuntimeError:
+            plt.plot(data)
+            plt.title('data used for fitting')
+            plt.yscale('log')
+            plt.show()
+            raise RuntimeError \
+                ('A runtimeError Occurred, did you attempt fit with bad data?')
+    return inner
+
 def Donly(t, A, B, tau1, tau2, bg):
     return A * np.exp(-t/tau1) + B * np.exp(-t/tau2) + bg
 
@@ -30,6 +43,7 @@ DA = DA1lt #legacy name
 def eps(t, x0, tau_fret):
     return (1-x0) * np.exp(-t / tau_fret) + x0
     
+@VisualizeRuntimeError
 def fitDonly(D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -42,6 +56,7 @@ def fitDonly(D0dat, dtime = 0.064):
     #print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, Donly_base, Donlymodel, chi2red
 
+@VisualizeRuntimeError
 def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
@@ -54,6 +69,8 @@ def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
+
+@VisualizeRuntimeError
 def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
