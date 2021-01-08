@@ -40,6 +40,9 @@ def ptuHeader_wrap (fname):
     return readPTU.PQ_ptuHeader_sf(fpin,fpout)
 
 def ptu_wrap(fname, NumRecords):
+    #bug: when NumRecords is not close to the actual number of photons in the file
+        #an error is raised. However it is desirable that a partial dataset is 
+        #returned instead.
 	#issue: for new imspy reading lists are more convenient and this
 	#is more close to ctypes anyway
 	#need to write a function that returns list types
@@ -201,6 +204,9 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range,
                         Gchan, Rchan, Ychan, framestop):
     """c code wrapper to create tac histogram image. To be used in conjunction
         with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
+    assert len(Gchan) == 2 and len(Rchan) == 2 and len(Ychan) == 2,\
+        'in current implementations must eah Chan must be two long,' +\
+        'use the same channel number twice to access single channel readout'
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
     c_ushort_p = ctypes.POINTER(ctypes.c_ushort)
