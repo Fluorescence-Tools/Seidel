@@ -9,13 +9,18 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import warnings
 
 #issue dtime value is shared over all functions. Better to make it a class 
 #variable
 
-def VisualizeRuntimeError(func):
+def GiveFitErrorFeedback(func):
     """decorator to catch common error when bad data causes a fit to fail"""
     def inner(data, *args, **kwargs):
+        assert type(data) == np.ndarray
+        if (data == 0).any(): 
+            warnings.warn('data contains zero values, ' + \
+                          'gaussian error estimate cannot handle this')
         try: return func(data, *args, **kwargs)
         except RuntimeError:
             plt.plot(data)
@@ -43,7 +48,7 @@ DA = DA1lt #legacy name
 def eps(t, x0, tau_fret):
     return (1-x0) * np.exp(-t / tau_fret) + x0
     
-@VisualizeRuntimeError
+@GiveFitErrorFeedback
 def fitDonly(D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -56,7 +61,7 @@ def fitDonly(D0dat, dtime = 0.064):
     #print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, Donly_base, Donlymodel, chi2red
 
-@VisualizeRuntimeError
+@GiveFitErrorFeedback
 def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
@@ -70,7 +75,7 @@ def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
 
-@VisualizeRuntimeError
+@GiveFitErrorFeedback
 def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
