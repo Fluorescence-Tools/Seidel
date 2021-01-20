@@ -3,6 +3,7 @@ import pandas as pd
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import ImageManipulation as IM
 import os
 import pickle
@@ -44,7 +45,7 @@ def analyseDir(
     outname = '', framestop = -1, ntacs = 256, ROIsize = 20,
     rebin = None, verbose = False, saveplot = False,
     min_distance = 15, ROI_threshold_rel = 0.3, ROI_threshold_abs = 1,
-    gateStop = 150):
+    gateStop = 150, uselines = np.array([1,2])):
     """
     Analyse all ptu files listed in files. A single ROI is found in each file.
     In this ROI, either one, two or Three Gaussians are fitted.
@@ -82,14 +83,17 @@ def analyseDir(
     locLst = []
     for i, file in enumerate(files):
         if file[-4:] != '.ptu':
-            print('not a .ptu file, skipping')
+            #print('not a .ptu file, skipping')
             continue
         print('analysing image no. %i' %i)
         ffile = os.path.join(wdir, file)
-
-        CLR = loadGRYimage(ffile, Ggate = Ggate, Rgate = Rgate,
-            Ygate = Ygate, ntacs = ntacs, framestop = framestop,
-            rebin = rebin, gateStop = gateStop)
+        try:
+            CLR = loadGRYimage(ffile, Ggate = Ggate, Rgate = Rgate,
+                Ygate = Ygate, ntacs = ntacs, framestop = framestop,
+                rebin = rebin, gateStop = gateStop, uselines = uselines)
+        except OSError:
+            print('%s threw OSError, skipping' % file)
+            continue
         #make smooth intensity image to select ROIs
         CLR_smooth = copy.deepcopy(CLR)
         CLR_smooth.smoothIntensity(sigma = 2)
@@ -337,6 +341,11 @@ def ncChidistr(r, mu, sig, A, offset):
     return A * r / sig**2 * np.exp(- 0.5 * ((r - mu)/sig)**2) \
         * scipyi0e( mu * r / sig**2) \
         + offset
+def gauss1D(x, mu, sig, A, offset):
+    pdf = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+    return A * pdf / np.sum(pdf) + offset
+def gauss1D_p(x, p):
+    return gauss1D(x, p['mu'], p['sig'], p['A'], p['offset'])
     
 def NncChidistr(x, p):
     """takes lmfit Parameter object and generates as many ncChiDistr as there 
@@ -443,42 +452,73 @@ def scanLikelihoodSurface(param_ranges, p, x, y,
             if verbose: print ('calculating point ' + str(point))
     return logLikelihoodSurface.reshape(nDshape)
     
-def plotLikelihoodSurface(surface, param_ranges, skip = 2, outname = '', 
-    title = '', figsize = None):
+def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '', 
+    title = '', figsize = None, isplotpdf = True):
     """utility function, works only in 2D"""
+    #really ugly workaround
+    mpl.rcParams['text.usetex'] = True
     keyy, keyx = param_ranges.keys()
-    bestfit = np.nanmax(surface.flatten())
-    contourlevels = [bestfit -2, bestfit - 1, bestfit-0.5, bestfit]
+    surface = copy.deepcopy(surface_copy)
     if figsize:
         fig, ax = plt.subplots(1,1, figsize = figsize)
     else:
         fig, ax = plt.subplots(1,1)
+    bestfit = np.nanmax(surface.flatten())
+    if isplotpdf:
+        #make into pdf
+        #scale to 0 log to avoid running out of floating point precision
+        surface += bestfit 
+        surface = np.exp(surface)
+        #normalize pdf surface to represents the likelihood per nm^2 (for mu vs sigma)
+        #or per nm per photon count (for A vs mu)
+        dx = param_ranges[keyx][1]-param_ranges[keyx][0]
+        dy = param_ranges[keyy][1]-param_ranges[keyy][0]
+        surface /= np.sum(surface) * dx * dy
+        pmax = np.max(surface.flatten())
+        #adapt contourlevels
+        contourlevels = [pmax * 0.135, pmax * 0.60, pmax]
+        vmin = 0
+        vmax = pmax
+        
+    else:
+        contourlevels = [bestfit -2, bestfit-0.5, bestfit]
+        vmin = bestfit-5
+        vmax = bestfit
+    plt.imshow(surface, cmap = 'gray', vmin = vmin, vmax = vmax)
+    CS = ax.contour(surface, levels = contourlevels, colors = 'r', linestyles = 'dashed')
+    labels = ['13.5% pmax', '60% pmax', 'pmax']
     
-    
-    #img = ax.imshow(surface, cmap = 'hot')
-    vmin = bestfit-5
-    plt.imshow(surface, cmap = 'hot', vmin = vmin, vmax = bestfit)
-    #plt.imshow(surface, cmap = 'hot')
-    CS = ax.contour(surface, levels = contourlevels)
-    labels = ['13.5% as likely','36% as likely', '60% as likely', 'most likely']
     fmt = {}
     for l, s in zip(CS.levels, labels):
         fmt[l] = s
-    ax.clabel(CS, fmt = fmt, fontsize = 6)
-    x_label_list = param_ranges[keyx][::skip]
-    ax.set_xticks(np.arange(len(param_ranges[keyx]))[::skip])
-    ax.set_xticklabels(['%.1f' % x for x in x_label_list])
-    ax.set_xlabel(keyx)
-    y_label_list = param_ranges[keyy][::skip]
-    ax.set_yticks(np.arange(len(param_ranges[keyy]))[::skip])
-    ax.set_yticklabels(['%.1f' % x for x in y_label_list])
-    ax.set_ylabel(keyy)
+    ax.clabel(CS, fmt = fmt)
+
+    #match Anders' nomenclature
+    def fancyAxisLabel(key, setLabelFunc): #function only exists in this scope
+        if 'sig' in key:
+            setLabelFunc('$\sigma_{\chi,%c}$' % key[-1])
+        elif 'mu' in key:
+            setLabelFunc('$R_{mp,%c}$' % key[-1])
+        else:
+            setLabelFunc(key)
+    fancyAxisLabel(keyx, ax.set_xlabel)
+    fancyAxisLabel(keyy, ax.set_ylabel)
+    def fancyTickLabel(key, setTickFunc, setTickLabelFunc, skip):
+        labels = ['%.1f' % x for x in param_ranges[key][::skip]]
+        ticks = [ x for x in range(len(param_ranges[key]))[::skip]]
+        #append final value
+        labels.append('%.1f' % max(param_ranges[key]))
+        ticks.append(len(param_ranges[key])-1)
+        setTickFunc(ticks)
+        setTickLabelFunc(labels)
+    fancyTickLabel(keyx, ax.set_xticks, ax.set_xticklabels, skip)
+    fancyTickLabel(keyy, ax.set_yticks, ax.set_yticklabels, skip)
     plt.title(title)
-    plt.text
     plt.colorbar()
     if outname:
         plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
     plt.show()
+    mpl.rcParams['text.usetex'] = False
     
     
 def whichChiIsBest(bins, counts, verbose = False):
@@ -766,7 +806,8 @@ def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose
     similarly for Donly select loccolor = 'D'
     This will export intensity-based FRET indicators for Margarita. Also the DA population if present,
         but not the D0 when loccolor = 'Y'.
-    ISSUE: this functionality should be integrated with general export of FRET indicators."""
+    ISSUE: this functionality should be integrated with general export of FRET indicators.
+    ISSUE: function takes pre-existing bitmap, but it is not clear wjat settings were used to get bitmap"""
     for loc in locLst:
         if verbose: print(loc['filepath'][-20:])
         ROIs = []
@@ -774,8 +815,8 @@ def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose
             ROIs.append(aid.pos2ROI(spot.posx, spot.posy, ROIsize / 2))
         if verbose: print(ROIs)
         loc['FRETind'] = []
-        for i, ROI in enumerate(ROIs):
-
+        i = 0
+        for ROI in ROIs:
         #check that ROI is not touching borders:
             try:
                 aid.crop(loc['G'].bitmap, ROI)
@@ -789,6 +830,7 @@ def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose
             loc['FRETind'][i].NG = np.sum(Gsnip)
             loc['FRETind'][i].NR = np.sum(Rsnip)
             loc['FRETind'][i].NY = np.sum(Ysnip)
+            i+=1
     
     if outpath:
         names = ['NG', 'NR', 'NY']
@@ -807,6 +849,7 @@ def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose
                    header = 'Green Count Rate (KHz)\tRed Count Rate (KHz)\tYellow Count Rate (KHz)',
                    delimiter = '\t'
                             )
+    return values
 
 def getFRETnames(locLst):
     """aider function that returns the names of FRET indicators"""
