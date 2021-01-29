@@ -14,7 +14,7 @@ import warnings
 #issue dtime value is shared over all functions. Better to make it a class 
 #variable
 
-def GiveFitErrorFeedback(func):
+def CheckFitData(func):
     """decorator to catch common error when bad data causes a fit to fail"""
     def inner(data, *args, **kwargs):
         assert type(data) == np.ndarray
@@ -45,10 +45,8 @@ def DA2lt(t, A, x1, x2, kfret1, kfret2, bg, D0):
                    + x2 * np.exp(- t * kfret1)) \
                    + bg
 DA = DA1lt #legacy name
-def eps(t, x0, tau_fret):
-    return (1-x0) * np.exp(-t / tau_fret) + x0
     
-@GiveFitErrorFeedback
+@CheckFitData
 def fitDonly(D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -61,12 +59,12 @@ def fitDonly(D0dat, dtime = 0.064):
     #print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, Donly_base, Donlymodel, chi2red
 
-@GiveFitErrorFeedback
+@CheckFitData
 def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
-    p0 = [np.max(DAdat), 0.8, 10, 50]
+    p0 = [np.max(DAdat), 0.8, 10, 1000]
     popt, pcov = curve_fit( lambda t, A, x0, kf, bg: DA1lt(t, A, x0, kf, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
                            bounds = ([0, 0, 0, 0], [np.inf, 1,1e4, np.inf]))
@@ -75,12 +73,13 @@ def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
 
-@GiveFitErrorFeedback
+@CheckFitData
 def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     _, _, Donly_base, _, _ = fitDonly(D0dat, dtime = dtime)
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
-    p0 = [np.max(DAdat), 0.2, 0.2, 1, 10, 50]
+    p0 = [np.max(DAdat), 0.2, 0.2, 0.1, 0.2, 0]
+    #need to replace with better fitting function such as lmfit.minimize
     popt, pcov = curve_fit( lambda t, A, x0, x1, kf1, kf2, bg: \
                                 DA2lt(t, A, x0, x1, kf1, kf2, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
@@ -92,17 +91,22 @@ def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     return popt, pcov, DAmodel, chi2red
 fitDA = fitDA1lt #legacy name
     
-def plteps(ax, DAdat, D0dat, x0, tau_fret, bgrange = [320,420], makeplot = True, dtime = 0.064):
+def plteps(ax, DAdat, D0dat, DAmodel, Donlymodel, 
+           bgrange = [320,325], makeplot = True, dtime = 0.064):
+    #issue: replace this with what is calculated from the fits
     #calc backgrounds
     bgest_DA = np.mean(DAdat[bgrange[0]:bgrange[1]])
     bgest_D0 = np.mean(D0dat[bgrange[0]:bgrange[1]])
+    if np.isnan(bgest_DA) or np.isnan(bgest_D0):
+        warnings.warn('bg not defined, is bgrange set correctly?')
     #define time axis
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
     #calc epsilon
     epsdat = (DAdat - bgest_DA) / (D0dat- bgest_D0) * \
             max(D0dat-bgest_D0) / max(DAdat - bgest_DA)
-    epsmod = eps(fittime, x0, tau_fret)
+
+    epsmod = (DAmodel - bgest_DA) / (Donlymodel - bgest_D0 )
    
     #plot
     if makeplot:
@@ -114,7 +118,22 @@ def plteps(ax, DAdat, D0dat, x0, tau_fret, bgrange = [320,420], makeplot = True,
         ax.set_ylabel('\u03B5D (t)')
         ax.legend()
         
-def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, file, popt, chi2red, chi2red_D0, dtime = 0.064):
+def pltD0(D0dat, Donlymodel, name, outdir, dtime = 0.064):
+    #define time pltis
+    Npoints = D0dat.shape[0]
+    fittime = np.arange(Npoints) * dtime
+    plt.plot(fittime, D0dat, label = 'D(0)')
+    plt.plot(fittime, Donlymodel, 'c--', label = 'D(0) fit')
+    plt.yscale('log')
+    plt.legend()
+    plt.xlabel('time (ns)')
+    plt.ylabel('cnts')
+    plt.xlim(0, 20)
+    plt.savefig(os.path.join(outdir,name[:-4]+'.png'), dpi = 300, bbox_inches = 'tight')
+    plt.show()
+        
+def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0, dtime = 0.064):
+    #TODO: normalize time D0 and DA plots
     #define time axis
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -134,13 +153,14 @@ def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, file, popt, chi2red, chi2red_D0
     ax.text(0.5,100, 'x0: %.2f\n1/k_fret: %.2f ns \n\u03C72 D(A): %.2f\n\u03C72 D(0): %.2f'\
              % (popt[1], popt[2], chi2red, chi2red_D0), fontsize = 11)
              
-def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, file, popt, chi2red, chi2red_D0, outdir):
+def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, name, popt, chi2red, chi2red_D0, outdir):
+    #consider making some args kwargs.
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex = True, figsize=(7, 6))
     fig.subplots_adjust(hspace=0)
     ax1 = plt.subplot(2,1,1)
-    plt.title('FRET induced donor decay for %s' % file)
-    pltDA(ax1, DAdat, D0dat, DAmodel, Donlymodel, file, popt, chi2red, chi2red_D0)
-    plteps(ax2, DAdat, D0dat, popt[1], popt[2])
-    plt.savefig(os.path.join(outdir,file[:-4]+'.png'), dpi = 300, bbox_inches = 'tight')
+    plt.title('FRET induced donor decay for %s' % name)
+    pltDA(ax1, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0)
+    plteps(ax2, DAdat, D0dat, DAmodel, Donlymodel)
+    plt.savefig(os.path.join(outdir,name[:-4]+'.png'), dpi = 300, bbox_inches = 'tight')
     plt.show()
     return 

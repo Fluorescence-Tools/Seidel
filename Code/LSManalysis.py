@@ -6,7 +6,6 @@ import ImageManipulation as IM
 import numpy as np
 import fitDA
 import gc
-import pickle 
 
 debug = False
 if debug:
@@ -19,7 +18,7 @@ def PS2PandS(TACPS):
     TACP = TACPS[:ntacs]
     TACS = TACPS[ntacs:]
     return TACP, TACS
-
+      
 def PandS2PS(TACP, TACS):
     assert TACP.shape == TACS.shape and len(TACS.shape) ==1, \
         "arrays dimensions mismatch or are not 1D."
@@ -30,11 +29,14 @@ def PandS2PS(TACP, TACS):
     return TACPS
 def calculateDerivedVariables(df, integrationtime = 1):
     """integration time is dwelltime * Nframes"""
-    df['surfaceMax'] = df[['surface_G', 'surface_Y']].max(axis = 1)
-    for label in ['_G', '_Y']:
-        df['Br' + label] = df['I' + label] / df['surfaceMax']
+    print(df)
+    df['surfaceMax'] = df[['surfaceG', 'surfaceY']].max(axis = 1)
+    for label in ['G', 'R', 'Y']:
+        df['Br' + label] = df['N' + label+'-tot'] / df['surfaceMax']
         df['rate'+label] = df['Br' + label] / integrationtime
-    df['Sg/Sy'] = df['Br_G'] / df['Br_Y']
+    df['BrG/BrY'] = df['BrG'] / df['BrY']
+    df['BrG/BrR'] = df['BrG'] / df['BrR']
+    df['BrR/BrY'] = df['BrR'] / df['BrY']
     return df
 
 def cleanImage(image):
@@ -42,19 +44,17 @@ def cleanImage(image):
     del(image.workLifetime)
     return 1
 
-def saveTACs(image, TACdir):
+def saveTACs(image, TACdir, label):
     TACPS = PandS2PS(image.P, image.S)
-    TACout = os.path.join(TACdir, image.name +'_PS.dat')
-    VMout = os.path.join(TACdir, image.name  +'_VM.dat')
-    rout = os.path.join(TACdir, image.name  +'_r.dat')
+    TACout = os.path.join(TACdir, image.name + label +'_PS.dat')
+    VMout = os.path.join(TACdir, image.name  + label + '_VM.dat')
+    rout = os.path.join(TACdir, image.name  + label +'_r.dat')
     np.savetxt(TACout, TACPS, fmt = '%i')
     np.savetxt(VMout, image.VM, fmt = '%i')
     np.savetxt(rout, image.r, fmt = '%.5e')
     return 1
 
-def loadpickle(outname):
-    with open(outname, 'rb') as f:
-        return pickle.load(f)
+
     
 class sampleSet():
     """collection of attributes specific to either Donor only, or acceptor only"""
@@ -67,17 +67,10 @@ class sampleSet():
                         'pulsetime' : 50,
                         'dwelltime': 20e-6,
                         'TAC_range': 4096},
-                 imStatsHeader = ['I_G', 
-                                  'surface_G', 
-                                  'Br_G', 
-                                  'rate_G', 
-                                  'I_Y', 
-                                  'surface_Y', 
-                                  'Br_Y', 
-                                  'rate_Y'],
                   g_factor = 1,
                   dataselect = (0, None),
-                  dt_glob = 0.064
+                  dt_glob = 0.064,
+                  FRETPIETACranges = [[0,380], [0, 380], [380,800]]
                  ):
         """        
         input:
@@ -93,7 +86,6 @@ class sampleSet():
         #potential workaround is to init a dict-like class, but this is cumbersome
         self.wdir = wdir
         self.imreadkwargs = imreadkwargs
-        self.imStatsHeader = imStatsHeader
         self.TACdir = os.path.join(wdir, relTACdir)
         aid.trymkdir(self.TACdir)
         self.resdir = os.path.join(wdir, relresdir)
@@ -101,23 +93,16 @@ class sampleSet():
         self.imdir = os.path.join(wdir, relimdir)
         aid.trymkdir(self.imdir)
         self.ptufiles = bp.appendOnPattern(wdir, 'ptu')[dataselect[0]: dataselect[1]]
-        self.names = [os.path.splitext(os.path.split(ptufile)[1])[0] \
-                      for ptufile in self.ptufiles]
+        #self.names = [os.path.splitext(os.path.split(ptufile)[1])[0] \
+        #              for ptufile in self.ptufiles]
         self.images = {'G': [], 'Y': []}#dict entries are channels, 
         self.g_factor = g_factor
         self.dt_glob = dt_glob
+        self.FRETPIETACranges = FRETPIETACranges
         
     def getTACfileNames(self, ext = '_G_PS.dat'):
         self.TACfiles = bp.appendOnPattern(self.TACdir, ext)
         
-    def genOldStyleHeader(self):
-        self.imStatsHeader =  ['surface', 
-                               'I_G', 
-                               'Br_G', 
-                               'rate_G', 
-                               'I_Y', 
-                               'Br_Y', 
-                               'rate_Y']
 #    def appendTAC(self, TAC):
 #        assert type(TAC) == np.ndarray
 #        self.TACs.append(TAC)
@@ -143,18 +128,11 @@ class sampleSet():
                                               normshift, 
                                               bgrange = bgrange)[0]
 
-    def getPropertyList(self, propertyName, channel = 'G'):
-        List = [getattr(GRYimage, propertyName) for GRYimage in \
-                self.images[channel]]
-        return List
 
-    def savepickle(self, outname):
-        with open(outname, 'wb') as output:
-            pickle.dump(self, output, 1)
                  
     def analyzeLSMCells(self,
         identifier,
-        threshold = 50,
+        threshold = 0,
         Nframes = -1,
         isSave = True,
         isCleanImage = True):
@@ -173,56 +151,62 @@ class sampleSet():
             replaced.
         """
         #init
-        df = pd.DataFrame(columns = self.imStatsHeader, index = self.names)
+        df = pd.DataFrame()
         #loop over each cell
         for index, file in enumerate(self.ptufiles):
             ffile = os.path.join(self.wdir, file).encode()
             #load Donor and acceptor channels
             #P is now called G, S is called R (nuisance)
-            channels = [[1,0], [5,4]]
-            for channel, label in zip(channels, ['_G', '_Y']):
-                PChan, SChan = channel
+            PSchannels = [[1,0], [5,4]]
+            for PSchannel, label in zip(PSchannels, ['_G', '_Y']):
+                PChan, SChan = PSchannel
                 image = self.loadPSImage(ffile, PChan, SChan, Nframes)
                 self.procesPSimage(image, threshold, isSave, 
                                    isCleanImage, label)
-                #extract intensity image variables
-                df['I'+label][image.name] = np.sum(image.P + image.S)
-                surface = np.sum(image.workIntensity.G > 0)
-                df['surface'+label][image.name] = surface
-                #append lt image to struct
                 self.images[label[1]].append(image)
-            print('finished with file %s\n' % file[-20:])
-        assert self.names == [image.name for image in self.images['G']],\
-            "two sets of naming variables should be identical"
-        integrationtime = self.imreadkwargs['dwelltime'] * Nframes
-        df = calculateDerivedVariables(df, integrationtime)
-        outdir = os.path.join(self.resdir, identifier + 'imstats.csv')
-        df.to_csv(outdir)
+        #assert self.names == [image.name for image in self.images['G']],\
+        #    "two sets of naming variables should be identical"
+        self.genImstatsdf(identifier, Nframes)
         return df
     
-    def genImagedf(self, image, 
+    def genImstatsdf(self, identifier, Nframes, 
                    channels = ['G', 'Y', 'Y'], 
-                   TACranges = [[0,380], [0, 380], [380,800]],
+                   #idea: consider using ['Donor', 'FRET', 'PIE'] nomenclature instead
                    labels = ['G', 'R', 'Y']):
-        #TODO
-        #add function that loops over items in self.images[channel]
-        #renew imStatsHeader
-        df = pd.DataFrame(columns = self.imStatsHeader, index = self.names)
-        for channel, TACrange, label in zip(channels, TACranges, labels):
-            pass
-            #add intensity to df
-            #add surfaces to df
-            
-            #add derived variables
-                #brightness
-                #rate
-                #Sg/Sr, Sg/Sy, Sr/Sy
-            #either here or in separate function.
-        return df
+        df = pd.DataFrame()
+        for channel, TACrange, label in \
+                zip(channels, self.FRETPIETACranges, labels):
+            images = self.images[channel]
+            for image in images:
+                Np = np.sum(image.P[TACrange[0]:TACrange[1]])
+                Ns = np.sum(image.S[TACrange[0]:TACrange[1]])
+                Ntot = Np + self.g_factor * 2 * Ns
+                #need to change this into Ny-tot, Ny-p and Ny-s
+                df.at[image.name, 'N'+label+'-p'] = Np
+                df.at[image.name, 'N'+label+'-s'] = Ns
+                df.at[image.name, 'N'+label+'-tot'] = Ntot
+                #data was masked previously
+                surface = np.sum(image.workIntensity.G > 0) 
+                df.at[image.name, 'surface'+label] = surface
+        if Nframes == -1:
+            print('number of frames not given,' \
+                  + 'cannot calculate integration time and derived variables')
+        else:
+            integrationtime = self.imreadkwargs['dwelltime'] * Nframes
+            df = calculateDerivedVariables(df, integrationtime)
+        
+        #save
+        outdir = os.path.join(self.resdir, identifier + 'imstats.csv')
+        df.to_csv(outdir)
+        self.imstats = df
+        return 0
             
     
     def procesPSimage(self, image, threshold, isSave, isCleanImage, label):
         """only does work on image, has a lot of dependencies, unwanted"""
+        #both image object and sampleSet object keep names.
+        #delete the first to avoid trouble
+        #del image.name
         image.loadLifetime()
         image.loadIntensity()
         mask = image.buildMaskFromIntensityThreshold(
@@ -231,7 +215,7 @@ class sampleSet():
         self.genPSfromGRYImage(image)
         self.genDerivedFromPSDecays(image)
         if isSave:
-            saveTACs(image, self.TACdir)
+            saveTACs(image, self.TACdir, label)
             image.saveWorkIntensityToTiff(self.imdir, image.name + 
                                       '_wmask' +label)
         if isCleanImage: #free memory intensive 3D array
@@ -243,8 +227,8 @@ class sampleSet():
         GRYim = IM.processLifetimeImage(
                     ffile, 
                     uselines = np.array([1]), 
-                    Gchan = np.array([PChan]),
-                    Rchan = np.array([SChan]),
+                    Gchan = np.array([PChan, PChan]), # duplicity works around bug
+                    Rchan = np.array([SChan, SChan]), 
                     **self.imreadkwargs,
                     framestop = int(Nframes))
         return GRYim
@@ -264,8 +248,6 @@ class sampleSet():
         image.VM = VM
         image.r = r
         return 1
-    
-
     
     def genNormDecay(self, image, normimage, 
                      decaytypes = ['VM', 'P', 'S'],
@@ -302,62 +284,56 @@ class sampleSet():
         return 0
 
     def batchFit1ltD0DA(self, 
-                      D0dat,
                       identifier,
+                      D0dat = None,
                       fitrange = (25, 380),
                       decaytype = 'VM'):
         """makes simple Donor Only calibrated Donor Acceptor fits
         """
+         #ugly workaround
+        assert D0dat is not None, 'must give a Donor only decay'
         #read all DA decays
         DATACs = self.getDecay(decaytype)
+        names = self.getPropertyList('name')
+        dfrm = pd.DataFrame()
         #fit and plot DA
-        xFRET = []
-        kFRET = []
-        chi2redLst = []
-        
-        plotout = os.path.join(self.resdir, identifier + 'D0DAplots')
+        plotout = os.path.join(self.resdir, identifier + 'D0DA1ltplots')
         aid.trymkdir(plotout)
-        for i, DATAC in enumerate(DATACs):
-            D0snip = D0dat[fitrange[0]:fitrange[1]]
+        
+        D0snip = D0dat[fitrange[0]:fitrange[1]]
+        _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
+        for name, DATAC in zip(names, DATACs):
             DAsnip = DATAC[fitrange[0]:fitrange[1]]
-            _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
             popt, pcov, DAmodel, chi2red = \
                 fitDA.fitDA1lt (DAsnip, D0snip, self.dt_glob)
-            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, self.names[i], popt, 
+            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt, 
                             chi2red, chi2red_D0, plotout)
-            xFRET.append(1-popt[1])
-            kFRET.append(popt[2])
-            chi2redLst.append(chi2red)
-            
-        dfrm = pd.DataFrame(index = self.names)
-        dfrm['xFRET'] = xFRET
-        dfrm['kFRET'] = kFRET
-        dfrm['chi2red'] = chi2redLst
+            dfrm.at[name, 'xFRET'] = 1-popt[1]
+            dfrm.at[name, 'kFRET'] = popt[2]
+            dfrm.at[name, 'chi2red'] = chi2red
         outname = os.path.join(self.resdir, identifier + 'D0DAFitData.csv')
         dfrm.to_csv(outname)
         self.D0DA1ltdfrm = dfrm
         return dfrm
 
     def batchFit2ltD0DA(self, 
-                      D0dat,
                       identifier,
+                      D0dat = None,
                       fitrange = (25, 380),
                       decaytype = 'VM'):
         """makes Donor Only calibrated (2lt) Donor Acceptor (2lt) fits
         """
-        #read all DA decays
+        #ugly workaround
+        assert D0dat is not None, 'must give a Donor only decay'
+        #TODO split tauf, taux, E calculation in generic function
+        #init and get data from object
         DATACs = self.getDecay(decaytype)
+        names = self.getPropertyList('name')
+        pnames = ['A_DA', 'xFRET1', 'xFRET2', 'kFRET1', 'kFRET2', 'bg']
+        dfrm = pd.DataFrame()
         #fit and plot DA
-        xFRET1 = []
-        xFRET2 = []
-        kFRET1 = []
-        kFRET2 = []
-        taufLst = []
-        tauxLst = []
-        ELst = []
-        chi2redLst = []
-        
-        plotout = os.path.join(self.resdir, identifier + 'D0DAplots')
+
+        plotout = os.path.join(self.resdir, identifier + 'D0DA2ltplots')
         aid.trymkdir(plotout)
         D0snip = D0dat[fitrange[0]:fitrange[1]]
         poptD0, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
@@ -365,101 +341,87 @@ class sampleSet():
         x1, x2 = [x1 / (x1 + x2), x2 / (x1 + x2)]
         k1, k2 = [1/tau1, 1 / tau2]
         tauxD0 = x1 * tau1 + x2 * tau2
-        for i, DATAC in enumerate(DATACs):            
+        for name, DATAC in zip(names, DATACs):            
             DAsnip = DATAC[fitrange[0]:fitrange[1]]
             popt, pcov, DAmodel, chi2red = \
                 fitDA.fitDA2lt (DAsnip, D0snip, self.dt_glob)
-            print(popt)
-            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, self.names[i], popt, 
+            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt, 
                             chi2red, chi2red_D0, plotout)
-            xFRET1.append(popt[1])
-            xFRET2.append(popt[2])
-            kFRET1.append(popt[3])
-            kFRET2.append(popt[4])
-            chi2redLst.append(chi2red)
-            
-
-        #     | kDA1  kDA2
-        #___________________
-        #kDO1 | x11   x12
-        #kDO2 | x21   x22
-        #tau_ij = (kD0i + kDAj)^-1
-        #sum over all species species / fluorescence weighted
-        #tau_x = SUMIJ xij * tau_ij
-        for n in range(len(xFRET1)):
+            for p, pname in zip (popt, pnames):
+                dfrm.at[name, pname] = p
+            dfrm.at[name, 'chi2red'] = chi2red
+            #     | kDA1  kDA2
+            #___________________
+            #kDO1 | x11   x12
+            #kDO2 | x21   x22
+            #tau_ij = (kD0i + kDAj)^-1
+            #sum over all species species / fluorescence weighted
+            #tau_x = SUMIJ xij * tau_ij
             taux = 0
             tauf = 0
-            for xDA, kDA in zip([xFRET1[n], xFRET2[n]], [kFRET1[n], kFRET2[n]]):
+            for xDA, kDA in zip(popt[[1,2]], popt[[3,4]]):
                 for xD0, kD0 in zip ([x1, x2], [k1, k2]):
                     taux += xDA * xD0 * (1 / (kDA + kD0))
                     tauf += xDA * xD0 * (1 / (kDA + kD0))**2
             tauf = tauf / taux
-            taufLst.append(tauf)
-            tauxLst.append(taux)
-            ELst.append(1-taux / tauxD0)
-        dfrm = pd.DataFrame(index = self.names)
-        dfrm['xFRET1'] = xFRET1
-        dfrm['xFRET2'] = xFRET2
-        dfrm['kFRET1'] = kFRET1
-        dfrm['kFRET2'] = kFRET2
-        dfrm['tau_x'] = tauxLst
-        dfrm['tau_f'] = taufLst
-        dfrm['E'] = ELst
-        dfrm['chi2red'] = chi2redLst
+            dfrm.at[name, 'taux'] = taux
+            dfrm.at[name, 'tauf'] = tauf
+            dfrm.at[name, 'E'] = 1-taux / tauxD0
+            
         outname = os.path.join(self.resdir, identifier + 'D0DAFitData.csv')
         dfrm.to_csv(outname)
-        self.D0DA2ltdfrm = dfrm
+        self.D0DA2ltdfrmrm = dfrm
         return dfrm
     
     def batchFit2lt(self,
                     identifier,
+                    D0dat = None,
                     fitrange = (20, 380),
                     decaytype = 'VM'):
         """batch fit D0 data assuming two lifetimes
         commonly for D0"""
-         #prep empty arrays
-        x0Lst = []
-        x1Lst = []
-        tau0Lst = []
-        tau1Lst = []
-        chi2redLst = []
-        bgLst = []
-        
+        #D0dat is given as a keyword argument to give all fit functions
+        #the same kwargs
+        #TODO split tauf, taux, E calculation in generic function
+        pnames = ['x0', 'x1', 'tau0', 'tau1', 'bg']
+        names = self.getPropertyList('name')
+        dfrm = pd.DataFrame()
+        plotout = os.path.join(self.resdir, identifier + 'D02ltplots')
+        aid.trymkdir(plotout)
         #fit all data
         TACs = self.getDecay(decaytype)
         assert len(TACs) != 0, 'TACs is empty'
-        for i, TAC in enumerate(TACs):
+        for TAC, name in zip(TACs, names):
             D0snip = TAC[fitrange[0]:fitrange[1]]
             popt, _, _, Donlymodel, chi2red = fitDA.fitDonly(D0snip)
-            #append to Lists
-            for var, val in zip([x0Lst, x1Lst, tau0Lst, tau1Lst, bgLst], popt):
-                var.append(val)
-            chi2redLst.append(chi2red)
-            print('finished fitting with 2lt set %i' % i)
-            
-        #calc derived vars
-        taufLst = [(x0 * tau0**2 + x1 * tau1**2) / (x0 * tau0 + x1 * tau1) 
-                    for x0, x1, tau0, tau1 in zip(x0Lst, x1Lst, tau0Lst, tau1Lst)]
-        tauxLst = [(x0 * tau0 + x1 * tau1) / (x0 + x1)
-                    for x0, x1, tau0, tau1 in zip(x0Lst, x1Lst, tau0Lst, tau1Lst)]
-        #add all lists to DataFrame
-        dfrm = pd.DataFrame({'tauf' : taufLst,
-                            'taux' : tauxLst, 
-                            'x0' : x0Lst, 
-                            'x1' : x1Lst, 
-                            'tau0' : tau0Lst, 
-                            'tau1' : tau1Lst, 
-                            'chi2red' : chi2redLst}, 
-                            index = self.names)
+            fitDA.pltD0(D0snip, Donlymodel, name, plotout)
+            #fill dataframe row
+            for pname, p in zip(pnames, popt):
+                dfrm.at[name, pname] = p
+            x0, x1, tau0, tau1, bg = popt
+            #calc derived vars
+            tauf = (x0 * tau0**2 + x1 * tau1**2) / (x0 * tau0 + x1 * tau1) 
+            taux = (x0 * tau0 + x1 * tau1) / (x0 + x1)
+            dfrm.at[name, 'tauf'] = tauf
+            dfrm.at[name, 'taux'] = taux
+            dfrm.at[name, 'chi2red'] = chi2red
+            print('finished fitting with 2lt set %s' % name)
         outname = os.path.join(self.resdir, identifier + '2ltFitData.csv')
         dfrm.to_csv(outname)
-        self.fit2ltdfrm = dfrm
+        self.fit2ltdfrmrm = dfrm
         return dfrm
     
     def getDecay(self, decaytype = 'VM'):
         assert decaytype in ['VM', 'P', 'S'], \
             '%s is not a valid decay type' % decaytype
         return self.getPropertyList(decaytype)
+    
+    def getPropertyList(self, propertyName, channel = 'G'):
+        """function scans all images in channel for PropertyName and 
+        returns a list of properties"""
+        List = [getattr(GRYimage, propertyName) for GRYimage in \
+                self.images[channel]]
+        return List
 
 #def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
 #                 Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
