@@ -9,6 +9,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+import lmfit
 import warnings
 
 #issue dtime value is shared over all functions. Better to make it a class 
@@ -92,13 +93,17 @@ def fitDA2lt (DAdat, D0dat, dtime = 0.064):
 fitDA = fitDA1lt #legacy name
     
 def plteps(ax, DAdat, D0dat, DAmodel, Donlymodel, 
-           bgrange = [320,325], makeplot = True, dtime = 0.064):
+            makeplot = True, dtime = 0.064, **kwargs):
     #issue: replace this with what is calculated from the fits
     #calc backgrounds
-    bgest_DA = np.mean(DAdat[bgrange[0]:bgrange[1]])
-    bgest_D0 = np.mean(D0dat[bgrange[0]:bgrange[1]])
+    bgest_DA = np.mean(DAdat[-5:])
+    bgest_D0 = np.mean(D0dat[-5:])
+    print(bgest_DA)
+    print(bgest_D0)
+    print(len(DAdat))
     if np.isnan(bgest_DA) or np.isnan(bgest_D0):
-        warnings.warn('bg not defined, is bgrange set correctly?')
+        raise ValueError
+        #warnings.warn('bg not defined, is bgrange set correctly?')
     #define time axis
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
@@ -106,7 +111,8 @@ def plteps(ax, DAdat, D0dat, DAmodel, Donlymodel,
     epsdat = (DAdat - bgest_DA) / (D0dat- bgest_D0) * \
             max(D0dat-bgest_D0) / max(DAdat - bgest_DA)
 
-    epsmod = (DAmodel - bgest_DA) / (Donlymodel - bgest_D0 )
+    epsmod = (DAmodel - bgest_DA) / (Donlymodel - bgest_D0 )* \
+            max(Donlymodel-bgest_D0) / max(DAmodel - bgest_DA)
    
     #plot
     if makeplot:
@@ -153,14 +159,14 @@ def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0, dtim
     ax.text(0.5,100, 'x0: %.2f\n1/k_fret: %.2f ns \n\u03C72 D(A): %.2f\n\u03C72 D(0): %.2f'\
              % (popt[1], popt[2], chi2red, chi2red_D0), fontsize = 11)
              
-def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, name, popt, chi2red, chi2red_D0, outdir):
+def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, name, popt, chi2red, chi2red_D0, outdir, **kwargs):
     #consider making some args kwargs.
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex = True, figsize=(7, 6))
     fig.subplots_adjust(hspace=0)
     ax1 = plt.subplot(2,1,1)
     plt.title('FRET induced donor decay for %s' % name)
     pltDA(ax1, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0)
-    plteps(ax2, DAdat, D0dat, DAmodel, Donlymodel)
+    plteps(ax2, DAdat, D0dat, DAmodel, Donlymodel, **kwargs)
     plt.savefig(os.path.join(outdir,name[:-4]+'.png'), dpi = 300, bbox_inches = 'tight')
     plt.show()
     return 
