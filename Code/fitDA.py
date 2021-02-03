@@ -43,7 +43,7 @@ def DA2lt(t, A, x1, x2, kfret1, kfret2, bg, D0):
     The no FRET fraction is calculated from (1 - x1 - x2)"""
     return A * D0 * ( (1-x1 -x2) \
                    + x1 * np.exp(- t * kfret1)  \
-                   + x2 * np.exp(- t * kfret1)) \
+                   + x2 * np.exp(- t * kfret2)) \
                    + bg
 DA = DA1lt #legacy name
     
@@ -80,27 +80,39 @@ def fitDA2lt (DAdat, D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
     p0 = [np.max(DAdat), 0.2, 0.2, 0.1, 0.2, 0]
-    #need to replace with better fitting function such as lmfit.minimize
     popt, pcov = curve_fit( lambda t, A, x0, x1, kf1, kf2, bg: \
                                 DA2lt(t, A, x0, x1, kf1, kf2, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
                            bounds = ([0, 0, 0, 0, 0, 0], 
-                                     [np.inf, 1, 1, 1e4, 1e4, np.inf]))
+                                     [np.inf, 1, 1, 1e4, 1e4, np.inf]),
+                                     method = 'dogbox')
     DAmodel = DA2lt(fittime, *popt, Donly_base)
-    chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
-    print('chi2 reduced is %.2f' % chi2red)
+    chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - len(p0))
+    print(chi2red)
     return popt, pcov, DAmodel, chi2red
 fitDA = fitDA1lt #legacy name
     
+
+#def get_chi2red(params, func, xdata, ydata, sign = 1, 
+#    modelargs = (), modelkwargs = {}):
+#    """return chi2red for 1D binned data functions.
+#    minimize this function to obtain most likely fit"""
+#    #want to modify function such that it just takes modelkwargs
+#    #and not xdata, ydata, then accordingly fitfunctions and surface functions
+#    #can be generalised
+#    model = func(xdata, params, *modelargs, **modelkwargs)
+#    nparams = len(xdata) - len(params)
+#    chi2red = np.sum((model - ydata)**2 / ydata) / nparams
+#    print(chi2red)
+#    return chi2red * sign
+
+
 def plteps(ax, DAdat, D0dat, DAmodel, Donlymodel, 
             makeplot = True, dtime = 0.064, **kwargs):
     #issue: replace this with what is calculated from the fits
     #calc backgrounds
     bgest_DA = np.mean(DAdat[-5:])
     bgest_D0 = np.mean(D0dat[-5:])
-    print(bgest_DA)
-    print(bgest_D0)
-    print(len(DAdat))
     if np.isnan(bgest_DA) or np.isnan(bgest_D0):
         raise ValueError
         #warnings.warn('bg not defined, is bgrange set correctly?')

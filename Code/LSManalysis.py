@@ -54,7 +54,34 @@ def saveTACs(image, TACdir, label):
     np.savetxt(rout, image.r, fmt = '%.5e')
     return 1
 
+def loadLSMUtility(wdir, identifier, g_factor = 1, dataselect = (0, None),
+                   outname = None, Nframes = -1, load = False):
+    """utility function for collecting a bunch of functions often used together"""
+    picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
+    if load:
+        sampleSet = aid.loadpickle(picklepath)
+    else:
+        sampleSet = sampleSet(wdir, 
+                                    g_factor = g_factor, 
+                                    dataselect = dataselect)
+        sampleSet.analyzeLSMCells(identifier, Nframes = Nframes)
+        aid.savepickle(sampleSet, picklepath)
+    return sampleSet
 
+def genDefaultFitKwargs():
+    return { #some dummy mono exponential 
+            'D0dat' : np.exp(-np.arange(0,25, 0.064) / 2.5), 
+            'decaytype' : 'VM',
+            'fitrange' : (30, 380)}
+
+def FitPlotLSMUtility(sampleSet, normImageG, normImageY, identifier,
+                      fitfunc = 'batchFit2lt',
+                      fitkwargs = genDefaultFitKwargs()
+                      ):
+    sampleSet.batchgenNormDecay(normImageG, normImageY, bgrange = (0, 5))
+    getattr(sampleSet, fitfunc)(identifier, **fitkwargs)
+    bp.pltRelativeDecays(sampleSet, identifier, decaytype = fitkwargs['decaytype'],
+                         colorcoding = sampleSet.imstats['BrG'])
     
 class sampleSet():
     """collection of attributes specific to either Donor only, or acceptor only"""
@@ -287,7 +314,8 @@ class sampleSet():
                       identifier,
                       D0dat = None,
                       fitrange = (25, 380),
-                      decaytype = 'VM'):
+                      decaytype = 'VM',
+                      **kwargs):
         """makes simple Donor Only calibrated Donor Acceptor fits
         """
          #ugly workaround
@@ -306,8 +334,8 @@ class sampleSet():
             DAsnip = DATAC[fitrange[0]:fitrange[1]]
             popt, pcov, DAmodel, chi2red = \
                 fitDA.fitDA1lt (DAsnip, D0snip, self.dt_glob)
-            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt, 
-                            chi2red, chi2red_D0, plotout)
+            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt,
+                            chi2red, chi2red_D0, plotout, **kwargs)
             dfrm.at[name, 'xFRET'] = 1-popt[1]
             dfrm.at[name, 'kFRET'] = popt[2]
             dfrm.at[name, 'chi2red'] = chi2red
@@ -320,7 +348,8 @@ class sampleSet():
                       identifier,
                       D0dat = None,
                       fitrange = (25, 380),
-                      decaytype = 'VM'):
+                      decaytype = 'VM',
+                      **kwargs):
         """makes Donor Only calibrated (2lt) Donor Acceptor (2lt) fits
         """
         #ugly workaround
@@ -346,7 +375,7 @@ class sampleSet():
             popt, pcov, DAmodel, chi2red = \
                 fitDA.fitDA2lt (DAsnip, D0snip, self.dt_glob)
             fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt, 
-                            chi2red, chi2red_D0, plotout)
+                            chi2red, chi2red_D0, plotout, **kwargs)
             for p, pname in zip (popt, pnames):
                 dfrm.at[name, pname] = p
             dfrm.at[name, 'chi2red'] = chi2red
@@ -370,18 +399,17 @@ class sampleSet():
             
         outname = os.path.join(self.resdir, identifier + 'D0DAFitData.csv')
         dfrm.to_csv(outname)
-        self.D0DA2ltdfrmrm = dfrm
+        self.D0DA2ltdfrm = dfrm
         return dfrm
     
     def batchFit2lt(self,
                     identifier,
-                    D0dat = None,
                     fitrange = (20, 380),
-                    decaytype = 'VM'):
+                    decaytype = 'VM',
+                    **kwargs):
         """batch fit D0 data assuming two lifetimes
         commonly for D0"""
-        #D0dat is given as a keyword argument to give all fit functions
-        #the same kwargs
+        #**kwargs can take arguments that are not used
         #TODO split tauf, taux, E calculation in generic function
         pnames = ['x0', 'x1', 'tau0', 'tau1', 'bg']
         names = self.getPropertyList('name')
