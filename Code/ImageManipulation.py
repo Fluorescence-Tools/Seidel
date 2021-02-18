@@ -9,6 +9,7 @@ import os
 import copy
 from PIL import Image
 import aid_functions as aid
+import warnings
 
 debug = False
 
@@ -336,6 +337,7 @@ class processLifetimeImage:
             xmin. xmax, ymin, ymax allow saving snip of np array"""
         #issue: takes only workintensity, would also like baseIntensity
         #issue: Huygens accepts only export mode uint8 or 'L'
+        #issue 8 bits are insufficient to store the date, need 16 bit
         assert type(outfolder) == str and type(preposition) == str,\
             "outfolder and preposition must be string type"
         #convert all strings to bytes
@@ -395,7 +397,7 @@ class processLifetimeImage:
 
         dimX, dimY, _dwelltime, counttime = cpp_wrappers.read_header(header_name)
         if _dwelltime == -1:
-            print('dwelltime not found in header, using user-set value')
+            warnings.warn('dwelltime not found in header, using user-set value')
         else:
             dwelltime = _dwelltime
         imG, imR, imY = cpp_wrappers.genGRYLifetimeWrap(
@@ -516,7 +518,7 @@ class fitImage:
 
             #decide which fit to use
             if model == 'one2DGaussian_py':
-                raise NotImplemented
+                raise NotImplementedError
             elif model == 'two2DGaussian_py':
                 try:
                     params[16] = 1
@@ -525,7 +527,7 @@ class fitImage:
                     print ('%s model %s attempt %i: python fit did not converge, trying again' % (identifier, model, counter))
                     continue
             elif model == 'three2DGaussian_py':
-                raise NotImplemented
+                raise NotImplementedError
             elif model == 'one2DGaussian_c':
                 params0[16] = 0
                 params, Istar, model = cpp_wrappers.fit2DGaussian_wrap(params0, image, debug = debug)

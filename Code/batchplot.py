@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import copy
 import matplotlib
+from scipy.ndimage import gaussian_filter
 
 #%%
 def appendOnPattern( wdir, pattern):
@@ -210,14 +211,11 @@ def pltRelativeDecays(sampleSet, identifier,
                     plotdecaykwargs = {'xlim' : (0, 20),
                                        'normrange' : (23, 30)},
                     decaytype = 'VM',
-                    colorcoding = None, 
-                    axs = None):
-    """    """
-    if axs == None:
-        fig, ax1 = plt.subplots(figsize = (11, 8))
-        ax2 = ax1.twinx()
-        axs = [ax1, ax2]
+                    colorcoding = None):
+    """plots all normal and normalised decays in a sampleset    """
+    fig, ax1 = plt.subplots(figsize = (11, 8))
     TACnorms = sampleSet.getPropertyList(decaytype + 'norm')
+    TACnorms = [gaussian_filter(TACnorm, 1) for TACnorm in TACnorms]
     TACs = sampleSet.getPropertyList(decaytype)
     #make a list of colorcoding and set brightness accordingly
     cmap = matplotlib.cm.get_cmap('autumn')
@@ -233,7 +231,7 @@ def pltRelativeDecays(sampleSet, identifier,
     plotdecaykwargLst = [plotdecaykwargs for i in range(len(TACs))]
     
     for el in plotkwargLst:
-        el['lineStyle'] = ':'
+        el['lineStyle'] = '--'
         
     plotdecayList(TACnorms, plotdecaykwargLst, plotkwargLst, ax = ax1)
     ax1.plot(0,0, **plotkwargLst[0], label = identifier + ' normalised')
@@ -241,7 +239,10 @@ def pltRelativeDecays(sampleSet, identifier,
     ax1.set_xlabel('time (ns)')
     
     ax1.grid()
-    #ax2 = ax1.twinx()
+    #twinx needs to come after plotting to ax1, otherwise it is also 
+    #set to logarithmic
+    ax2 = ax1.twinx() 
+    
     for el in plotkwargLst:
         el['lineStyle'] = '-'
     plotdecayList(TACs, plotdecaykwargLst, plotkwargLst, ax = ax2)
@@ -258,7 +259,7 @@ def pltRelativeDecays(sampleSet, identifier,
     if resdir:
         outname = os.path.join(resdir, identifier + '_epstau+normalised.png')
         plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
-    return axs
+    return
 
 
 def pltAnisotropies(sampleSet, identifier, resdir = None,

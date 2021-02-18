@@ -33,10 +33,11 @@ def ptuHeader_wrap (fname):
         os.mkdir(os.path.join(root, b"header"))
         print(b'creating new directory:' + os.path.join(root, b"header"))
     except:
-        print("header dir already exists")
+        #print("header dir already exists")
+        pass
     outfile =  os.path.join(root, b"header", name + b".txt")
     fpout = ctypes.create_string_buffer(outfile)
-    print(outfile)
+    #print(outfile)
     return readPTU.PQ_ptuHeader_sf(fpin,fpout)
 
 def ptu_wrap(fname, NumRecords):
@@ -47,6 +48,7 @@ def ptu_wrap(fname, NumRecords):
 	#is more close to ctypes anyway
 	#need to write a function that returns list types
     #initialize variables in memory for the c routine to write in
+    print('loading file %s' % os.path.split(fname.decode())[1])
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer
     c_int_p = ctypes.POINTER(ctypes.c_int) #init class for int pointer
@@ -204,8 +206,10 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range,
                         Gchan, Rchan, Ychan, framestop):
     """c code wrapper to create tac histogram image. To be used in conjunction
         with PQ_ptuHeader, Read_header, PQ_ptu_sf_wrapper."""
+        #I wish this function would return the number of frames. 
+        #this would negate the necessity for the user to set it manually.
     assert len(Gchan) == 2 and len(Rchan) == 2 and len(Ychan) == 2,\
-        'in current implementations must eah Chan must be two long,' +\
+        'in current implementations each Chan must be two ints long,' +\
         'use the same channel number twice to access single channel readout'
     c_longlong_p = ctypes.POINTER(ctypes.c_longlong) #init class for long long pointer
     c_ubyte_p = ctypes.POINTER(ctypes.c_ubyte) #init class for unsigned char pointer

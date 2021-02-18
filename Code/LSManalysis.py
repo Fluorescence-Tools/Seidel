@@ -6,6 +6,7 @@ import ImageManipulation as IM
 import numpy as np
 import fitDA
 import gc
+#note name df is blocked for dataframe
 
 debug = False
 if debug:
@@ -18,7 +19,7 @@ def PS2PandS(TACPS):
     TACP = TACPS[:ntacs]
     TACS = TACPS[ntacs:]
     return TACP, TACS
-      
+
 def PandS2PS(TACP, TACS):
     assert TACP.shape == TACS.shape and len(TACS.shape) ==1, \
         "arrays dimensions mismatch or are not 1D."
@@ -55,37 +56,41 @@ def saveTACs(image, TACdir, label):
     return 1
 
 def loadLSMUtility(wdir, identifier, g_factor = 1, dataselect = (0, None),
-                   outname = None, Nframes = -1, load = False):
+                   outname = None, Nframes = -1, load = False, **kwargs):
     """utility function for collecting a bunch of functions often used together"""
     picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
     if load:
-        sampleSet = aid.loadpickle(picklepath)
+        SampleSet = aid.loadpickle(picklepath)
     else:
-        sampleSet = sampleSet(wdir, 
-                                    g_factor = g_factor, 
+        SampleSet = sampleSet(wdir,
+                                    g_factor = g_factor,
                                     dataselect = dataselect)
-        sampleSet.analyzeLSMCells(identifier, Nframes = Nframes)
-        aid.savepickle(sampleSet, picklepath)
-    return sampleSet
+        SampleSet.analyzeDir(identifier, Nframes = Nframes, **kwargs)
+        aid.savepickle(SampleSet, picklepath)
+    return SampleSet
 
 def genDefaultFitKwargs():
-    return { #some dummy mono exponential 
-            'D0dat' : np.exp(-np.arange(0,25, 0.064) / 2.5), 
+    return { #some dummy mono exponential
+            'D0dat' : np.exp(-np.arange(0,25, 0.064) / 2.5),
             'decaytype' : 'VM',
             'fitrange' : (30, 380)}
 
-def FitPlotLSMUtility(sampleSet, normImageG, normImageY, identifier,
+def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
                       fitfunc = 'batchFit2lt',
                       fitkwargs = genDefaultFitKwargs()
                       ):
-    sampleSet.batchgenNormDecay(normImageG, normImageY, bgrange = (0, 5))
-    getattr(sampleSet, fitfunc)(identifier, **fitkwargs)
-    bp.pltRelativeDecays(sampleSet, identifier, decaytype = fitkwargs['decaytype'],
-                         colorcoding = sampleSet.imstats['BrG'])
-    
+    SampleSet.batchgenNormDecay(normImageG, normImageY, bgrange = (0, 5))
+    #getattr(SampleSet, fitfunc)(identifier, **fitkwargs)
+    bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
+                         colorcoding = np.log(SampleSet.imstats['BrY']),
+                         resdir = SampleSet.resdir)
+
 class sampleSet():
-    """collection of attributes specific to either Donor only, or acceptor only"""
-    def __init__(self, 
+    """This class is intended to automate image analysis for cellular data to
+        avoid time-consuming manual work in AnI.
+        To work, this script neads a functioncal copy of Seidel in the pythonpath
+        """
+    def __init__(self,
                  wdir,
                  relTACdir = 'TAC',
                  relresdir = 'results',
@@ -99,12 +104,12 @@ class sampleSet():
                   dt_glob = 0.064,
                   FRETPIETACranges = [[0,380], [0, 380], [380,800]]
                  ):
-        """        
+        """
         input:
             ntacs: number of TAC channels
             pulsetime: inverse of laser repetition rate, in ns
             dwelltime: pixel dwell time in seconds
-            Nframes: number taken in imreading and for calculating total 
+            Nframes: number taken in imreading and for calculating total
                 illumination time
             threshold: all pixels below this threshold are set to zero
             TAC_range: set in hydraharp
@@ -120,26 +125,22 @@ class sampleSet():
         self.imdir = os.path.join(wdir, relimdir)
         aid.trymkdir(self.imdir)
         self.ptufiles = bp.appendOnPattern(wdir, 'ptu')[dataselect[0]: dataselect[1]]
-        #self.names = [os.path.splitext(os.path.split(ptufile)[1])[0] \
-        #              for ptufile in self.ptufiles]
-        self.images = {'G': [], 'Y': []}#dict entries are channels, 
+        self.maskdirs = self.getMaskDirs()
+        self.images = {'G': [], 'Y': []}#dict entries are channels,
         self.g_factor = g_factor
         self.dt_glob = dt_glob
         self.FRETPIETACranges = FRETPIETACranges
-        
-    def getTACfileNames(self, ext = '_G_PS.dat'):
-        self.TACfiles = bp.appendOnPattern(self.TACdir, ext)
-        
-#    def appendTAC(self, TAC):
-#        assert type(TAC) == np.ndarray
-#        self.TACs.append(TAC)
-        
-#    def loadTACfiles(self, append = False):
-#        if not append: self.TACs = []
-#        for TACfile in self.TACfiles:
-#            fTACfile = os.path.join(self.TACdir, TACfile)
-#            self.TACs.append(np.genfromtxt(fTACfile))
-    def normTACs(self, normdecay, 
+
+    def getMaskDirs(self):
+        maskdirs = []
+        for file in self.ptufiles:
+            maskdir = file[:-4]+'_masks'
+            if os.path.isdir(maskdir):
+                maskdirs.append(maskdir)
+            else:
+                maskdirs.append(None)
+
+    def normTACs(self, normdecay,
                  decaymode = 'VM',
                  channel = 'G',
                  bgrange = [0, 5],
@@ -152,54 +153,76 @@ class sampleSet():
             GRYimage.VMnorm = bp.normbydecay(\
                                               [getattr(GRYimage, decaymode)],
                                               normdecay,
-                                              normshift, 
+                                              normshift,
                                               bgrange = bgrange)[0]
 
+    def analyzeDir(self, identifier, **kwargs):
+        """analyzes all ptu files in a directory into GRY image objects
 
-                 
-    def analyzeLSMCells(self,
-        identifier,
-        threshold = 0,
-        Nframes = -1,
-        isSave = True,
-        isCleanImage = True):
-        """
-        This script is intended to automate image analysis for cellular data to avoid 
-        time-consuming manual work in AnI.
-        To work, this script neads a functioncal copy of Seidel in the pythonpath
-        The processLifetimeImage is not build for Anisotropy, but it can if one 
-            mis-uses the channels. I.e. processlifetimeImage takes up to 3 channels 
-            labelled Green, Red, Yellow. Now we will abuse by doing:
-                Green = parallel
-                Red = perpendicular
-                Yellow = unused
-                Then repeating for both channels
-        This workaround should hold for the forseeable future, but should ultimately be 
-            replaced.
-        """
-        #init
-        df = pd.DataFrame()
-        #loop over each cell
-        for index, file in enumerate(self.ptufiles):
-            ffile = os.path.join(self.wdir, file).encode()
-            #load Donor and acceptor channels
-            #P is now called G, S is called R (nuisance)
-            PSchannels = [[1,0], [5,4]]
-            for PSchannel, label in zip(PSchannels, ['_G', '_Y']):
-                PChan, SChan = PSchannel
-                image = self.loadPSImage(ffile, PChan, SChan, Nframes)
-                self.procesPSimage(image, threshold, isSave, 
-                                   isCleanImage, label)
-                self.images[label[1]].append(image)
-        #assert self.names == [image.name for image in self.images['G']],\
-        #    "two sets of naming variables should be identical"
-        self.genImstatsdf(identifier, Nframes)
-        return df
-    
-    def genImstatsdf(self, identifier, Nframes, 
-                   channels = ['G', 'Y', 'Y'], 
+        kwargs:
+        isSave:         if True, TAC decays and tiff images are stored to
+                        self.TACdir and self.imdir
+        isCleanImage:   if True, 3D lifetime arrays are discarded, freeing
+                        up space.
+        threshold:      all pixels with an intensity value lower than
+                        threshold are set to 0.
+        Nframes:        number of frames to collect photons from. It is also
+                        used to calculate the total integration time and
+                        the countrate."""
+        for ptufile in self.ptufiles:
+            self.analyzeFile(ptufile, **kwargs)
+        self.genImstatsdf(identifier, **kwargs)
+        return 1
+
+
+
+    def analyzeDirwMasks(self, identifier, timeList, **kwargs):
+        """analyzes a set of N files each with M masks, totalling
+        NxM image objects
+        
+        time in seconds
+        
+        See analyzeDir for list of kwargs"""
+        for ptufile, maskdir, time in 
+            zip(self.ptufiles, self.maskdir, timeList):
+            maskfiles = [file for file in os.listdir(maskdir) \
+                         if file.endswith('ptu')]
+            for maskfile in maskfiles:
+                #load maskfile
+                #still need to implement time
+                self.analyzeFile(ptufile, usermask = mask, **kwargs)
+                #ugly workaround, needed to give unique name to each image
+                for channel in ['G', 'Y']:
+                    self.images[channel][-1].name += maskfile[:-4]
+        self.genImstatsdf(identifier, **kwargs)
+        
+    def analyzeFile(self, ptufile, **kwargs):
+        #load Donor and acceptor channels
+        #P is now called G, S is called R (nuisance)
+        ffile = os.path.join(self.wdir, ptufile).encode()
+        PSchannels = [[1,0], [5,4]]
+        for PSchannel, label in zip(PSchannels, ['_G', '_Y']):
+            PChan, SChan = PSchannel
+            image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
+            self.procesPSimage(image, label, **kwargs)
+            self.images[label[1]].append(image)
+
+#    def analyzeFilewMasks (self, filepath, maskList, time = -1):#need to rename
+#        """analyzes one file with multiple masks, generating one image object
+#        for each mask"""
+#        pass
+        #write function that takes a bunch of masks and transforms each into a cell
+        #load mask set
+        #load image
+        #loop over mask
+            #analyse each masked image
+            #add to images
+            #add time (in seconds?)
+
+    def genImstatsdf(self, identifier, Nframes,
+                   channels = ['G', 'Y', 'Y'],
                    #idea: consider using ['Donor', 'FRET', 'PIE'] nomenclature instead
-                   labels = ['G', 'R', 'Y']):
+                   labels = ['G', 'R', 'Y'], **kwargs):
         df = pd.DataFrame()
         for channel, TACrange, label in \
                 zip(channels, self.FRETPIETACranges, labels):
@@ -213,7 +236,7 @@ class sampleSet():
                 df.at[image.name, 'N'+label+'-s'] = Ns
                 df.at[image.name, 'N'+label+'-tot'] = Ntot
                 #data was masked previously
-                surface = np.sum(image.workIntensity.G > 0) 
+                surface = np.sum(image.workIntensity.G > 0)
                 df.at[image.name, 'surface'+label] = surface
         if Nframes == -1:
             print('number of frames not given,' \
@@ -221,45 +244,55 @@ class sampleSet():
         else:
             integrationtime = self.imreadkwargs['dwelltime'] * Nframes
             df = calculateDerivedVariables(df, integrationtime)
-        
+
         #save
         outdir = os.path.join(self.resdir, identifier + 'imstats.csv')
         df.to_csv(outdir)
         self.imstats = df
         return 0
-            
-    
-    def procesPSimage(self, image, threshold, isSave, isCleanImage, label):
-        """only does work on image, has a lot of dependencies, unwanted"""
-        #both image object and sampleSet object keep names.
-        #delete the first to avoid trouble
-        #del image.name
+
+
+    def procesPSimage(self, image, label, intensityThreshold = 0, isSave = True,
+        isCleanImage = True, usermask = None, **kwargs):
+        """only does work on image, has a lot of dependencies, unwanted
+        The processLifetimeImage is not build for Anisotropy, but it can if one
+            mis-uses the channels. I.e. processlifetimeImage takes up to 3
+            channels labelled Green, Red, Yellow. Now we will abuse by doing:
+                Green = parallel
+                Red = perpendicular
+                Yellow = unused
+                Then repeating for both channels
+        This workaround should hold for the forseeable future, but should
+            ultimately be replaced."""
         image.loadLifetime()
         image.loadIntensity()
-        mask = image.buildMaskFromIntensityThreshold(
-                threshold = threshold, sumchannels = ['G', 'R'])
-        image.mask(mask, mode = 'intensity')
+        intMask = image.buildMaskFromIntensityThreshold(
+                threshold = intensityThreshold, sumchannels = ['G', 'R'])
+        image.mask(intMask, mode = 'intensity')
+        if usermask:
+            image.mask(usermask)
         self.genPSfromGRYImage(image)
         self.genDerivedFromPSDecays(image)
         if isSave:
             saveTACs(image, self.TACdir, label)
-            image.saveWorkIntensityToTiff(self.imdir, image.name + 
+            #underlying routine is limited to 8 bit Tiff, problem
+            image.saveWorkIntensityToTiff(self.imdir, image.name +
                                       '_wmask' +label)
         if isCleanImage: #free memory intensive 3D array
             cleanImage(image)
-        gc.collect() 
+        gc.collect()
         return 1
-    
-    def loadPSImage(self, ffile, PChan, SChan, Nframes):
+
+    def loadPSImage(self, ffile, PChan, SChan, Nframes = -1, **kwargs):
         GRYim = IM.processLifetimeImage(
-                    ffile, 
-                    uselines = np.array([1]), 
+                    ffile,
+                    uselines = np.array([1]),
                     Gchan = np.array([PChan, PChan]), # duplicity works around bug
-                    Rchan = np.array([SChan, SChan]), 
+                    Rchan = np.array([SChan, SChan]),
                     **self.imreadkwargs,
                     framestop = int(Nframes))
         return GRYim
-        
+
     def genPSfromGRYImage (self, image):
         assert hasattr(image, 'workLifetime'), \
             'image object must have workLifetime property'
@@ -267,7 +300,7 @@ class sampleSet():
         image.sumLifetime() # generate decays
         image.P, image.S, _ = image.getTACS()
         del(image.decay) #redundant property
-        
+
     def genDerivedFromPSDecays(self, image):
         TACPS = PandS2PS(image.P, image.S)
         #add VM and r variables
@@ -275,8 +308,8 @@ class sampleSet():
         image.VM = VM
         image.r = r
         return 1
-    
-    def genNormDecay(self, image, normimage, 
+
+    def genNormDecay(self, image, normimage,
                      decaytypes = ['VM', 'P', 'S'],
                      shift = 0,
                      bgrange = None):
@@ -289,11 +322,12 @@ class sampleSet():
                 normdecay = getattr(normimage, decaytype)
                 decay = decay - np.mean(decay[bgrange[0]:bgrange[1]])
                 normdecay = normdecay - np.mean(normdecay[bgrange[0]:bgrange[1]])
-            shiftdecay, shiftnorm = bp.intshift(shift, decay, normdecay)
-            setattr(image, decaytype + 'norm', shiftdecay/shiftnorm)
+            decay, normdecay = bp.intshift(shift, decay, normdecay)
+            decay = decay / normdecay
+            setattr(image, decaytype + 'norm', decay)
         return 0
-    
-    def batchgenNormDecay(self, normimageG, normimageY, 
+
+    def batchgenNormDecay(self, normimageG, normimageY,
                      decaytypes = ['VM', 'P', 'S'],
                      shift = 0,
                      bgrange = None):
@@ -304,13 +338,13 @@ class sampleSet():
             elif color == 'Y':
                 normimage = normimageY
             for image in self.images[color]:
-                self.genNormDecay(image, normimage, 
+                self.genNormDecay(image, normimage,
                                   decaytypes,
                                   shift,
                                   bgrange)
         return 0
 
-    def batchFit1ltD0DA(self, 
+    def batchFit1ltD0DA(self,
                       identifier,
                       D0dat = None,
                       fitrange = (25, 380),
@@ -327,7 +361,7 @@ class sampleSet():
         #fit and plot DA
         plotout = os.path.join(self.resdir, identifier + 'D0DA1ltplots')
         aid.trymkdir(plotout)
-        
+
         D0snip = D0dat[fitrange[0]:fitrange[1]]
         _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
         for name, DATAC in zip(names, DATACs):
@@ -344,7 +378,7 @@ class sampleSet():
         self.D0DA1ltdfrm = dfrm
         return dfrm
 
-    def batchFit2ltD0DA(self, 
+    def batchFit2ltD0DA(self,
                       identifier,
                       D0dat = None,
                       fitrange = (25, 380),
@@ -370,11 +404,11 @@ class sampleSet():
         x1, x2 = [x1 / (x1 + x2), x2 / (x1 + x2)]
         k1, k2 = [1/tau1, 1 / tau2]
         tauxD0 = x1 * tau1 + x2 * tau2
-        for name, DATAC in zip(names, DATACs):            
+        for name, DATAC in zip(names, DATACs):
             DAsnip = DATAC[fitrange[0]:fitrange[1]]
             popt, pcov, DAmodel, chi2red = \
                 fitDA.fitDA2lt (DAsnip, D0snip, self.dt_glob)
-            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt, 
+            fitDA.pltDA_eps(DAsnip, D0snip, DAmodel, Donlymodel, name, popt,
                             chi2red, chi2red_D0, plotout, **kwargs)
             for p, pname in zip (popt, pnames):
                 dfrm.at[name, pname] = p
@@ -396,12 +430,12 @@ class sampleSet():
             dfrm.at[name, 'taux'] = taux
             dfrm.at[name, 'tauf'] = tauf
             dfrm.at[name, 'E'] = 1-taux / tauxD0
-            
+
         outname = os.path.join(self.resdir, identifier + 'D0DAFitData.csv')
         dfrm.to_csv(outname)
         self.D0DA2ltdfrm = dfrm
         return dfrm
-    
+
     def batchFit2lt(self,
                     identifier,
                     fitrange = (20, 380),
@@ -428,7 +462,7 @@ class sampleSet():
                 dfrm.at[name, pname] = p
             x0, x1, tau0, tau1, bg = popt
             #calc derived vars
-            tauf = (x0 * tau0**2 + x1 * tau1**2) / (x0 * tau0 + x1 * tau1) 
+            tauf = (x0 * tau0**2 + x1 * tau1**2) / (x0 * tau0 + x1 * tau1)
             taux = (x0 * tau0 + x1 * tau1) / (x0 + x1)
             dfrm.at[name, 'tauf'] = tauf
             dfrm.at[name, 'taux'] = taux
@@ -438,32 +472,32 @@ class sampleSet():
         dfrm.to_csv(outname)
         self.fit2ltdfrmrm = dfrm
         return dfrm
-    
+
     def getDecay(self, decaytype = 'VM'):
         assert decaytype in ['VM', 'P', 'S'], \
             '%s is not a valid decay type' % decaytype
         return self.getPropertyList(decaytype)
-    
+
     def getPropertyList(self, propertyName, channel = 'G'):
-        """function scans all images in channel for PropertyName and 
+        """function scans all images in channel for PropertyName and
         returns a list of properties"""
         List = [getattr(GRYimage, propertyName) for GRYimage in \
                 self.images[channel]]
         return List
 
-#def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]), 
+#def exportLSMTAC(fname, outdir, dwelltime, pulsetime, uselines = np.array([1]),
 #                 Gchan = np.array([0,1]), Rchan = np.array([4,5]), Ychan = np.array([4,5]),
 #                ntacs = 1024, TAC_range = 4096, PIE_gate = 440):
 #    """utility function to export GRY (P+S) TAC histogram for LSM microscope,
-#    
+#
 #    deprecated. Function was written some time in the past and then forgotten about.
 #    superceded by analyzeLSMCells
 #    """
     ## issue: when Rchan and Ychan are identical (i.e. true PIE), then Y channel
     ## remains empty. Workaround implemented. ugly
     # _, file = os.path.split(fname)
-    # data = IM.processLifetimeImage(fname.encode(), uselines = uselines, Gchan = Gchan, 
-                                   # Rchan = Rchan, 
+    # data = IM.processLifetimeImage(fname.encode(), uselines = uselines, Gchan = Gchan,
+                                   # Rchan = Rchan,
                                    # Ychan = Ychan, ntacs = ntacs, TAC_range = TAC_range, \
                                    # pulsetime = pulsetime, dwelltime = dwelltime)
     # data.loadLifetime()

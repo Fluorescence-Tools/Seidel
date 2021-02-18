@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import patches
 import os
+import pickle
 
 def pos2ROI(xpos, ypos, winSigma):
     """convert center position and width to ROI"""
@@ -19,7 +20,14 @@ def pos2ROI(xpos, ypos, winSigma):
     #some confusion occurred whether data is row or column major, for row major:
     ROI = np.array([xstart, ystart, xstop, ystop], dtype = np.int).transpose()
     return ROI
+
+def loadpickle(outname):
+    with open(outname, 'rb') as f:
+        return pickle.load(f)
     
+def savepickle(self, outname):
+    with open(outname, 'wb') as output:
+        pickle.dump(self, output, 1)
 ##########helper functions from Gauss Analysis Pipeline#########################
 def cropAnI(image, ROI, ROISize, ROIpad = 0):
     """crop ROI from image

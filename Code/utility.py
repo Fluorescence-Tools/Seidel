@@ -16,6 +16,8 @@ import lmfit
 import developmental_functions as df
 import GaussAnalysisPipeline as GAP
 import aid_functions as aid
+import precisionFuncs as pF
+
 
 
 
@@ -176,3 +178,87 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, Nspots = 2, outdir = None,
             with open(pickleout, 'wb') as output:
                 df.pickle.dump(loc, output, 1)
                 
+                
+def reportLocStats(locLst, outname = None):
+    """prints some statistics of a locLST dataset"""
+    s = ''
+    s += 'filter yields:\n'
+    stats = df.genStats(locLst)
+    s += 'total images taken: %i\n' % len(locLst)
+    scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
+    s += 'total FRET pairs: %i\n' % len(scut['posxG'])
+    NF = df.filterStats(scut, 'proxRatio', 0, 0.6)
+    s += 'NF pairs: %i\n' % len(NF['posxG'])
+    stats = df.genStats(locLst)
+    scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
+    HF = df.filterStats(scut, 'proxRatio', 0.75, 1)
+    s += 'HF pairs: %i\n' % len(HF['posxG'])
+    s += '\n' + '%'*80 + '\n\n'
+    
+    s += 'loc Accury indicators:\n'
+    stats = scut #bad practice
+    locNG = np.array(stats['AG']) * np.array(stats['sigmaG'])**2 *2 * np.pi
+    locNY = np.array(stats['AY']) * np.array(stats['sigmaY'])**2 *2 * np.pi
+    locNGmean = np.mean(locNG); locNGstd =np.std(locNG)
+    s += 'Green photons is %.0f +- %.0f\n' % (locNGmean, locNGstd)
+    sigmaG = np.array(stats['sigmaG'])*10; sigmaY = np.array(stats['sigmaY'])*10
+    sigmaGmean = np.mean(sigmaG); sigmaGstd = np.std(sigmaG)
+    s += 'green spot sigma is %.2f +- %.2f\n' % (sigmaGmean, sigmaGstd)
+    s+= 'green spot FWHM is %.2f +- %.2f\n' % (sigmaGmean * 2.355, sigmaGstd * 2.355)
+    bgG = stats['bgG']; bgY = stats['bgY']
+    bgGmean = np.mean(bgG); bgGstd = np.std(bgG)
+    s += 'Green background is %.2f +- %.2f\n' % (bgGmean, bgGstd)
+    locNYmean = np.mean(locNY); locNYstd = np.std(locNY)
+    s += 'Yellow photons is %.0f +- %.0f\n' % (locNYmean, locNYstd)
+    sigmaYmean = np.mean(sigmaY); sigmaYstd = np.std(sigmaY)
+    s += 'Yellow spot sigma is %.2f +- %.2f\n' % (sigmaYmean, sigmaYstd)
+    s += 'Yellow spot FWHM is %.2f +- %.2f\n' % (sigmaYmean * 2.355, sigmaYstd * 2.355)
+    bgYmean = np.mean(bgY); bgYstd = np.std(bgY)
+    s += 'Yellow background is %.2f +- %.2f\n' % (bgYmean, bgYstd)
+    #slow, arrays are much faster, quad function in findVar does not take arr
+    Gprecision = [np.sqrt(pF.findVar([0,0,sigmaG, bgG, locNG], 10)) \
+        for sigmaG, bgG, locNG in zip(sigmaG, bgG, locNG)]
+    GprecisionMean = np.sqrt(pF.findVar([0,0,sigmaGmean, bgGmean, locNGmean], 10))
+    s += 'standard deviation of G Channel is %.2f nm\n' % GprecisionMean
+    Yprecision = [np.sqrt(pF.findVar([0,0,sigmaY, bgY, locNY], 10)) \
+        for sigmaY, bgY, locNY in zip(sigmaY, bgY, locNY)]
+    YprecisionMean = np.sqrt(pF.findVar([0,0,sigmaYmean, bgYmean, locNYmean], 10))
+    s += 'standard deviation of Y Channel is %.2f nm\n' % YprecisionMean
+    posprecision = 0
+    s += 'uncertainty in dye position is assumed to be %.2f nm \n' % posprecision
+    totprecision = [np.sqrt(Gprecision**2 + Yprecision**2) \
+        for Gprecision, Yprecision in zip(Gprecision, Yprecision)]
+    chiSigma = np.sqrt (GprecisionMean**2 + YprecisionMean**2 + posprecision**2)
+    s += 'expected sigma of chi distribution is %.2f nm\n' % chiSigma
+    
+    def bindata(data, bin_edges, handle):
+        binned_data, *_ = plt.hist(data, bins = bin_edges)
+        bincenters = (bin_edges[1:]+bin_edges[:-1])/2
+        dfrm[handle+'bins'] = bincenters
+        dfrm[handle] = binned_data
+        plt.clf()
+        return binned_data
+    dfrm = pd.DataFrame()
+    precisionbins = np.linspace(0,20,51)
+    bindata(totprecision, precisionbins, 'presision')
+    locRateGbins = np.linspace(0, 150, 51)
+    locRateYbins = locRateGbins
+    integrationTime = 60*7*7*5e-6 #60 frames
+    bindata(locNG / integrationTime / 1000, locRateGbins, 'locRateG') #kHz
+    bindata(locNY / integrationTime / 1000, locRateYbins, 'locRateY') #kHz
+    bgGbins = np.linspace(0,2,51)
+    bgYbins = bgGbins 
+    bindata(bgG, bgGbins, 'bgG') 
+    bindata(bgY, bgYbins, 'bgY')
+    sigmaGbins = np.linspace(0,100, 51)
+    sigmaYbins = sigmaGbins
+    bindata(sigmaG, sigmaGbins, 'sigmaG')
+    bindata(sigmaY, sigmaYbins, 'sigmaY')
+    dfrmout = outname[:-4]+'_data.csv'
+    dfrm.to_csv(dfrmout, index = False)
+    
+    if outname:
+        f = open(outname, 'w')
+        f.write(s)
+        f.close()
+    print (s)

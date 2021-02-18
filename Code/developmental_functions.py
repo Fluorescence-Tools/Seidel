@@ -328,14 +328,15 @@ def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1,
     model = func(xdata, params, **modelkwargs)
     l = np.sum(-model + ydata * np.log(model) - np.log(factorial(ydata)))
     return l * sign
-def get_logLikelihood(params, func, observations, sign = 1):
-    """
-    returns the log-likelihood that a series of observations are described
-    by a model func with parameters params.
-    observations are e.g. a unbinned arrival times of photons in a burst
-    """
-    loglikelihood = np.log(np.prod(func(observations, params)))
-    return loglikelihood * sign
+#def get_logLikelihood(params, func, observations, sign = 1):
+#    """
+#    returns the log-likelihood that a series of observations are described
+#    by a model func with parameters params.
+#    observations are e.g. a unbinned arrival times of photons in a burst
+#    """
+#    #
+#    loglikelihood = np.log(np.prod(func(observations, params)))
+#    return loglikelihood * sign
 def ncChidistr(r, mu, sig, A, offset):
     """calculates non-centered Chi Distributionxx"""
     return A * r / sig**2 * np.exp(- 0.5 * ((r - mu)/sig)**2) \
@@ -1132,51 +1133,3 @@ def AnIExport(locLst, outfolder, rebin = 1, sizex = 100):
                                 line += "\t%.3f" % value
                     line += '\n'
                     f.write(line)
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Dec  9 10:35:29 2019
-
-@author: buddeja
-"""
-
-
-def mergePTUfiles(path, savepath):
-    files = os.listdir(path)
-    file_folder = []
-
-
-    if os.path.exists(savepath) == True:
-         print('savepath_exists')
-    else:
-        os.makedirs(savepath)  
-
-    for i in files:
-        if i.startswith('Overview'):
-            file_folder.append(i)
-
-    for ii in file_folder:
-        print(ii)
-
-        files_ptu = []
-        x_relative = []
-        y_relative = []
-        folderpath = os.path.join(path, ii)#'{}{}{}'.format(path, ii, '/')
-        files_folderpath = os.listdir(folderpath)
-        for i in files_folderpath:
-            if i.endswith('.ptu'):
-                files_ptu.append(i)
-            elif i.endswith('x_transfer.dat.dat'):
-                x_coord = i
-            elif i.endswith('y_transfer.dat.dat'):
-                y_coord = i
-        if len(files_ptu) >0 :
-
-            filex = pd.read_csv('{}{}'.format(folderpath,x_coord),sep='\t')
-            filey = pd.read_csv('{}{}'.format(folderpath,y_coord),sep='\t')
-            filex = [i[0] for i in filex.values.tolist()]
-            filey = [i[0] for i in filey.values.tolist()]
-            x_relative.extend(filex) 
-            y_relative.extend(filey) 
-            for i in range(len(files_ptu)):
-                name_new = '{}{}{}{}{}{}'.format(files_ptu[i][:-4],'_x_',x_relative[i],'_y_',y_relative[i],'.ptu')
-                shutil.copy('{}{}'.format(folderpath, files_ptu[i]), os.path.join(savepath, name_new))
