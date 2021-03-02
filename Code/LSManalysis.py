@@ -28,16 +28,26 @@ def PandS2PS(TACP, TACS):
     TACPS[:ntacs] = TACP
     TACPS[ntacs:] = TACS
     return TACPS
-def calculateDerivedVariables(df, integrationtime = 1):
+def calculateDerivedVariables(df, 
+                              integrationtime = 1, 
+                              Gpower = 1, 
+                              Ypower = 1):
     """integration time is dwelltime * Nframes"""
     print(df)
     df['surfaceMax'] = df[['surfaceG', 'surfaceY']].max(axis = 1)
-    for label in ['G', 'R', 'Y']:
+    for label, power in zip(['G', 'R', 'Y'], [Gpower, Ypower, Ypower]):
         df['Br' + label] = df['N' + label+'-tot'] / df['surfaceMax']
         df['rate'+label] = df['Br' + label] / integrationtime
+        df['rate' + label + '_LaserPowerCorrected'] = df['rate'+label] / power
     df['BrG/BrY'] = df['BrG'] / df['BrY']
     df['BrG/BrR'] = df['BrG'] / df['BrR']
     df['BrR/BrY'] = df['BrR'] / df['BrY']
+    df['BrG/BrY_LaserPowerCorrected'] = \
+        df['BrG_LaserPowerCorrected'] / df['BrY_LaserPowerCorrected']
+    df['BrG/BrR_LaserPowerCorrected'] = \
+        df['BrG_LaserPowerCorrected'] / df['BrR_LaserPowerCorrected']
+    df['BrR/BrY_LaserPowerCorrected'] = \
+        df['BrR_LaserPowerCorrected'] / df['BrY_LaserPowerCorrected']
     return df
 
 def cleanImage(image):
@@ -55,36 +65,20 @@ def saveTACs(image, TACdir, label):
     np.savetxt(rout, image.r, fmt = '%.5e')
     return 1
 
-def loadLSMUtility(wdir, identifier, g_factor = 1, dataselect = (0, None),
-                   outname = None, Nframes = -1, load = False, **kwargs):
-    """utility function for collecting a bunch of functions often used together"""
-    picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
-    if load:
-        SampleSet = aid.loadpickle(picklepath)
-    else:
-        SampleSet = sampleSet(wdir,
-                                    g_factor = g_factor,
-                                    dataselect = dataselect)
-        SampleSet.analyzeDir(identifier, Nframes = Nframes, **kwargs)
-        aid.savepickle(SampleSet, picklepath)
-    return SampleSet
-
 def genDefaultFitKwargs():
     return { #some dummy mono exponential
             'D0dat' : np.exp(-np.arange(0,25, 0.064) / 2.5),
             'decaytype' : 'VM',
             'fitrange' : (30, 380)}
 
-def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
-                      fitfunc = 'batchFit2lt',
-                      fitkwargs = genDefaultFitKwargs()
-                      ):
-    SampleSet.batchgenNormDecay(normImageG, normImageY, bgrange = (0, 5))
-    #getattr(SampleSet, fitfunc)(identifier, **fitkwargs)
-    bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
-                         colorcoding = np.log(SampleSet.imstats['BrY']),
-                         resdir = SampleSet.resdir)
 
+
+def trySaveToCSV(dfrm, outname):
+    try:
+        dfrm.to_csv(outname)
+    except PermissionError:
+        print('could not save stats, is the file open in Excel?')
+        
 class sampleSet():
     """This class is intended to automate image analysis for cellular data to
         avoid time-consuming manual work in AnI.
@@ -102,7 +96,9 @@ class sampleSet():
                   g_factor = 1,
                   dataselect = (0, None),
                   dt_glob = 0.064,
-                  FRETPIETACranges = [[0,380], [0, 380], [380,800]]
+                  FRETPIETACranges = [[0,380], [0, 380], [380,800]],
+                  Gpower = 1, #µW
+                  Ypower = 1 #µW
                  ):
         """
         input:
@@ -129,6 +125,8 @@ class sampleSet():
         self.images = {'G': [], 'Y': []}#dict entries are channels,
         self.g_factor = g_factor
         self.dt_glob = dt_glob
+        self.Gpower = float(Gpower)
+        self.Ypower = float(Ypower)
         self.FRETPIETACranges = FRETPIETACranges
 
     def getMaskDirs(self):
@@ -171,6 +169,8 @@ class sampleSet():
                         the countrate."""
         for ptufile in self.ptufiles:
             self.analyzeFile(ptufile, **kwargs)
+        #need to move this to separate command because I need to repeat 
+        #it so often.
         self.genImstatsdf(identifier, **kwargs)
         return 1
 
@@ -183,7 +183,7 @@ class sampleSet():
         time in seconds
         
         See analyzeDir for list of kwargs"""
-        for ptufile, maskdir, time in 
+        for ptufile, maskdir, time in \
             zip(self.ptufiles, self.maskdir, timeList):
             maskfiles = [file for file in os.listdir(maskdir) \
                          if file.endswith('ptu')]
@@ -243,11 +243,12 @@ class sampleSet():
                   + 'cannot calculate integration time and derived variables')
         else:
             integrationtime = self.imreadkwargs['dwelltime'] * Nframes
-            df = calculateDerivedVariables(df, integrationtime)
+            df = calculateDerivedVariables(df, integrationtime,
+                                           self.Gpower, self.Ypower)
 
         #save
-        outdir = os.path.join(self.resdir, identifier + 'imstats.csv')
-        df.to_csv(outdir)
+        outname = os.path.join(self.resdir, identifier + 'imstats.csv')
+        trySaveToCSV(df, outname)
         self.imstats = df
         return 0
 
@@ -266,6 +267,7 @@ class sampleSet():
             ultimately be replaced."""
         image.loadLifetime()
         image.loadIntensity()
+        print(intensityThreshold)
         intMask = image.buildMaskFromIntensityThreshold(
                 threshold = intensityThreshold, sumchannels = ['G', 'R'])
         image.mask(intMask, mode = 'intensity')
