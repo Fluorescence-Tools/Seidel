@@ -38,16 +38,17 @@ def calculateDerivedVariables(df,
     for label, power in zip(['G', 'R', 'Y'], [Gpower, Ypower, Ypower]):
         df['Br' + label] = df['N' + label+'-tot'] / df['surfaceMax']
         df['rate'+label] = df['Br' + label] / integrationtime
-        df['rate' + label + '_LaserPowerCorrected'] = df['rate'+label] / power
+        #LPC stands for LaserPowerCorrected
+        df['rate' + label + '_LPC'] = df['rate'+label] / power
     df['BrG/BrY'] = df['BrG'] / df['BrY']
     df['BrG/BrR'] = df['BrG'] / df['BrR']
     df['BrR/BrY'] = df['BrR'] / df['BrY']
-    df['BrG/BrY_LaserPowerCorrected'] = \
-        df['BrG_LaserPowerCorrected'] / df['BrY_LaserPowerCorrected']
-    df['BrG/BrR_LaserPowerCorrected'] = \
-        df['BrG_LaserPowerCorrected'] / df['BrR_LaserPowerCorrected']
-    df['BrR/BrY_LaserPowerCorrected'] = \
-        df['BrR_LaserPowerCorrected'] / df['BrY_LaserPowerCorrected']
+    df['BrG/BrY_LPC'] = \
+        df['BrG_LPC'] / df['BrY_LPC']
+    df['BrG/BrR_LPC'] = \
+        df['BrG_LPC'] / df['BrR_LPC']
+    df['BrR/BrY_LPC'] = \
+        df['BrR_LPC'] / df['BrY_LPC']
     return df
 
 def cleanImage(image):
