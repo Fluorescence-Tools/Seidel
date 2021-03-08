@@ -6,6 +6,7 @@ import ImageManipulation as IM
 import numpy as np
 import fitDA
 import gc
+import tiffile #pip install tiffile if missing
 #note name df is blocked for dataframe
 
 debug = False
@@ -40,15 +41,15 @@ def calculateDerivedVariables(df,
         df['rate'+label] = df['Br' + label] / integrationtime
         #LPC stands for LaserPowerCorrected
         df['rate' + label + '_LPC'] = df['rate'+label] / power
-    df['BrG/BrY'] = df['BrG'] / df['BrY']
-    df['BrG/BrR'] = df['BrG'] / df['BrR']
-    df['BrR/BrY'] = df['BrR'] / df['BrY']
-    df['BrG/BrY_LPC'] = \
-        df['BrG_LPC'] / df['BrY_LPC']
-    df['BrG/BrR_LPC'] = \
-        df['BrG_LPC'] / df['BrR_LPC']
-    df['BrR/BrY_LPC'] = \
-        df['BrR_LPC'] / df['BrY_LPC']
+    df['rateGrateY'] = df['rateG'] / df['rateY']
+    df['rateGrateR'] = df['rateG'] / df['rateR']
+    df['rateRrateY'] = df['rateR'] / df['rateY']
+    df['rateGrateY_LPC'] = \
+        df['rateG_LPC'] / df['rateY_LPC']
+    df['rateGrateR_LPC'] = \
+        df['rateG_LPC'] / df['rateR_LPC']
+    df['rateRrateY_LPC'] = \
+        df['rateR_LPC'] / df['rateY_LPC']
     return df
 
 def cleanImage(image):
@@ -71,9 +72,13 @@ def genDefaultFitKwargs():
             'D0dat' : np.exp(-np.arange(0,25, 0.064) / 2.5),
             'decaytype' : 'VM',
             'fitrange' : (30, 380)}
-
-
-
+            
+def getMask(fname):
+    mask = tiffile.imread(fname)
+    #we need masks to be binary
+    mask [ mask != 0 ] = 1
+    return mask #mask is np array
+    
 def trySaveToCSV(dfrm, outname):
     try:
         dfrm.to_csv(outname)
@@ -100,6 +105,7 @@ class sampleSet():
                   FRETPIETACranges = [[0,380], [0, 380], [380,800]],
                   Gpower = 1, #µW
                   Ypower = 1 #µW
+                  #why not also include Nframes in here
                  ):
         """
         input:
@@ -113,6 +119,7 @@ class sampleSet():
         """
         #issue: if I want to chance one imreadkwarg, have to specify all of them
         #potential workaround is to init a dict-like class, but this is cumbersome
+        #put all this in a separate function, so that it can be updated separately.
         self.wdir = wdir
         self.imreadkwargs = imreadkwargs
         self.TACdir = os.path.join(wdir, relTACdir)
@@ -129,6 +136,13 @@ class sampleSet():
         self.Gpower = float(Gpower)
         self.Ypower = float(Ypower)
         self.FRETPIETACranges = FRETPIETACranges
+        return
+        
+    def setSettings(**kwargs):
+        #set defaults
+        #for kwarg in kwargs:
+            #self.setting = kwarg
+        pass
 
     def getMaskDirs(self):
         maskdirs = []
@@ -170,31 +184,48 @@ class sampleSet():
                         the countrate."""
         for ptufile in self.ptufiles:
             self.analyzeFile(ptufile, **kwargs)
-        #need to move this to separate command because I need to repeat 
-        #it so often.
         self.genImstatsdf(identifier, **kwargs)
         return 1
 
 
 
-    def analyzeDirwMasks(self, identifier, timeList, **kwargs):
+    def analyzeDirwMasks(self, identifier, maskdirs, timeList, **kwargs):
         """analyzes a set of N files each with M masks, totalling
         NxM image objects
         
+        maskdirs is the directory containing the masks. It can have values:
+            'automatic':    Each ptufile gets an own set of masks
+                            the names are automatically inferred from the names
+                            of the ptufiles. E.g. 
+                            cell1Masks, cell2Masks 
+                            for cell1.ptu, cell2.ptu
+            other strings:  One set of masks is applied to all files. 
+                            The string is the directory containing the masks.
+                            
         time in seconds
         
         See analyzeDir for list of kwargs"""
+        #passing identifier each time is pretty cumbersome, 
+        #make it a class property?
+        if maskdirs == 'automatic':
+            maskdirs = [ptufile[:-4] + 'Masks' for ptufile in self.ptufiles]
+        else:
+            maskdirs = [maskdirs] * len(self.ptufiles)
         for ptufile, maskdir, time in \
-            zip(self.ptufiles, self.maskdir, timeList):
+            zip(self.ptufiles, maskdirs, timeList):
             maskfiles = [file for file in os.listdir(maskdir) \
-                         if file.endswith('ptu')]
+                         if file.endswith('tif')]
             for maskfile in maskfiles:
-                #load maskfile
-                #still need to implement time
+                ffile = os.path.join(self.wdir, maskdir, maskfile)
+                mask = getMask(ffile)
+                #this does not work as reloading the file each time is waay to heavy.
+                #need to rewrite such that the image is only loaded once.
                 self.analyzeFile(ptufile, usermask = mask, **kwargs)
                 #ugly workaround, needed to give unique name to each image
                 for channel in ['G', 'Y']:
                     self.images[channel][-1].name += maskfile[:-4]
+                    self.images[channel][-1].maskid = maskfile[:-4]
+                    self.images[channel][-1].time = time
         self.genImstatsdf(identifier, **kwargs)
         
     def analyzeFile(self, ptufile, **kwargs):
@@ -207,18 +238,7 @@ class sampleSet():
             image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
             self.procesPSimage(image, label, **kwargs)
             self.images[label[1]].append(image)
-
-#    def analyzeFilewMasks (self, filepath, maskList, time = -1):#need to rename
-#        """analyzes one file with multiple masks, generating one image object
-#        for each mask"""
-#        pass
-        #write function that takes a bunch of masks and transforms each into a cell
-        #load mask set
-        #load image
-        #loop over mask
-            #analyse each masked image
-            #add to images
-            #add time (in seconds?)
+            
 
     def genImstatsdf(self, identifier, Nframes,
                    channels = ['G', 'Y', 'Y'],
@@ -239,6 +259,15 @@ class sampleSet():
                 #data was masked previously
                 surface = np.sum(image.workIntensity.G > 0)
                 df.at[image.name, 'surface'+label] = surface
+                #these parameters are not dependant on the channel and thus
+                #are overwritten each time. It is a bit stupid, but also 
+                # a cheap mistake.
+                for attr in ['time', 'maskid']:
+                    try:
+                        df.at[image.name, attr] = getattr(image, attr)
+                    except AttributeError:
+                        pass
+        
         if Nframes == -1:
             print('number of frames not given,' \
                   + 'cannot calculate integration time and derived variables')
@@ -246,7 +275,6 @@ class sampleSet():
             integrationtime = self.imreadkwargs['dwelltime'] * Nframes
             df = calculateDerivedVariables(df, integrationtime,
                                            self.Gpower, self.Ypower)
-
         #save
         outname = os.path.join(self.resdir, identifier + 'imstats.csv')
         trySaveToCSV(df, outname)
@@ -272,13 +300,14 @@ class sampleSet():
         intMask = image.buildMaskFromIntensityThreshold(
                 threshold = intensityThreshold, sumchannels = ['G', 'R'])
         image.mask(intMask, mode = 'intensity')
-        if usermask:
-            image.mask(usermask)
+        if usermask is not None:
+            image.mask(usermask, mode = 'intensity')
         self.genPSfromGRYImage(image)
         self.genDerivedFromPSDecays(image)
         if isSave:
             saveTACs(image, self.TACdir, label)
             #underlying routine is limited to 8 bit Tiff, problem
+            #potential solution is to use the tiffile lib, need to test
             image.saveWorkIntensityToTiff(self.imdir, image.name +
                                       '_wmask' +label)
         if isCleanImage: #free memory intensive 3D array
@@ -320,9 +349,9 @@ class sampleSet():
         has a drawbrack of being inflexible though"""
         #subtract background if specified
         for decaytype in decaytypes:
+            decay = getattr(image, decaytype)
+            normdecay = getattr(normimage, decaytype)
             if bgrange is not None:
-                decay = getattr(image, decaytype)
-                normdecay = getattr(normimage, decaytype)
                 decay = decay - np.mean(decay[bgrange[0]:bgrange[1]])
                 normdecay = normdecay - np.mean(normdecay[bgrange[0]:bgrange[1]])
             decay, normdecay = bp.intshift(shift, decay, normdecay)
@@ -333,7 +362,8 @@ class sampleSet():
     def batchgenNormDecay(self, normimageG, normimageY,
                      decaytypes = ['VM', 'P', 'S'],
                      shift = 0,
-                     bgrange = None):
+                     bgrange = None,
+                     **kwargs):
         """applies genNormDecay to each image in sampleSet"""
         for color in ['G', 'Y']:
             if color == 'G':
