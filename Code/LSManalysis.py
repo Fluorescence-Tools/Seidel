@@ -90,22 +90,11 @@ class sampleSet():
         avoid time-consuming manual work in AnI.
         To work, this script neads a functioncal copy of Seidel in the pythonpath
         """
+    #set to False after default settings have been applied once
+    isApplyDefaultSettings = True 
     def __init__(self,
                  wdir,
-                 relTACdir = 'TAC',
-                 relresdir = 'results',
-                 relimdir = 'images',
-                 imreadkwargs = {'ntacs' : 1024,
-                        'pulsetime' : 50,
-                        'dwelltime': 20e-6,
-                        'TAC_range': 4096},
-                  g_factor = 1,
-                  dataselect = (0, None),
-                  dt_glob = 0.064,
-                  FRETPIETACranges = [[0,380], [0, 380], [380,800]],
-                  Gpower = 1, #µW
-                  Ypower = 1 #µW
-                  #why not also include Nframes in here
+                 **settings
                  ):
         """
         input:
@@ -120,38 +109,38 @@ class sampleSet():
         #issue: if I want to chance one imreadkwarg, have to specify all of them
         #potential workaround is to init a dict-like class, but this is cumbersome
         #put all this in a separate function, so that it can be updated separately.
-        self.wdir = wdir
-        self.imreadkwargs = imreadkwargs
-        self.TACdir = os.path.join(wdir, relTACdir)
-        aid.trymkdir(self.TACdir)
-        self.resdir = os.path.join(wdir, relresdir)
-        aid.trymkdir(self.resdir)
-        self.imdir = os.path.join(wdir, relimdir)
-        aid.trymkdir(self.imdir)
-        self.ptufiles = bp.appendOnPattern(wdir, 'ptu')[dataselect[0]: dataselect[1]]
-        self.maskdirs = self.getMaskDirs()
-        self.images = {'G': [], 'Y': []}#dict entries are channels,
-        self.g_factor = g_factor
-        self.dt_glob = dt_glob
-        self.Gpower = float(Gpower)
-        self.Ypower = float(Ypower)
-        self.FRETPIETACranges = FRETPIETACranges
+        self.setDefaultSettings(wdir)
+        self.setUserSettings(**settings)
+        self.completeSetting()
         return
         
-    def setSettings(**kwargs):
-        #set defaults
-        #for kwarg in kwargs:
-            #self.setting = kwarg
-        pass
-
-    def getMaskDirs(self):
-        maskdirs = []
-        for file in self.ptufiles:
-            maskdir = file[:-4]+'_masks'
-            if os.path.isdir(maskdir):
-                maskdirs.append(maskdir)
-            else:
-                maskdirs.append(None)
+    def setDefaultSettings(self, wdir):
+            self.wdir = wdir
+            self.imreadkwargs =  {'ntacs' : 1024,
+                        'pulsetime' : 50,
+                        'dwelltime': 20e-6,
+                        'TAC_range': 4096}
+            self.TACdir = os.path.join(wdir, 'TAC')
+            self.resdir = os.path.join(wdir, 'results')
+            self.imdir = os.path.join(wdir, 'images')
+            self.images = {'G': [], 'Y': []}#dict entries are channels,
+            self.g_factor = 1
+            self.dt_glob = 0.064
+            self.Gpower = 1
+            self.Ypower = 1
+            self.FRETPIETACranges = [[0,380], [0, 380], [380,800]]
+            self.Nframes = -1
+            self.dataselect = (0, None)
+    
+    def setUserSettings(self, **settings):
+        for setting, settingvalue in zip(settings, settings.values()):
+            setattr(self, setting, settingvalue)
+    def completeSetting(self):
+        aid.trymkdir(self.TACdir)
+        aid.trymkdir(self.resdir)
+        aid.trymkdir(self.imdir)
+        self.ptufiles = bp.appendOnPattern(self.wdir, 'ptu')\
+            [self.dataselect[0]: self.dataselect[1]]
 
     def normTACs(self, normdecay,
                  decaymode = 'VM',
@@ -179,9 +168,7 @@ class sampleSet():
                         up space.
         threshold:      all pixels with an intensity value lower than
                         threshold are set to 0.
-        Nframes:        number of frames to collect photons from. It is also
-                        used to calculate the total integration time and
-                        the countrate."""
+        """
         for ptufile in self.ptufiles:
             self.analyzeFile(ptufile, **kwargs)
         self.genImstatsdf(identifier, **kwargs)
@@ -240,7 +227,7 @@ class sampleSet():
             self.images[label[1]].append(image)
             
 
-    def genImstatsdf(self, identifier, Nframes,
+    def genImstatsdf(self, identifier,
                    channels = ['G', 'Y', 'Y'],
                    #idea: consider using ['Donor', 'FRET', 'PIE'] nomenclature instead
                    labels = ['G', 'R', 'Y'], **kwargs):
@@ -268,11 +255,11 @@ class sampleSet():
                     except AttributeError:
                         pass
         
-        if Nframes == -1:
+        if self.Nframes == -1:
             print('number of frames not given,' \
                   + 'cannot calculate integration time and derived variables')
         else:
-            integrationtime = self.imreadkwargs['dwelltime'] * Nframes
+            integrationtime = self.imreadkwargs['dwelltime'] * self.Nframes
             df = calculateDerivedVariables(df, integrationtime,
                                            self.Gpower, self.Ypower)
         #save
@@ -315,14 +302,14 @@ class sampleSet():
         gc.collect()
         return 1
 
-    def loadPSImage(self, ffile, PChan, SChan, Nframes = -1, **kwargs):
+    def loadPSImage(self, ffile, PChan, SChan, **kwargs):
         GRYim = IM.processLifetimeImage(
                     ffile,
                     uselines = np.array([1]),
                     Gchan = np.array([PChan, PChan]), # duplicity works around bug
                     Rchan = np.array([SChan, SChan]),
                     **self.imreadkwargs,
-                    framestop = int(Nframes))
+                    framestop = int(self.Nframes))
         return GRYim
 
     def genPSfromGRYImage (self, image):
