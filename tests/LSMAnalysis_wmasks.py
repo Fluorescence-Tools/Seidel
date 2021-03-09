@@ -8,6 +8,9 @@ Created on Mon Mar  8 17:24:43 2021
 #%% test analyzing a ptufile with a set of masks
 import LSManalysis as LSMan
 import os
+import utility
+from importlib import reload
+reload(LSMan)
 #%%
 ntacs = 1024
 TAC_range = 4096
@@ -36,7 +39,14 @@ cellClump = LSMan.sampleSet(wdir,
                                     #dataselect = dataselect,
                                     imreadkwargs = imreadkwargs,
                                     Gpower = Gpower,
-                                    Ypower = Ypower)
+                                    Ypower = Ypower,
+                                    Nframes = 160)
 #%%
 maskdirs = os.path.join(wdir, 'masks')
 cellClump.analyzeDirwMasks(identifier, maskdirs, [0])
+#%%
+identifier = 'cellClump'
+normimageG = cellClump.images['G'][D0select]
+normimageY = cellClump.images['Y'][D0select]
+utility.FitPlotLSMUtility(cellClump, normimageG, normimageY, identifier,
+                  fitfunc = 'batchFit2lt')

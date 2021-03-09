@@ -17,6 +17,8 @@ import developmental_functions as df
 import GaussAnalysisPipeline as GAP
 import aid_functions as aid
 import precisionFuncs as pF
+import LSManalysis as LSMan
+import batchplot as bp
 
 
 
@@ -262,3 +264,43 @@ def reportLocStats(locLst, outname = None):
         f.write(s)
         f.close()
     print (s)
+    
+    
+#####################LSM analysis utility#######################################
+def loadLSMUtility(wdir, identifier, g_factor = 1, dataselect = (0, None),
+                   outname = None, Nframes = -1, load = False, #clutter of parameters
+                   imreadkwargs = {'ntacs' : 1024, #annoyingly double
+                        'pulsetime' : 50,
+                        'dwelltime': 20e-6,
+                        'TAC_range': 4096},
+                    Gpower = 1,
+                    Ypower = 1,
+                   **kwargs):
+    """utility function for collecting a bunch of functions often used together"""
+    picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
+    if load:
+        SampleSet = aid.loadpickle(picklepath)
+    else:
+        SampleSet = LSMan.sampleSet(wdir,
+                                    g_factor = g_factor,
+                                    dataselect = dataselect,
+                                    imreadkwargs = imreadkwargs,
+                                    Gpower = Gpower,
+                                    Ypower = Ypower)
+        SampleSet.analyzeDir(identifier, Nframes = Nframes, **kwargs)
+        aid.savepickle(SampleSet, picklepath)
+    return SampleSet
+    
+def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
+                      fitfunc = 'batchFit2lt',
+                      fitkwargs = LSMan.genDefaultFitKwargs(),
+                      colorby = 'rateY_LPC',
+                      **kwargs
+                      ):
+    SampleSet.batchgenNormDecay(normImageG, normImageY, **kwargs)
+    if fitfunc is not None:
+        getattr(SampleSet, fitfunc)(identifier, **fitkwargs)
+    colorcoding = SampleSet.imstats[colorby]
+    bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
+                         colorcoding = colorcoding,
+                         resdir = SampleSet.resdir, **kwargs)

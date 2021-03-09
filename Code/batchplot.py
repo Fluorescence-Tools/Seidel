@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import copy
-import matplotlib
+import matplotlib as mpl
 from scipy.ndimage import gaussian_filter
 
 #%%
@@ -207,24 +207,31 @@ def pltPSrisetherms(sampleSet, identifier, resdir = None,
 
 def pltRelativeDecays(sampleSet, identifier, 
                     resdir = None,
-                    plotkwargs_base = {}, 
+                    plotkwargs_base = {'linewidth' : 0.3}, 
                     plotdecaykwargs = {'xlim' : (0, 20),
                                        'normrange' : (23, 30)},
                     decaytype = 'VM',
-                    colorcoding = None):
+                    colorcoding = None,
+                    vmin = 1,
+                    vmax = None, 
+                    **kwargs):
     """plots all normal and normalised decays in a sampleset    """
     fig, ax1 = plt.subplots(figsize = (11, 8))
     TACnorms = sampleSet.getPropertyList(decaytype + 'norm')
     TACnorms = [gaussian_filter(TACnorm, 1) for TACnorm in TACnorms]
     TACs = sampleSet.getPropertyList(decaytype)
+    if vmax == None: vmax = max(colorcoding)
     #make a list of colorcoding and set brightness accordingly
-    cmap = matplotlib.cm.get_cmap('autumn')
+    cmap = mpl.cm.get_cmap('plasma')
+    cmap.set_over(color = 'green')
+    cmap.set_under(color = 'black')
     plotkwargLst = []
     for i in range(len(TACs)):
         #different objects
         plotkwargs = copy.deepcopy(plotkwargs_base)
         if colorcoding is not None:
-            c = cmap(colorcoding[i] / max(colorcoding))
+            c = cmap((np.log(colorcoding[i]) - np.log(vmin)) \
+                     / (np.log(vmax)- np.log(vmin)))
             plotkwargs['c'] = c
         plotkwargLst.append(plotkwargs)
     #all pointers to same object
@@ -237,8 +244,12 @@ def pltRelativeDecays(sampleSet, identifier,
     ax1.plot(0,0, **plotkwargLst[0], label = identifier + ' normalised')
     ax1.set_ylabel('\u03B5 (\u03C4) \'......\'')
     ax1.set_xlabel('time (ns)')
-    
     ax1.grid()
+    
+    cax = fig.add_axes([0.27, 0.2, 0.5, 0.05])
+    norm = mpl.colors.LogNorm( vmin = vmin, vmax = vmax)
+    fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation='horizontal')
+
     #twinx needs to come after plotting to ax1, otherwise it is also 
     #set to logarithmic
     ax2 = ax1.twinx() 
@@ -259,7 +270,7 @@ def pltRelativeDecays(sampleSet, identifier,
     if resdir:
         outname = os.path.join(resdir, identifier + '_epstau+normalised.png')
         plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
-    return
+    return 1
 
 
 def pltAnisotropies(sampleSet, identifier, resdir = None,

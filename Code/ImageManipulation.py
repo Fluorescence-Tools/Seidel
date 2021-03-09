@@ -118,28 +118,28 @@ class processLifetimeImage:
     #consider moving this operation to c, as it is very time-consuming
         """mask worklifetime of workIntensity image.
         mask should be interger 0 or 1.
+        mask is a 2D array
         Channel should be 'all', 'G', 'R' or 'Y'
         mode should be 'lifetime' or intensity'"""
         #have to fix this assert statement. Now it triggers if mask is e.g. only 1 or only 0
         #assert (np.unique(mask) == np.array([0,1])).all(), 'mask has values other than 0 and 1'
         if mode == 'lifetime':
-            #loop over all tacs. This avoids saving 3D mask to disk
             if Channel == 'all':
                 self.workLifetime.G = \
-                    self.workLifetime.G * mask
+                    self.workLifetime.G * mask[...,None]
                 self.workLifetime.R = \
-                    self.workLifetime.R * mask
+                    self.workLifetime.R * mask[...,None]
                 self.workLifetime.Y = \
-                    self.workLifetime.Y * mask
+                    self.workLifetime.Y * mask[...,None]
             elif Channel == 'G':
                 self.workLifetime.G = \
-                    self.workLifetime.G * mask
+                    self.workLifetime.G * mask[...,None]
             elif Channel == 'R':
                 self.workLifetime.R = \
-                    self.workLifetime.R * mask
+                    self.workLifetime.R * mask[...,None]
             elif Channel == 'Y':
                 self.workLifetime.Y = \
-                    self.workLifetime.Y * mask
+                    self.workLifetime.Y * mask[...,None]
         elif mode == 'intensity':
             if Channel == 'all':
                 self.workIntensity.G = self.workIntensity.G * mask

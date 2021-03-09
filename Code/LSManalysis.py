@@ -7,6 +7,7 @@ import numpy as np
 import fitDA
 import gc
 import tiffile #pip install tiffile if missing
+import copy
 #note name df is blocked for dataframe
 
 debug = False
@@ -111,30 +112,31 @@ class sampleSet():
         #put all this in a separate function, so that it can be updated separately.
         self.setDefaultSettings(wdir)
         self.setUserSettings(**settings)
-        self.completeSetting()
         return
         
     def setDefaultSettings(self, wdir):
-            self.wdir = wdir
-            self.imreadkwargs =  {'ntacs' : 1024,
-                        'pulsetime' : 50,
-                        'dwelltime': 20e-6,
-                        'TAC_range': 4096}
-            self.TACdir = os.path.join(wdir, 'TAC')
-            self.resdir = os.path.join(wdir, 'results')
-            self.imdir = os.path.join(wdir, 'images')
-            self.images = {'G': [], 'Y': []}#dict entries are channels,
-            self.g_factor = 1
-            self.dt_glob = 0.064
-            self.Gpower = 1
-            self.Ypower = 1
-            self.FRETPIETACranges = [[0,380], [0, 380], [380,800]]
-            self.Nframes = -1
-            self.dataselect = (0, None)
+        self.wdir = wdir
+        self.imreadkwargs =  {'ntacs' : 1024,
+                    'pulsetime' : 50,
+                    'dwelltime': 20e-6,
+                    'TAC_range': 4096}
+        self.TACdir = os.path.join(wdir, 'TAC')
+        self.resdir = os.path.join(wdir, 'results')
+        self.imdir = os.path.join(wdir, 'images')
+        self.images = {'G': [], 'Y': []}#dict entries are channels,
+        self.g_factor = 1
+        self.dt_glob = 0.064
+        self.Gpower = 1
+        self.Ypower = 1
+        self.FRETPIETACranges = [[0,380], [0, 380], [380,800]]
+        self.Nframes = -1
+        self.dataselect = (0, None)
+        self.PSchannels = [[1,0], [5,4]]
     
     def setUserSettings(self, **settings):
         for setting, settingvalue in zip(settings, settings.values()):
             setattr(self, setting, settingvalue)
+        self.completeSetting()
     def completeSetting(self):
         aid.trymkdir(self.TACdir)
         aid.trymkdir(self.resdir)
@@ -200,27 +202,34 @@ class sampleSet():
             maskdirs = [maskdirs] * len(self.ptufiles)
         for ptufile, maskdir, time in \
             zip(self.ptufiles, maskdirs, timeList):
-            maskfiles = [file for file in os.listdir(maskdir) \
-                         if file.endswith('tif')]
-            for maskfile in maskfiles:
-                ffile = os.path.join(self.wdir, maskdir, maskfile)
-                mask = getMask(ffile)
-                #this does not work as reloading the file each time is waay to heavy.
-                #need to rewrite such that the image is only loaded once.
-                self.analyzeFile(ptufile, usermask = mask, **kwargs)
-                #ugly workaround, needed to give unique name to each image
-                for channel in ['G', 'Y']:
-                    self.images[channel][-1].name += maskfile[:-4]
-                    self.images[channel][-1].maskid = maskfile[:-4]
-                    self.images[channel][-1].time = time
+            maskfiles = [os.path.join(self.wdir, maskdir, file)\
+                for file in os.listdir(maskdir) if file.endswith('tif')]
+            self.analyzeFilewMasks(ptufile, maskfiles, time, **kwargs)
         self.genImstatsdf(identifier, **kwargs)
+        
+    def analyzeFilewMasks(self, ptufile, maskfiles, time, **kwargs):
+        ffile = os.path.join(self.wdir, ptufile).encode()
+        for PSchannel, label in zip(self.PSchannels, ['_G', '_Y']):
+            PChan, SChan = PSchannel
+            image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
+            for maskfile in maskfiles:
+                mask = getMask(maskfile)
+                #there is some overhead here, but we optimize development time
+                imageCopy = copy.deepcopy(image)
+                #ugly workaround, needed to give unique name to each image
+                maskid = os.path.split(os.path.splitext(maskfile)[0])[1]
+                imageCopy.name += maskid
+                imageCopy.maskid = maskid
+                imageCopy.time = time
+                self.procesPSimage(imageCopy, label, usermask = mask, **kwargs)
+                self.images[label[1]].append(imageCopy)
+                print('finished applying mask %s' %maskid)
         
     def analyzeFile(self, ptufile, **kwargs):
         #load Donor and acceptor channels
         #P is now called G, S is called R (nuisance)
         ffile = os.path.join(self.wdir, ptufile).encode()
-        PSchannels = [[1,0], [5,4]]
-        for PSchannel, label in zip(PSchannels, ['_G', '_Y']):
+        for PSchannel, label in zip(self.PSchannels, ['_G', '_Y']):
             PChan, SChan = PSchannel
             image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
             self.procesPSimage(image, label, **kwargs)
@@ -281,16 +290,21 @@ class sampleSet():
                 Then repeating for both channels
         This workaround should hold for the forseeable future, but should
             ultimately be replaced."""
+            
         image.loadLifetime()
         image.loadIntensity()
-        print(intensityThreshold)
+        #the intensity mask is determined based on workIntensity
         intMask = image.buildMaskFromIntensityThreshold(
                 threshold = intensityThreshold, sumchannels = ['G', 'R'])
-        image.mask(intMask, mode = 'intensity')
+        #the masking happens on the 3D lifetime arrays
+        image.mask(intMask, mode = 'lifetime')
         if usermask is not None:
-            image.mask(usermask, mode = 'intensity')
+            image.mask(usermask, mode = 'lifetime')
+        #the TAC decays are determined from the worklifetime image
         self.genPSfromGRYImage(image)
         self.genDerivedFromPSDecays(image)
+        #reload the intensity, such that it matches the lifetime image
+        image.loadIntensity()
         if isSave:
             saveTACs(image, self.TACdir, label)
             #underlying routine is limited to 8 bit Tiff, problem

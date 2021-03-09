@@ -68,7 +68,7 @@ def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     p0 = [np.max(DAdat), 0.8, 10, 1000]
     popt, pcov = curve_fit( lambda t, A, x0, kf, bg: DA1lt(t, A, x0, kf, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
-                           bounds = ([0, 0, 0, 0], [np.inf, 1,1e4, np.inf]))
+                           bounds = ([0, 0, 0, 0], [np.inf, 1, 1e4, np.inf]))
     DAmodel = DA1lt(fittime, *popt, Donly_base)
     chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
     print('chi2 reduced is %.2f' % chi2red)
@@ -109,27 +109,21 @@ fitDA = fitDA1lt #legacy name
 
 def plteps(ax, DAdat, D0dat, DAmodel, Donlymodel, 
             makeplot = True, dtime = 0.064, **kwargs):
-    #issue: replace this with what is calculated from the fits
-    #calc backgrounds
-    bgest_DA = np.mean(DAdat[-5:])
-    bgest_D0 = np.mean(D0dat[-5:])
-    if np.isnan(bgest_DA) or np.isnan(bgest_D0):
-        raise ValueError
-        #warnings.warn('bg not defined, is bgrange set correctly?')
     #define time axis
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
+    D0bg = np.mean(Donlymodel[-5:])
+    DAbg = np.mean(DAmodel[-5:])
     #calc epsilon
-    epsdat = (DAdat - bgest_DA) / (D0dat- bgest_D0) * \
-            max(D0dat-bgest_D0) / max(DAdat - bgest_DA)
-
-    epsmod = (DAmodel - bgest_DA) / (Donlymodel - bgest_D0 )* \
-            max(Donlymodel-bgest_D0) / max(DAmodel - bgest_DA)
+    norm = max(Donlymodel - D0bg) / max(DAmodel - DAbg)
+    epsdat = (DAdat - DAbg) / (Donlymodel - D0bg) * norm
+    epsmod = (DAmodel - DAbg) / (Donlymodel - D0bg) * norm
    
     #plot
     if makeplot:
         ax.plot(fittime, epsdat, label = '\u03B5(t)')
         ax.plot(fittime, epsmod, label = '\u03B5(t) fit')
+        ax.grid()
         ax.set_xlim(0,20)
         ax.set_ylim(0.1,1.1)
         ax.set_xlabel('time(ns)')
@@ -151,14 +145,15 @@ def pltD0(D0dat, Donlymodel, name, outdir, dtime = 0.064):
     plt.show()
         
 def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0, dtime = 0.064):
-    #TODO: normalize time D0 and DA plots
     #define time axis
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
-    ax.plot(fittime, DAdat, label = 'D(A)')
-    ax.plot(fittime, D0dat, label = 'D(0)')
-    ax.plot(fittime, DAmodel, 'r--', label = 'D(A) fit')
-    ax.plot(fittime, Donlymodel, 'c--', label = 'D(0) fit')
+    DAmax = max(DAmodel)
+    D0max = max(Donlymodel)
+    ax.plot(fittime, DAdat / DAmax, label = 'D(A)')
+    ax.plot(fittime, D0dat / D0max, label = 'D(0)')
+    ax.plot(fittime, DAmodel / DAmax, 'r--', label = 'D(A) fit')
+    ax.plot(fittime, Donlymodel / D0max, 'c--', label = 'D(0) fit')
     ax.set_yscale('log')
     ax.tick_params(direction='in', top=True, right=True)
     ax.tick_params(direction='in', labelbottom=False)
@@ -168,7 +163,7 @@ def pltDA(ax, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0, dtim
     ax.set_ylabel('cnts')
     ax.set_xlim(0, 20)
 
-    ax.text(0.5,100, 'x0: %.2f\n1/k_fret: %.2f ns \n\u03C72 D(A): %.2f\n\u03C72 D(0): %.2f'\
+    ax.text(0.5,0.01, 'x0: %.2f\nk_fret: %.2f (1/ns) \n\u03C72 D(A): %.2f\n\u03C72 D(0): %.2f'\
              % (popt[1], popt[2], chi2red, chi2red_D0), fontsize = 11)
              
 def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, name, popt, chi2red, chi2red_D0, outdir, **kwargs):
@@ -179,6 +174,6 @@ def pltDA_eps(DAdat, D0dat, DAmodel, Donlymodel, name, popt, chi2red, chi2red_D0
     plt.title('FRET induced donor decay for %s' % name)
     pltDA(ax1, DAdat, D0dat, DAmodel, Donlymodel, popt, chi2red, chi2red_D0)
     plteps(ax2, DAdat, D0dat, DAmodel, Donlymodel, **kwargs)
-    plt.savefig(os.path.join(outdir,name[:-4]+'.png'), dpi = 300, bbox_inches = 'tight')
+    plt.savefig(os.path.join(outdir,name+'.png'), dpi = 300, bbox_inches = 'tight')
     plt.show()
     return 
