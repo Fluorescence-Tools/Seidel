@@ -247,7 +247,7 @@ class sampleSet():
             for image in images:
                 Np = np.sum(image.P[TACrange[0]:TACrange[1]])
                 Ns = np.sum(image.S[TACrange[0]:TACrange[1]])
-                Ntot = Np + self.g_factor * 2 * Ns
+                Ntot = Np + Ns
                 #need to change this into Ny-tot, Ny-p and Ny-s
                 df.at[image.name, 'N'+label+'-p'] = Np
                 df.at[image.name, 'N'+label+'-s'] = Ns
