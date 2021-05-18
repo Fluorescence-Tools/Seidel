@@ -575,7 +575,7 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
                     break
         
     plt.hist(dist, bins = bins, color = 'c')
-    plt.xlabel('distance (nm)')
+    plt.xlabel('distance [nm]')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
     plt.title(title)
     plt.legend()

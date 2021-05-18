@@ -214,9 +214,10 @@ def pltRelativeDecays(sampleSet, identifier,
                     colorcoding = None,
                     vmin = 1,
                     vmax = None, 
+                    figsize = (10,7),
                     **kwargs):
     """plots all normal and normalised decays in a sampleset    """
-    fig, ax1 = plt.subplots(figsize = (11, 8))
+    fig, ax1 = plt.subplots(figsize = figsize)
     TACnorms = sampleSet.getPropertyList(decaytype + 'norm')
     TACnorms = [gaussian_filter(TACnorm, 1) for TACnorm in TACnorms]
     TACs = sampleSet.getPropertyList(decaytype)

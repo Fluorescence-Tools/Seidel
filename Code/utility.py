@@ -267,27 +267,15 @@ def reportLocStats(locLst, outname = None):
     
     
 #####################LSM analysis utility#######################################
-def loadLSMUtility(wdir, identifier, g_factor = 1, dataselect = (0, None),
-                   outname = None, Nframes = -1, load = False, #clutter of parameters
-                   imreadkwargs = {'ntacs' : 1024, #annoyingly double
-                        'pulsetime' : 50,
-                        'dwelltime': 20e-6,
-                        'TAC_range': 4096},
-                    Gpower = 1,
-                    Ypower = 1,
-                   **kwargs):
+def loadLSMUtility(wdir, identifier, load = False, **kwargs):
     """utility function for collecting a bunch of functions often used together"""
     picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
     if load:
         SampleSet = aid.loadpickle(picklepath)
     else:
         SampleSet = LSMan.sampleSet(wdir,
-                                    g_factor = g_factor,
-                                    dataselect = dataselect,
-                                    imreadkwargs = imreadkwargs,
-                                    Gpower = Gpower,
-                                    Ypower = Ypower)
-        SampleSet.analyzeDir(identifier, Nframes = Nframes, **kwargs)
+                                    **kwargs)
+        SampleSet.analyzeDir(identifier, **kwargs)
         aid.savepickle(SampleSet, picklepath)
     return SampleSet
     

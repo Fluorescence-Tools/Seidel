@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import LSManalysis as LSMan
+import utility
 
 #this test is not good in it's current state, too much unnneeded loading.
 #%% measurement settings
@@ -30,7 +31,7 @@ intensity_threshold = 0
 identifier = 'D0'
 D0dir = os.path.join(rootdir, identifier)
 load = False
-D0 = LSMan.loadLSMUtility(D0dir, identifier, g_factor = g_factor,
+D0 = utility.loadLSMUtility(D0dir, identifier, g_factor = g_factor,
                     Nframes = Nframes, load = load,
                     intensity_threshold = 20)
 #%% fit data
@@ -39,13 +40,13 @@ D0 = LSMan.loadLSMUtility(D0dir, identifier, g_factor = g_factor,
 identifier = 'D0'
 normimageG = D0.images['G'][D0select]
 normimageY = D0.images['Y'][D0select]
-LSMan.FitPlotLSMUtility(D0, normimageG, normimageY, identifier,
+utility.FitPlotLSMUtility(D0, normimageG, normimageY, identifier,
                   fitfunc = 'batchFit2lt')
 #%% proces images
 identifier = 'DA'
 load = False
 DAdir = os.path.join(rootdir, identifier)
-D1A1 = LSMan.loadLSMUtility(DAdir, identifier, g_factor = g_factor,
+D1A1 = utility.loadLSMUtility(DAdir, identifier, g_factor = g_factor,
                     Nframes = Nframes, load = load,
                     intensity_threshold = 20)
 #%% fit data
@@ -56,5 +57,6 @@ fitkwargs = LSMan.genDefaultFitKwargs()
 fitkwargs['D0dat'] = getattr(D0.images['G'][D0select], decaytype)
 fitkwargs['fitrange'] = (30, 380)
 fitkwargs['decaytype'] = decaytype
-LSMan.FitPlotLSMUtility(D1A1, normimageG, normimageY, identifier,
+utility.FitPlotLSMUtility(D1A1, normimageG, normimageY, identifier,
                   fitfunc = 'batchFit1ltD0DA', fitkwargs = fitkwargs)
+

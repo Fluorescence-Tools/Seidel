@@ -189,6 +189,8 @@ extern "C"
 			else if (inscan) {
 				//image is stored as 1D array
 				//macrotime2pixel is calculated once for computational efficiency
+				//bug: Chan must have length 2, but this is not enforced.
+				//use std::<vector> type instead.
 				timedif = t[i] - startline; //cast long long to int
 				pixel = timedif * macrotime2pixel;
 				index = line * ntacs * dimX + pixel * ntacs + 

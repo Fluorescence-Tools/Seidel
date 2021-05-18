@@ -10,6 +10,7 @@ import LSManalysis as LSMan
 import os
 import utility
 from importlib import reload
+import aid_functions as aid
 reload(LSMan)
 #%%
 ntacs = 1024
@@ -45,8 +46,19 @@ cellClump = LSMan.sampleSet(wdir,
 maskdirs = os.path.join(wdir, 'masks')
 cellClump.analyzeDirwMasks(identifier, maskdirs, [0])
 #%%
+fname = r'Z:\CD95\data\20-4\201112_D1A1_D1A5\D0\results\D0.pickle'
+D0 = aid.loadpickle(fname)
+D0select = 1
+#%%
 identifier = 'cellClump'
-normimageG = cellClump.images['G'][D0select]
-normimageY = cellClump.images['Y'][D0select]
+normimageG = D0.images['G'][D0select]
+normimageY = D0.images['Y'][D0select]
+fitkwargs = LSMan.genDefaultFitKwargs()
+fitkwargs['D0dat'] = getattr(D0.images['G'][D0select], decaytype)
+fitkwargs['fitrange'] = (30, 380)
+fitkwargs['decaytype'] = decaytype
 utility.FitPlotLSMUtility(cellClump, normimageG, normimageY, identifier,
-                  fitfunc = 'batchFit2lt')
+                  fitfunc = 'batchFit1ltD0DA', 
+                  fitkwargs = fitkwargs,
+                  vmin = 1e4, vmax = 6e5,
+                  colorby = 'rateY_LPC')
