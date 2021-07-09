@@ -210,6 +210,8 @@ def analyseLocLst(locLst, Igate = [0,0,0], ltgate = [0,0,0],
         print('analysing localisation %i' %cntr)
         outLst.append(outloc)
     if outname:
+        outdir = os.path.split(outname)[0]
+        aid.trymkdir(outdir)
         with open(outname, 'wb') as output:
             pickle.dump(outLst, output, 1)
     return outLst
@@ -926,6 +928,8 @@ def genStats(locLst, outfile = '', isforMargarita = False):
             statsdict['filepath'].append(loc['filepath'])
                     
     if outfile:
+        outdir = os.path.split(outname)[0]
+        aid.trymkdir(outdir)
         print('saving spectroscopic parameters to disc for Margarita')
         statsDataFrame = pd.DataFrame(statsdict)
         if isforMargarita:
