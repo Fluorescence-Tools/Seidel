@@ -928,7 +928,7 @@ def genStats(locLst, outfile = '', isforMargarita = False):
             statsdict['filepath'].append(loc['filepath'])
                     
     if outfile:
-        outdir = os.path.split(outname)[0]
+        outdir = os.path.split(outfile)[0]
         aid.trymkdir(outdir)
         print('saving spectroscopic parameters to disc for Margarita')
         statsDataFrame = pd.DataFrame(statsdict)
