@@ -73,13 +73,13 @@ def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, st
     if plotout: plt.savefig(plotout, bbox_inches = 'tight', dpi = 600)
     plt.show()
     
-def ptupbsa(ffiles, Chnumbers, step, threshold):
+def confocalPbsa(ffiles, Chnumbers, timestep, threshold):
     nbad = 0
     for ffile in ffiles:
         #get the channels
         channels = getTraces(ffile, Chnumbers)
         #bin the channels
-        sumtrace = np.flipud(binTrace(channels, step = step))
+        sumtrace = np.flipud(binTrace(channels, step = timestep))
         # preliminary step detection
         steppos,means,variances,posbysic,niter= pbsa.steps_preliminary.kv_single_fast(sumtrace, threshold,100)
         # call to improve_steps_single
@@ -113,7 +113,7 @@ def ptupbsa(ffiles, Chnumbers, step, threshold):
         #plot the stuff
         plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, \
                         means,\
-                        step, \
+                        timestep, \
                         plotout = plotout)
         #save all the crap, what should be saved exactly?
     print('number of skipped traces: %i' % nbad)

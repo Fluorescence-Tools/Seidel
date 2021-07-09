@@ -139,6 +139,8 @@ def analyseDir(
         locLst.append(loc)
     
     if outname:
+        outdir = os.path.split(outname)[0]
+        aid.trymkdir(outdir)
         with open(outname, 'wb') as output:
             pickle.dump(locLst, output, 1)
         
@@ -456,6 +458,8 @@ def scanLikelihoodSurface(param_ranges, p, x, y,
 def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '', 
     title = '', figsize = None, isplotpdf = True):
     """utility function, works only in 2D"""
+    #this workaround seems no longer needed, instead $ r_{loc}$ latex style 
+    #work directly.
     #really ugly workaround
     mpl.rcParams['text.usetex'] = True
     keyy, keyx = param_ranges.keys()
@@ -497,9 +501,9 @@ def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '',
     #match Anders' nomenclature
     def fancyAxisLabel(key, setLabelFunc): #function only exists in this scope
         if 'sig' in key:
-            setLabelFunc('$\sigma_{\chi,%c}$' % key[-1])
+            setLabelFunc('$\sigma_{\chi,%c}[nm]$' % key[-1])
         elif 'mu' in key:
-            setLabelFunc('$R_{mp,%c}$' % key[-1])
+            setLabelFunc('$R_{mp,%c}^{loc}[nm]$' % key[-1])
         else:
             setLabelFunc(key)
     fancyAxisLabel(keyx, ax.set_xlabel)
@@ -575,7 +579,7 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
                     break
         
     plt.hist(dist, bins = bins, color = 'c')
-    plt.xlabel('distance [nm]')
+    plt.xlabel(r'$d_{loc} [nm]$')
     plt.ylabel('localisation events / %.0f nm' % binwidth)
     plt.title(title)
     plt.legend()

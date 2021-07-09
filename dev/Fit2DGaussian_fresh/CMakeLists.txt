@@ -6,6 +6,12 @@ project(Fit2DGaussian
 
 add_subdirectory( thirdparty/ap )
 
+#use below flags to compile statically (should not be needed in principle)
+#set(CMAKE_CXX_FLAGS_RELEASE "{$CMAKE_CXX_FLAGS_RELEASE} /MT")
+#set(CMAKE_CXX_FLAGS_DEBUG "{$CMAKE_CXX_FLAGS_DEBUG} /MTd")
+
+#this does not work, I do not know why
+#set(CMAKE_BUILD_TYPE "Release")
 
         
 ############################################################
