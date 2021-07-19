@@ -25,9 +25,26 @@ def loadpickle(outname):
     with open(outname, 'rb') as f:
         return pickle.load(f)
     
-def savepickle(self, outname):
+def savepickle(data, outname):
     with open(outname, 'wb') as output:
-        pickle.dump(self, output, 1)
+        pickle.dump(data, output, 1)
+        
+def saveDict(dictionary, outfile):
+    """save dict column-wise to file."""
+    keys = dictionary.keys()
+    header = ''
+    for key in keys:
+        header += key + '\t'
+    header += '\n'
+    length = len(dictionary[key])
+    with open(outfile, 'wt') as f:
+        f.write(header)
+        for i in range(length):
+            line = ''
+            for key in keys:
+                line += str(dictionary[key][i]) + '\t'
+            line += '\n'
+            f.write(line)
 ##########helper functions from Gauss Analysis Pipeline#########################
 def cropAnI(image, ROI, ROISize, ROIpad = 0):
     """crop ROI from image
