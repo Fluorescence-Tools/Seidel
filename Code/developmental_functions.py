@@ -3,7 +3,7 @@ import pandas as pd
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-import fitting
+import histogram_fitting as fitting
 import ImageManipulation as IM
 import os
 import pickle
