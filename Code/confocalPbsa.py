@@ -14,6 +14,7 @@ import traceback
 
 #%%
 def collect_ptu(fromdirs, outdir):
+    aid.trymkdir(outdir)
     for fromdir in fromdirs:
         files = os.listdir(fromdir)
         for file in files:
@@ -57,7 +58,11 @@ def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, st
                     plotout = None):
     time = np.arange(len(sumtrace)) * step
     #fany rescaling of axes such that curves overlap
-    bg = means[0]; mf = means[1] - means[0]
+    bg = means[0]; 
+    try: 
+        mf = means[1] - means[0]
+    except IndexError:
+        mf = 1
     ax1_max = max(sumtrace) * 1.05
     ax2_max = (ax1_max - bg) / mf
     ax2_min = - bg / mf
@@ -190,7 +195,11 @@ def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
     print('number of traces with one or less steps: %i' % nbad)
     #save if identifier is given
     if lstout:
+        aid.trymkdir(os.path.split(lstout)[0])
         aid.savepickle(traceLst, lstout)
+        #save csv of 1 parameter properties
+        csvout = os.path.splitext(lstout)[0] + '.csv'
+        printOnepToCsv(traceLst, csvout)
     return traceLst
     
 def filterTraceProperty(traceLst, property, minval = None, maxval = None):
@@ -220,7 +229,7 @@ def getTraceProperty(traceLst, property, oneormulti = 'onep'):
     return out
 def plotTraceLst(traceLst, **kwargs):
     for trace in traceLst:
-        fluortrace_prelim = trace['multip']['fluortrace_prelim']
+        fluortrace_prelim = trace['multip']['fluortrace_kv']
         sumtrace = trace['multip']['trace']
         meantrace = trace['multip']['meantrace']
         fluortrace_final = trace['multip']['fluortrace_final']
@@ -230,3 +239,10 @@ def plotTraceLst(traceLst, **kwargs):
                             means,\
                             timestep, \
                             **kwargs)
+                            
+def printOnepToCsv(traceLst, csvout = None):
+    import pandas as pd
+    oneponly = [el['onep'] for el in traceLst]
+    outdfrm = pd.DataFrame.from_dict(oneponly)
+    outdfrm.to_csv(csvout)
+    return outdfrm

@@ -3,7 +3,6 @@ import pandas as pd
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-import histogram_fitting as fitting
 import ImageManipulation as IM
 import os
 import pickle
@@ -258,7 +257,7 @@ def filterVec(v, maxval = 50, verbose = True, center = None):
     v = kickvector(v, maxval)
     if not center: center = np.mean(v, axis = 0)
     if verbose:
-        print('%.1f in x and %.1f in y subtracted' % (center[0], center [1]))
+        print('%.1f nm in x and %.1f nm in y subtracted' % (center[0], center [1]))
     return v - center
     
 def plotSinglePair(locLst, pxSize = 10):
@@ -389,6 +388,9 @@ def getCrossdist(loc):
 def getCoordFromSpot(spot):
     return np.array([spot.posx, spot.posy])
     
+def expDecay(r, tau, A):
+    return A * np.exp( - r / tau )
+    
 def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2], bgphotons = 0):
         """simple fitting and plotting function that fits 
         a monoexponential decay to a TAC decay using MLE optimization
@@ -402,7 +404,7 @@ def fitTau(TAC, TACCal = 0.128, verbose = False, params0 = [1, 2], bgphotons = 0
                     (np.sum(TAC) - bgphotons)
         if verbose:
             plt.plot(tactimes, TAC)
-            plt.plot(tactimes, fitting.expDecay(tactimes, bgcorTAC, \
+            plt.plot(tactimes, expDecay(tactimes, bgcorTAC, \
                     np.sum(TAC) / bgcorTAC * TACCal))
             plt.plot(tactimes, np.ones(len(TAC)) * bgphotons / len(TAC))
             plt.show()
@@ -413,7 +415,13 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
     """calc FRET indicators based on intensity and lifetime information
     Takes a loc dict and edits properties of the 'FRETind' entry
     2 winSigma + 1 is the siye of the integration area"""
-    
+    #bug report:
+    #when applying this algorithm to confocal data, some values were calculated as None
+    #it is possible that the bug origninates earlier in the code
+    #the None values cause compoundede errors later on
+    #desired solution: 1) find out where None values come from, si it desired to have?
+    #   2) make the algorithm robust against None / missing values (e.g., replace with -1?)
+    #dataset: 210712_MF_Ruler recorded by Michelle, found in the STED-FRET3D folder.
     npairs = min(len(loc['G'].spotLst), len(loc['Y'].spotLst))
     loc['FRETind'] = []
     #reload ungated data for lifetime information

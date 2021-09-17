@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="icon">
+    <file>materials/1999roodborst30x30cm.jpg</file>
+  </qresource>
+</RCC>

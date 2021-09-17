@@ -31,6 +31,8 @@ def savepickle(data, outname):
         
 def saveDict(dictionary, outfile):
     """save dict column-wise to file."""
+    outdir = os.path.split(outfile)[0]
+    trymkdir(outdir)
     keys = dictionary.keys()
     header = ''
     for key in keys:

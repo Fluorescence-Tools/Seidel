@@ -4,6 +4,7 @@ import lmfit
 #from scipy.optimize import minimize
 from scipy.special import factorial
 from scipy.special import i0e as scipyi0e
+from scipy.stats import poisson
 from itertools import product
 import matplotlib as mpl
 import copy
@@ -34,7 +35,20 @@ def gauss1D(x, mu, sig, A, offset):
     return A * pdf / np.sum(pdf) + offset
 def gauss1D_p(x, p):
     return gauss1D(x, p['mu'], p['sig'], p['A'], p['offset'])
-    
+def Npoisson(x, p):
+    model = np.zeros(x.shape)
+    v = p.valuesdict()
+    print(v)
+    N = 0
+    while "mu%i" % N in v:
+        model += v['A%i' % N] * poisson.mdf(x, v['mu%i' % N])
+        plt.plot(model)
+        plt.show()
+        N += 1
+    model += v['bg']
+    plt.plot(model)
+    plt.show()
+    return model
 def NncChidistr(x, p):
     """takes lmfit Parameter object and generates as many ncChiDistr as there 
     are mu%i"""
@@ -46,8 +60,7 @@ def NncChidistr(x, p):
         N += 1
     model += v['bg']
     return model
-def expDecay(r, tau, A):
-    return A * np.exp( - r / tau )
+
     
 ########### parameter estimates ###############################################
 def genPeakEst(Npeaks, x, y):

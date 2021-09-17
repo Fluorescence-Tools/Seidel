@@ -175,6 +175,8 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     Istar value of noise is often much lower than regular data
     
     returns: most complicated fit that fulfills all conditions."""
+    #sometimes the algorithm finds additional peaks at the edge of the ROI, usually
+    #False. Can consider to also reject these fits.
     
     brightness = np.zeros([3,3])
 
