@@ -142,10 +142,11 @@ def fitNGauss(image, OptionsCluster,
         drawSpotFit(axs[2], image, param3Gauss, '3 Gauss Fit')
        # pltFitResiduals(image, param3Gauss, '3 Gauss Fit', 
        #     verbose = verbose, outdir = outdir)
-        plt.show()
+        
         if outdir:
            aid.createPath(outfile)
            plt.savefig(outfile, dpi = 300, bbox_inches = 'tight')
+        plt.show()
     
     #choose best fit
     bestfit, twoIstar, brightness = chooseBestfit(param1Gauss, param2Gauss, param3Gauss, 
@@ -178,11 +179,14 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     #sometimes the algorithm finds additional peaks at the edge of the ROI, usually
     #False. Can consider to also reject these fits.
     
+    #should implement that negative values are being rejected
+    
     brightness = np.zeros([3,3])
 
     isSignificantlyLower = None 
     isNoJunkIstar = None
     isNoGarbagePeaks = None
+
     fullfillsAll = None
     
     brightness[0] = getSpotBrightness(param1Gauss)
