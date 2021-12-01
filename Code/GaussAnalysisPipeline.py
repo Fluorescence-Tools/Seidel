@@ -199,7 +199,11 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     #1 Gauss is simplest model
     isSignificantlyLower = np.array([True, False, False])
     for i in [1, 2]:
-        isSignificantlyLower[i] = (twoIstar[i] + DTwoIstar < twoIstar[: i]).all()
+        islower = (twoIstar[i] + DTwoIstar < twoIstar[: i])
+        #ignore comparison when previous fit is nan
+        isnan = np.isnan(twoIstar[: i])
+        isSignificantlyLower[i] = np.logical_or(islower, isnan).all()
+        #isSignificantlyLower[i] = (twoIstar[i] + DTwoIstar < twoIstar[: i]).all()
     
     isNoGarbagePeaks = np.array([False, False, False])
     for i in range(3):

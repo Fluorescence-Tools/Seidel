@@ -660,6 +660,9 @@ def simplePTUmerge(infolder, outfolder = ''):
             if file.endswith('.ptu'):
                 source = os.path.join(subfolder, file)
                 destination = os.path.join(outfolder, file)
+                # this avoids copying files twice
+                if os.path.isfile(destination): 
+                    continue
                 shutil.copyfile(source, destination)
 
 def filterFRETind(locLst, indicator, vmin, vmax):
