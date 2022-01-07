@@ -497,7 +497,8 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
         cntr += 1
     return cntr
     
-def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, verbose = False):
+def GetfixedlocBrightness(locLst, loccolor, ROIsize = 6, outpath = None, \
+                            verbose = False):
     """exports brightnesses of all Green, Red, Yellow channels based on the localisations in channel loccolor
     loccolor is in ['G', 'R', 'Y']
     Used for obtaining classical Donor only and Acceptor only stoichiometry and efficiency.
@@ -569,7 +570,7 @@ def getFRETnames(locLst):
         if type(value) != np.ndarray and name[0] != '_':
             names.append(name)
     return names
-def genSpotNames(locLst):
+def genSpotStatNames(locLst):
     names = []
     i = 0
     while len(locLst[i]['G'].spotLst) == 0:
@@ -594,25 +595,25 @@ def genStats(locLst, outfile = '', isforMargarita = False):
     """
     #issue:fnames should also be included
     statsdict = {}
-    spotNames = genSpotNames(locLst)
+    spotStatNames = genSpotStatNames(locLst)
     #FRETnames contains only single variable FRET indicators
     #empty when locLst['FRETind'] does not exist
     FRETnames = getFRETnames(locLst)
     #ROInames = ['ROI_xstart', 'ROI_ystart', 'ROI_xstop', 'ROI_ystop']
-    names = spotNames + FRETnames + ['filepath']#+ ROInames# + ['filepath']
+    names = spotStatNames + FRETnames + ['filepath']#+ ROInames# + ['filepath']
     for name in names:
         statsdict[name] = []
     
     for loc in locLst:
-        maxdyes = max(len(loc['G'].spotLst),len(loc['Y'].spotLst))
+        maxdyes = max(len(loc['G'].spotLst), len(loc['Y'].spotLst))
         for i in range(maxdyes):
-            for spotName in spotNames:
-                attr = spotName[:-1]
-                color = spotName[-1]
+            for spotStatName in spotStatNames:
+                attr = spotStatName[:-1]
+                color = spotStatName[-1]
                 #need to take care of all the possible errors when object does not exist
                 try: attr = getattr(loc[color].spotLst[i], attr)
                 except: attr = 0
-                statsdict[spotName].append(attr)
+                statsdict[spotStatName].append(attr)
             for FRETname in FRETnames:
                 try: attr = getattr(loc['FRETind'][i], FRETname)
                 except: attr = 0
@@ -627,8 +628,14 @@ def genStats(locLst, outfile = '', isforMargarita = False):
         if isforMargarita:
             statsDataFrame = arcane.renameDataFrameForMargarita(statsDataFrame)
         statsDataFrame.to_csv(outfile, sep = '\t', float_format = '%.3f')
-        
     return statsdict
+    
+def getFRETind(locLst, FRETindName):
+    ind = []
+    for loc in locLst:
+        for FRETpair in loc['FRETind']:
+            ind.append(getattr(FRETpair, FRETindName))
+    return ind
     
 def tryGetattr(obj, attrName):
     try: 
@@ -660,12 +667,16 @@ def simplePTUmerge(infolder, outfolder = ''):
             if file.endswith('.ptu'):
                 source = os.path.join(subfolder, file)
                 destination = os.path.join(outfolder, file)
+                # this avoids copying files twice
+                if os.path.isfile(destination): 
+                    continue
                 shutil.copyfile(source, destination)
 
 def filterFRETind(locLst, indicator, vmin, vmax):
     locLst_copy = copy.deepcopy(locLst)
     for loc in locLst_copy:
-        for j in range(len(loc['FRETind']) -1, -1, -1): #loop last to first to avoid shifts
+        NFRETind = len(loc['FRETind'])
+        for j in range(NFRETind -1, -1, -1): #loop last to first to avoid shifts
             val = getattr(loc['FRETind'][j], indicator)
             if val < vmin or val > vmax:
                 loc['FRETind'].pop(j)

@@ -2,8 +2,9 @@
 import numpy as np
 import lmfit
 #from scipy.optimize import minimize
-from scipy.special import factorial
-from scipy.special import i0e as scipyi0e
+#from scipy.special import factorial
+#from scipy.special import i0e as scipyi0e
+import scipy.special as sc
 from scipy.stats import poisson
 from itertools import product
 import matplotlib as mpl
@@ -22,13 +23,15 @@ def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1,
     #and not xdata, ydata, then accordingly fitfunctions and surface functions
     #can be generalised
     model = func(xdata, params, **modelkwargs)
-    l = np.sum(-model + ydata * np.log(model) - np.log(factorial(ydata)))
+    #fcatorial returns inf if ydata > 175, use gammaln instead
+    #l = np.sum(-model + ydata * np.log(model) - np.log(factorial(ydata)))
+    l = np.sum(-model + ydata * np.log(model) - sc.gammaln(ydata+1))
     return l * sign
 
 def ncChidistr(r, mu, sig, A, offset):
     """calculates non-centered Chi Distributionxx"""
     return A * r / sig**2 * np.exp(- 0.5 * ((r - mu)/sig)**2) \
-        * scipyi0e( mu * r / sig**2) \
+        * sc.i0e( mu * r / sig**2) \
         + offset
 def gauss1D(x, mu, sig, A, offset):
     pdf = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
@@ -38,16 +41,11 @@ def gauss1D_p(x, p):
 def Npoisson(x, p):
     model = np.zeros(x.shape)
     v = p.valuesdict()
-    print(v)
     N = 0
     while "mu%i" % N in v:
-        model += v['A%i' % N] * poisson.mdf(x, v['mu%i' % N])
-        plt.plot(model)
-        plt.show()
+        model += v['A%i' % N] * poisson.pmf(x, v['mu%i' % N])
         N += 1
     model += v['bg']
-    plt.plot(model)
-    plt.show()
     return model
 def NncChidistr(x, p):
     """takes lmfit Parameter object and generates as many ncChiDistr as there 
@@ -153,10 +151,10 @@ def get_BIC(nFitVars, logLikelihood, samplesize):
     # return fitres
 
     
-def fitDistr(p, modelFunc, x, y, modelkwargs = {}):
+def fitDistr(p, modelFunc, x, y, modelkwargs = {}, method = 'nelder'):
     """fits a distribution and return fit result and logLikelihood, Aikaike 
     and Bayesion info criteria"""
-    fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = 'nelder',
+    fitres = lmfit.minimize(get_logLikelihood1DPoisson, p, method = method,
         args = (modelFunc, x, y, -1, modelkwargs))
     logLikelihood = get_logLikelihood1DPoisson(fitres.params, modelFunc, 
                                                 x, y, modelkwargs = modelkwargs)
@@ -274,10 +272,11 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
         plt.figure(figsize = figsize)
     binwidth = bins[1] - bins[0]
     if fit:
-        dstep = 0.1
+        #dstep = 0.1
+        dstep = binwidth
         x = np.arange(0,max(bins),dstep)
         p = fit.params
-        #unsire whether dstep is needed, debug!
+        #unsure whether dstep is needed, debug!
         model = fitFunc(x, p, **modelkwargs) #/ dstep
         plt.plot(x, model, 'k', label = 'model')
         i = 0

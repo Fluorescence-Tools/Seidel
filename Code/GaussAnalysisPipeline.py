@@ -76,6 +76,8 @@ class Channel:
     def fillSpot(self, posx, posy, A, sigma, eps, bg, ROI, Nspots):
         self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
         self.spotLst[-1].setROI(*ROI)
+        #this is redundant, as this property is not fixed, rather it is 
+        #gotten via len(self.spotLst).
         self.spotLst[-1].setNspots(Nspots)
                 
 ################## Gauss fitting and judging functions ############
@@ -142,10 +144,11 @@ def fitNGauss(image, OptionsCluster,
         drawSpotFit(axs[2], image, param3Gauss, '3 Gauss Fit')
        # pltFitResiduals(image, param3Gauss, '3 Gauss Fit', 
        #     verbose = verbose, outdir = outdir)
-        plt.show()
+        
         if outdir:
            aid.createPath(outfile)
            plt.savefig(outfile, dpi = 300, bbox_inches = 'tight')
+        plt.show()
     
     #choose best fit
     bestfit, twoIstar, brightness = chooseBestfit(param1Gauss, param2Gauss, param3Gauss, 
@@ -178,11 +181,14 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     #sometimes the algorithm finds additional peaks at the edge of the ROI, usually
     #False. Can consider to also reject these fits.
     
+    #should implement that negative values are being rejected
+    
     brightness = np.zeros([3,3])
 
     isSignificantlyLower = None 
     isNoJunkIstar = None
     isNoGarbagePeaks = None
+
     fullfillsAll = None
     
     brightness[0] = getSpotBrightness(param1Gauss)
@@ -195,7 +201,11 @@ def chooseBestfit(param1Gauss, param2Gauss, param3Gauss,
     #1 Gauss is simplest model
     isSignificantlyLower = np.array([True, False, False])
     for i in [1, 2]:
-        isSignificantlyLower[i] = (twoIstar[i] + DTwoIstar < twoIstar[: i]).all()
+        islower = (twoIstar[i] + DTwoIstar < twoIstar[: i])
+        #ignore comparison when previous fit is nan
+        isnan = np.isnan(twoIstar[: i])
+        isSignificantlyLower[i] = np.logical_or(islower, isnan).all()
+        #isSignificantlyLower[i] = (twoIstar[i] + DTwoIstar < twoIstar[: i]).all()
     
     isNoGarbagePeaks = np.array([False, False, False])
     for i in range(3):
