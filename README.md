@@ -8,7 +8,7 @@
 5) Molecular assembly particle averaging based on coarse alignment and Prokrustes analysis
 
 ## template notebook & data
-For a step-by-step instruction on how to use the code, refer to this notebook.  
+For a step-by-step instruction on how to use the code, refer to [this](https://github.com/Fluorescence-Tools/FRC/blob/master/templates/20211103_template_v3.ipynb) notebook.  
 FRET-nanoscopy datasets are several Gigabytes, please contact voort@hhu.de for an example dataset.
 
 ## Developer's notice
