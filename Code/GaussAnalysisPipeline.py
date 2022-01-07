@@ -76,6 +76,8 @@ class Channel:
     def fillSpot(self, posx, posy, A, sigma, eps, bg, ROI, Nspots):
         self.spotLst.append(GaussSpot(posx, posy, A, sigma, eps, bg))
         self.spotLst[-1].setROI(*ROI)
+        #this is redundant, as this property is not fixed, rather it is 
+        #gotten via len(self.spotLst).
         self.spotLst[-1].setNspots(Nspots)
                 
 ################## Gauss fitting and judging functions ############

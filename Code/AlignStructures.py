@@ -32,7 +32,9 @@ class fourPointSet:
     
 
         
-    def __init__(self, pointArr):
+    def __init__(self, pointArr, loc = None):
+        #save loc information for later filtering
+        self.loc = loc
         assert(len(self.keys) == pointArr.shape[0])
         self.points = {}
         for key, point in zip(self.keys, pointArr):
@@ -45,7 +47,7 @@ class fourPointSet:
         A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
         A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
         pointArr = np.array([D1, D2, A1, A2])
-        return cls(pointArr)
+        return cls(pointArr, loc)
                                      
     def RepositionToPoint(self, pointname):
         """pointname is e.g. 'A1'"""
@@ -54,9 +56,9 @@ class fourPointSet:
             point -= dpos
                                      
     def calcAngle(self, point1 = 'A1', point2 = 'A2'):
-        Delta = self.points[point1] - self.points[point2]
+        Delta = self.points[point2] - self.points[point1]
         Dx, Dy = Delta
-        self.angle = np.arctan(Dy / Dx)
+        self.angle = np.arctan2(Dy, Dx)
                                      
     def rotate(self, angle = None):
         if angle is None: angle = self.angle
@@ -72,16 +74,31 @@ class fourPointSet:
         elif mirrorAxis == 'vertical':
             for name in self.points.keys():
                 self.points[name] *= [-1, 1]
-
+    
+    def swapPoints(self, point1, point2):
+        point_holder = self.points[point1]
+        self.points[point1] = self.points[point2]
+        self.points[point2] = point_holder
     def relabelLeftToRight(self):
         """relabels the spots such that the spots that have lowest x are '1'"""
         for color in ['D', 'A']:
             #0 position is for x dimension
-            if self.points[color + '1'][0] > self.points[color + '2'][0]:                    
-                point_holder = self.points[color +'1']
-                self.points[color + '1'] = self.points[color + '2']
-                self.points[color + '2'] = point_holder
+            if self.points[color + '1'][0] > self.points[color + '2'][0]:
+                self.swapPoints(color + '1', color + '2')
                 
+    def relabelOnFRETIndicator(self, FRETind):
+        """FRETind can be e.g., 'tauG' or 'proxRatio'. 
+        The spot pair with the higher value obtains index 2.
+        E.g. FRETind = 'proxRatio', then the highFRET pair is labelled 2.
+        The whole set of FRETindicators is called 'FRETind', confusing."""
+        FRETindicators = [getattr(spot, FRETind) for spot in self.loc['FRETind']]
+        maxid = np.argmax(FRETindicators)
+        if maxid == 0: #the higher FRET indicator has label '1', swap labels
+            self.swapPoints('D1', 'D2')
+            self.swapPoints('A1', 'A2')
+        elif maxid == 1: #the higher FRET indicator has label '2', do nothing
+            pass
+        
     def isYAverageBelowZero(self, color):
         #1 position is for y dimension
         return self.points[color + '1'][1] + self.points[color + '2'][1] < 0
@@ -264,7 +281,7 @@ class ensemblePointSet:
         self.pointsets = [self.pointsets[ID] for ID in pointsetIDs]
         return
     def plotPointsets(self, c = ['orange', 'orange', 'r', 'r'], outfile = None, \
-        title = None, xlim = [-60, 60]):
+        title = None, xlim = [-60, 60], ylim = [-25,25]):
         fontsize = 24
         plt.figure(figsize=(10,10))
         self.callBatchFun('plotPoints', self.pxSize)
@@ -283,7 +300,7 @@ class ensemblePointSet:
         plt.xlabel('x (nm)', size = fontsize)
         plt.ylabel('y (nm)', size = fontsize)
         plt.xlim(xlim)
-        plt.ylim((-25, 25))
+        plt.ylim(ylim)
         plt.title(title, size = fontsize)
         if outfile:
             plt.savefig(outfile, bbox_inches = 'tight', dpi = 300)

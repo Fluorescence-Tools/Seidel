@@ -55,12 +55,18 @@ def binTrace(channels, step = 5e-3):
     return sumy
 
 def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, step, \
-                    plotout = None):
+                    plotout = None, datarange = None):
+    #zoom in on the start of the trace to visualize quick bleacing events
+    if datarange:
+        sumtrace = sumtrace[-datarange:]
+        meantrace = meantrace[-datarange:]
+        fluortrace = fluortrace[-datarange:]
+        fluortrace_final = fluortrace_final[-datarange:]
     time = np.arange(len(sumtrace)) * step
     #fany rescaling of axes such that curves overlap
-    bg = means[0]; 
+    bg = min(means); 
     try: 
-        mf = means[1] - means[0]
+        mf = abs(means[1] - means[0])
     except IndexError:
         mf = 1
     ax1_max = max(sumtrace) * 1.05
@@ -74,7 +80,7 @@ def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, st
     ax1.set_xlabel('time(s)')
     ax1.set_ylim(0, ax1_max)
     ax1.set_ylabel('photon counts / %.0f ms' % (step * 1e3))
-    ax2.plot(time, fluortrace, 'r--', label='prelim Fluorophores')
+    ax2.plot(time, fluortrace, 'r-.', label='prelim Fluorophores')
     ax2.plot(time, fluortrace_final, 'k--', label='final Fluorophores')
     ax2.set_ylabel('Fluorophores', color='r')
     ax2.set_ylim(ax2_min, ax2_max)
@@ -84,15 +90,21 @@ def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, st
     if plotout: plt.savefig(plotout, bbox_inches = 'tight', dpi = 600)
     plt.show()
     
-def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
-                verbose = True):
-    nbad = 0
-    traceLst = []
+def tracesFromPtu(ffiles, Chnumbers, timestep):
+    sumtraces = []
     for ffile in ffiles:
         #get the channels
         channels = getTraces(ffile, Chnumbers)
         #bin the channels
-        sumtrace = np.flipud(binTrace(channels, step = timestep))
+        sumtraces.append(np.flipud(binTrace(channels, step = timestep)))
+    return sumtraces
+    
+def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
+        lstout = None, verbose = True):
+    nbad = 0
+    traceLst = []
+    for sumtrace, ffile in zip(sumtraces, ffiles):
+        print(ffile)
         # preliminary step detection
         steppos,means,variances,posbysic,niter= pbsa.steps_preliminary.kv_single_fast(sumtrace, threshold,100)
 
@@ -104,13 +116,18 @@ def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
         
         # calculate fluorophores when counting every step with single occupancy
         fluors = np.cumsum(np.hstack((0, np.sign(np.diff(means)))))
+        #NV added
+        #adress a bug where at the end of a trace there are still
+        #fluorophores. This messes with the zero level.
+        fluors -= min(fluors) 
+        #end added
         fluortrace_prelim = np.repeat(fluors, diffs)
         
         #build a file name
         filedir, file = os.path.split(ffile.decode())
         fileroot, ext = os.path.splitext(file)
         plotoutdir = os.path.join(filedir, 'plotout')
-        plotout = os.path.join(plotoutdir, fileroot + '.png')
+        plotout = os.path.join(plotoutdir, fileroot + '.svg')
         aid.trymkdir(plotoutdir)
         # call to improve_steps_single
         #sometimes the improve_steps_single finds no steps and runs into an error
@@ -139,6 +156,8 @@ def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
         # calculate fluorophore trace
         diffs_final = np.diff(np.hstack([0, steppos_out, len(sumtrace)]))
         fluors_final = np.cumsum(np.hstack([0, step_out]))
+        #address a bug where at the end of a trace there are still fluorophores
+        fluors_final -= min(fluors_final) # set minimal step to 0
         fluortrace_final = np.repeat(fluors_final, diffs_final)
         if verbose:
             #plot the stuff
@@ -153,7 +172,8 @@ def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
         if len(means) == 1:
             onep['Nfluors_kv'] = 0
         else:
-            onep['Nfluors_kv'] = max(np.cumsum(np.sign(np.diff(means))))
+            onep['Nfluors_kv'] = max(fluors)
+        
         onep['Nfluors_final'] = max(fluortrace_final)
         onep['Nsteps_final'] = len(fluors_final) -1
         #amount of steps larger than one, indicator of too low step size
@@ -174,6 +194,8 @@ def confocalPbsa(ffiles, Chnumbers, timestep, threshold, lstout = None,
         onep['fitsucces'] = success
         onep['sicmin'] = sicmin
         onep['threshold'] = threshold
+        onep['Nfluors_end_kv'] = fluors[0]
+        onep['Nfluors_end_refined'] = fluors_final[0]
         #here all the multiparemeter properties come
         multip = {}
         multip['steppos_kv'] = steppos
@@ -227,7 +249,7 @@ def getTraceProperty(traceLst, property, oneormulti = 'onep'):
     for trace in traceLst:
         out.append(trace[oneormulti][property])
     return out
-def plotTraceLst(traceLst, **kwargs):
+def plotTraceLst(traceLst, outfolder = None, **kwargs):
     for trace in traceLst:
         fluortrace_prelim = trace['multip']['fluortrace_kv']
         sumtrace = trace['multip']['trace']
@@ -235,9 +257,14 @@ def plotTraceLst(traceLst, **kwargs):
         fluortrace_final = trace['multip']['fluortrace_final']
         means = trace['multip']['means']
         timestep = trace['onep']['timestep']
+        if outfolder: plotout = os.path.join(outfolder, \
+            trace['multip']['file'][:-4] + '.svg')
+        else: plotout = None
+        print(trace["multip"]['file'][-20:])
         plotFittedTrace(sumtrace, meantrace, fluortrace_prelim, fluortrace_final, \
                             means,\
                             timestep, \
+                            plotout = plotout, \
                             **kwargs)
                             
 def printOnepToCsv(traceLst, csvout = None):
