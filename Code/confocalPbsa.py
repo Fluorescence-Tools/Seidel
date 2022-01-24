@@ -106,7 +106,8 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
     for sumtrace, ffile in zip(sumtraces, ffiles):
         print(ffile)
         # preliminary step detection
-        steppos,means,variances,posbysic,niter= pbsa.steps_preliminary.kv_single_fast(sumtrace, threshold,100)
+        steppos, means, variances, posbysic, niter = \
+            pbsa.steps_preliminary.kv_single_fast(sumtrace, threshold,100)
 
         #calculate all the to be plotted variables
         # diffs are the numbers of frames between steps
@@ -127,7 +128,7 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         filedir, file = os.path.split(ffile.decode())
         fileroot, ext = os.path.splitext(file)
         plotoutdir = os.path.join(filedir, 'plotout')
-        plotout = os.path.join(plotoutdir, fileroot + '.svg')
+        plotout = os.path.join(plotoutdir, fileroot +'thr%.0f' % threshold + '.svg')
         aid.trymkdir(plotoutdir)
         # call to improve_steps_single
         #sometimes the improve_steps_single finds no steps and runs into an error
@@ -176,7 +177,7 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         
         onep['Nfluors_final'] = max(fluortrace_final)
         onep['Nsteps_final'] = len(fluors_final) -1
-        #amount of steps larger than one, indicator of too low step size
+        #how many steps were larger than 1 fluo and by how much
         onep['Nmultisteps'] = np.sum(np.abs(step_out) -1)
         #workaround needed in case no step is found
         if len(means) < 2:
@@ -273,3 +274,24 @@ def printOnepToCsv(traceLst, csvout = None):
     outdfrm = pd.DataFrame.from_dict(oneponly)
     outdfrm.to_csv(csvout)
     return outdfrm
+    
+def calcVarAlpha(alpha, n):
+    """
+    calculate the variance on alpha assuming
+    alpha is the average amount of time in the on statements
+    n is the average amount of transitions in selected time period
+    Formula originates from FRET lines paper from Oleg"""
+    #alpha = <kon / (kon + koff)>
+    #n = <kon + koff> * tbin
+    return alpha * (1-alpha) * 2 / n * (1 + (np.exp(-n)-1)/n)
+def calcVarSOleg(Nfl, alpha, n):
+    """using standard propagation of the variance for formula
+    S = Nfl * alpha
+    we obtain this formula, however it does not match MC simulations"""
+    return Nfl**2 * calcVarAlpha(alpha, n) + alpha**2*Nfl
+
+def calcVarSOleg2(Nfl, alpha, n):
+    """simular to calcVarSOleg
+    the square in the second therm is removed, then this formula matches MC
+    simulations"""
+    return Nfl**2 * calcVarAlpha(alpha, n) + alpha*Nfl
