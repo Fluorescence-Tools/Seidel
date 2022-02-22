@@ -22,6 +22,7 @@ def collect_ptu(fromdirs, outdir):
                 ffile = os.path.join(fromdir, file)
                 outfile = os.path.join(outdir, file)
                 os.rename(ffile, outfile)
+#
                 
 def getTraces(fname, Chnumbers, counttime = 25e-9):
     NumRecords = cpp_wrappers.ptuHeader_wrap (fname)
@@ -54,22 +55,26 @@ def binTrace(channels, step = 5e-3):
             sumy +=y
     return sumy
 
-def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, step, \
-                    plotout = None, datarange = None):
+def plotFittedTrace(sumtrace, meantrace, fluortrace, means, step, \
+                    fluortrace_final = None, plotout = None, xlim = None,
+                    datarange = None):
     #zoom in on the start of the trace to visualize quick bleacing events
     if datarange:
+        print('warning: use of datarange is depecated, use xlim insted')
         sumtrace = sumtrace[-datarange:]
         meantrace = meantrace[-datarange:]
         fluortrace = fluortrace[-datarange:]
-        fluortrace_final = fluortrace_final[-datarange:]
+        if fluortrace_final:
+            fluortrace_final = fluortrace_final[-datarange:]
     time = np.arange(len(sumtrace)) * step
-    #fany rescaling of axes such that curves overlap
+    #fancy rescaling of axes such that curves overlap
     bg = min(means); 
     try: 
         mf = abs(means[1] - means[0])
     except IndexError:
         mf = 1
     ax1_max = max(sumtrace) * 1.05
+
     ax2_max = (ax1_max - bg) / mf
     ax2_min = - bg / mf
     fig = plt.figure()
@@ -77,11 +82,13 @@ def plotFittedTrace(sumtrace, meantrace, fluortrace, fluortrace_final, means, st
     plt.plot(time, meantrace, label='Means')
     ax1 = plt.gca()
     ax2 = ax1.twinx()
+    if xlim: ax1.set_xlim(xlim)
     ax1.set_xlabel('time(s)')
     ax1.set_ylim(0, ax1_max)
     ax1.set_ylabel('photon counts / %.0f ms' % (step * 1e3))
     ax2.plot(time, fluortrace, 'r-.', label='prelim Fluorophores')
-    ax2.plot(time, fluortrace_final, 'k--', label='final Fluorophores')
+    if fluortrace_final is not None:
+        ax2.plot(time, fluortrace_final, 'k--', label='final Fluorophores')
     ax2.set_ylabel('Fluorophores', color='r')
     ax2.set_ylim(ax2_min, ax2_max)
     lines, labels = ax1.get_legend_handles_labels()
@@ -98,6 +105,92 @@ def tracesFromPtu(ffiles, Chnumbers, timestep):
         #bin the channels
         sumtraces.append(np.flipud(binTrace(channels, step = timestep)))
     return sumtraces
+
+def simpleCPBSA(sumtraces, threshold, ffiles, timestep, Chnumbers, \
+    lstout = None, verbose = True):
+    nbad = 0
+    traceLst = []
+    for sumtrace, ffile in zip(sumtraces, ffiles):
+        print(ffile)
+        # preliminary step detection
+        steppos, means, variances, posbysic, niter = \
+            pbsa.steps_preliminary.kv_single_fast(sumtrace, threshold,100)
+
+        #calculate all the to be plotted variables
+        # diffs are the numbers of frames between steps
+        diffs = np.diff(np.hstack([0, steppos, len(sumtrace)]))
+        # calculate mean trace 
+        meantrace = np.repeat(means, diffs)
+        
+        # calculate fluorophores when counting every step with single occupancy
+        fluors = np.cumsum(np.hstack((0, np.sign(np.diff(means)))))
+        #NV added
+        #adress a bug where at the end of a trace there are still
+        #fluorophores. This messes with the zero level.
+        fluors -= min(fluors) 
+        #end added
+        fluortrace_prelim = np.repeat(fluors, diffs)
+        
+        #build a file name
+        filedir, file = os.path.split(ffile.decode())
+        fileroot, ext = os.path.splitext(file)
+        plotoutdir = os.path.join(filedir, 'plotout')
+        plotout = os.path.join(plotoutdir, fileroot +'thr%.0f' % threshold + '.svg')
+        aid.trymkdir(plotoutdir)
+        if verbose:
+            #plot the stuff
+            plotFittedTrace(sumtrace, meantrace, fluortrace_prelim, \
+                            means,\
+                            timestep, \
+                            plotout = plotout)
+        #save all the crap, what should be saved exactly?
+        #all these if statements make this such a mess, is there a better approach?
+        #here al the single parameter properties come
+        onep = {}
+        if len(means) == 1:
+            onep['Nfluors_kv'] = 0
+        else:
+            onep['Nfluors_kv'] = max(fluors)
+        #how many steps were larger than 1 fluo and by how much
+        #workaround needed in case no step is found
+        if len(means) < 2:
+            stepsize = -1
+            stepvariance = -1
+        else:
+            stepsize = means[1]-means[0]
+            stepvariance = variances[1] - variances[0]
+        onep['stepsize'] = stepsize
+        onep['stepvariance'] = stepvariance
+        onep['bgsize'] = means[0]
+        onep['bgvariance'] = variances[0]
+        onep['niter'] = niter
+        onep['timestep'] = timestep
+        onep['threshold'] = threshold
+        onep['Nfluors_end_kv'] = fluors[0]
+        #here all the multiparemeter properties come
+        multip = {}
+        multip['fluors'] = fluors #added later
+        multip['steppos_kv'] = steppos
+        multip['means'] = means
+        multip['diffs_kv'] = np.diff(means)
+        multip['meantrace'] = meantrace
+        multip['variances'] = variances
+        multip['posbysic'] = posbysic
+        multip['trace'] = sumtrace
+        multip['Chnumbers'] = Chnumbers
+        multip['fluortrace_kv'] = fluortrace_prelim
+        multip['file'] = file
+        traceinfo = {'onep': onep, 'multip':multip}
+        traceLst.append(traceinfo)
+    print('number of traces with one or less steps: %i' % nbad)
+    #save if identifier is given
+    if lstout:
+        aid.trymkdir(os.path.split(lstout)[0])
+        aid.savepickle(traceLst, lstout)
+        #save csv of 1 parameter properties
+        csvout = os.path.splitext(lstout)[0] + '.csv'
+        printOnepToCsv(traceLst, csvout)
+    return traceLst
     
 def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         lstout = None, verbose = True):
@@ -162,9 +255,10 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         fluortrace_final = np.repeat(fluors_final, diffs_final)
         if verbose:
             #plot the stuff
-            plotFittedTrace(sumtrace, meantrace, fluortrace_prelim, fluortrace_final, \
+            plotFittedTrace(sumtrace, meantrace, fluortrace_prelim, \
                             means,\
                             timestep, \
+                            fluortrace_final = fluortrace_final, \
                             plotout = plotout)
         #save all the crap, what should be saved exactly?
         #all these if statements make this such a mess, is there a better approach?
@@ -199,6 +293,7 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         onep['Nfluors_end_refined'] = fluors_final[0]
         #here all the multiparemeter properties come
         multip = {}
+        multip['fluors'] = fluors #added later
         multip['steppos_kv'] = steppos
         multip['means'] = means
         multip['diffs_kv'] = np.diff(means)
@@ -287,11 +382,13 @@ def calcVarAlpha(alpha, n):
 def calcVarSOleg(Nfl, alpha, n):
     """using standard propagation of the variance for formula
     S = Nfl * alpha
-    we obtain this formula, however it does not match MC simulations"""
+    we obtain this formula, however it does not match MC simulations
+    """
     return Nfl**2 * calcVarAlpha(alpha, n) + alpha**2*Nfl
 
 def calcVarSOleg2(Nfl, alpha, n):
     """simular to calcVarSOleg
     the square in the second therm is removed, then this formula matches MC
-    simulations"""
+    simulations
+    Use this one"""
     return Nfl**2 * calcVarAlpha(alpha, n) + alpha*Nfl

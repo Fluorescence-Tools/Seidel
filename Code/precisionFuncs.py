@@ -65,7 +65,7 @@ def createGaussImg(dim, params, a):
     x, y = np.meshgrid(x,y)
     return np.random.poisson(Expected(x, y, params, a))
 
-def findVar(params, a):
+def findVar(params, a, verbose = False):
     """find variance according to eq.54 suppl. Mortensen et. al."""
     b2 = params[3]**2
     N = params[4]
@@ -73,7 +73,8 @@ def findVar(params, a):
     F = lambda t: np.log(t) / (1 + (N * a**2 * t / (2 * np.pi * sa**2 * b2)))
     #quad function does not take array, makes array calculations slow
     integral, _ = quad(F, 0, 1)
-    print('integral in variance has value %f' % integral)
+    if verbose:
+        print('integral in variance has value %f' % integral)
     return sa**2 / N  /(1+integral)
     
     

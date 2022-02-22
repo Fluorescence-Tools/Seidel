@@ -47,6 +47,31 @@ def saveDict(dictionary, outfile):
                 line += str(dictionary[key][i]) + '\t'
             line += '\n'
             f.write(line)
+            
+def simplePTUmerge(infolder, outfolder = ''):
+    """copies all ptu files in subfolders of infolder to outfolder"""
+    if outfolder == '':
+        outfolder = os.path.join(infolder, 'all')
+    print(outfolder)
+    try:
+        os.mkdir(outfolder)
+        print('creating folder')
+    except FileExistsError:
+        pass
+    folders = [f for f in os.listdir(infolder) if \
+        os.path.isdir(os.path.join(infolder, f))]
+    for folder in folders:
+        subfolder = os.path.join(infolder, folder)
+        files = os.listdir(subfolder)
+        for file in files:
+            if file.endswith('.ptu'):
+                source = os.path.join(subfolder, file)
+                destination = os.path.join(outfolder, file)
+                # this avoids copying files twice
+                if os.path.isfile(destination): 
+                    continue
+                shutil.copyfile(source, destination)
+                
 ##########helper functions from Gauss Analysis Pipeline#########################
 def cropAnI(image, ROI, ROISize, ROIpad = 0):
     """crop ROI from image

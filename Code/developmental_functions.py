@@ -417,7 +417,7 @@ def calcFRETind(CLR, loc, winSigma, cntr, verbose, Igate, ltgate, pxSize,
     2 winSigma + 1 is the siye of the integration area"""
     #bug report:
     #when applying this algorithm to confocal data, some values were calculated as None
-    #it is possible that the bug origninates earlier in the code
+    #it is possible that the bug originates earlier in the code
     #the None values cause compoundede errors later on
     #desired solution: 1) find out where None values come from, si it desired to have?
     #   2) make the algorithm robust against None / missing values (e.g., replace with -1?)
@@ -648,29 +648,7 @@ def loadpickle(outname):
     with open(outname, 'rb') as f:
         return pickle.load(f)
 
-def simplePTUmerge(infolder, outfolder = ''):
-    """copies all ptu files in subfolders of infolder to outfolder"""
-    if outfolder == '':
-        outfolder = os.path.join(infolder, 'all')
-    print(outfolder)
-    try:
-        os.mkdir(outfolder)
-        print('creating folder')
-    except FileExistsError:
-        pass
-    folders = [f for f in os.listdir(infolder) if \
-        os.path.isdir(os.path.join(infolder, f))]
-    for folder in folders:
-        subfolder = os.path.join(infolder, folder)
-        files = os.listdir(subfolder)
-        for file in files:
-            if file.endswith('.ptu'):
-                source = os.path.join(subfolder, file)
-                destination = os.path.join(outfolder, file)
-                # this avoids copying files twice
-                if os.path.isfile(destination): 
-                    continue
-                shutil.copyfile(source, destination)
+
 
 def filterFRETind(locLst, indicator, vmin, vmax):
     locLst_copy = copy.deepcopy(locLst)

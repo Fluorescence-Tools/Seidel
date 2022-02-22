@@ -184,21 +184,22 @@ def exportImageAndFit(loc, xstart, ystart, size = 30, Nspots = 2, outdir = None,
 def reportLocStats(locLst, outname = None):
     """prints some statistics of a locLST dataset"""
     s = ''
-    s += 'filter yields:\n'
     stats = df.genStats(locLst)
-    s += 'total images taken: %i\n' % len(locLst)
-    scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
-    s += 'total FRET pairs: %i\n' % len(scut['posxG'])
-    NF = df.filterStats(scut, 'proxRatio', 0, 0.6)
-    s += 'NF pairs: %i\n' % len(NF['posxG'])
-    stats = df.genStats(locLst)
-    scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
-    HF = df.filterStats(scut, 'proxRatio', 0.75, 1)
-    s += 'HF pairs: %i\n' % len(HF['posxG'])
-    s += '\n' + '%'*80 + '\n\n'
+    # #below section prints yields for cut, but the cut is hardcoded
+    # s += 'filter yields:\n'
+    # stats = df.genStats(locLst)
+    # s += 'total images taken: %i\n' % len(locLst)
+    # scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
+    # s += 'total FRET pairs: %i\n' % len(scut['posxG'])
+    # NF = df.filterStats(scut, 'proxRatio', 0, 0.6)
+    # s += 'NF pairs: %i\n' % len(NF['posxG'])
+    # stats = df.genStats(locLst)
+    # scut = df.filterStats(stats, 'stoichiometry', 0.2, 0.8)
+    # HF = df.filterStats(scut, 'proxRatio', 0.75, 1)
+    # s += 'HF pairs: %i\n' % len(HF['posxG'])
+    # s += '\n' + '%'*80 + '\n\n'
     
     s += 'loc Accury indicators:\n'
-    stats = scut #bad practice
     locNG = np.array(stats['AG']) * np.array(stats['sigmaG'])**2 *2 * np.pi
     locNY = np.array(stats['AY']) * np.array(stats['sigmaY'])**2 *2 * np.pi
     locNGmean = np.mean(locNG); locNGstd =np.std(locNG)

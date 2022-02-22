@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import aid_functions as aid
 import pandas as pd
 import os
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 ###############target functions and distributions ##############################
 def get_logLikelihood1DPoisson(params, func, xdata, ydata, sign = 1, 
@@ -193,22 +194,42 @@ def scanLikelihoodSurface(param_ranges, p, x, y,
 def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '', 
     title = '', figsize = None, isplotpdf = True):
     """utility function, works only in 2D"""
+    # definitions for the axes
+    left, width = 0.1, 0.65
+    bottom, height = 0.1, 0.65
+    spacing = 0.005
+    rect_scatter = [left, bottom, width, height]
+    rect_histx = [left, bottom + height + spacing, width, 0.2]
+    rect_histy = [left + width + spacing, bottom, 0.2, height]
+    
     #this workaround seems no longer needed, instead $ r_{loc}$ latex style 
     #work directly.
     #really ugly workaround
     mpl.rcParams['text.usetex'] = True
     keyy, keyx = param_ranges.keys()
+    x = param_ranges[keyx]
+    y = param_ranges[keyy]
+    xmin = min(x)
+    xmax = max(x)
+    ymin = min(y)
+    ymax = max(y)
     surface = copy.deepcopy(surface_copy)
     if figsize:
-        fig, ax = plt.subplots(1,1, figsize = figsize)
+        fig = plt.figure(figsize = figsize)
     else:
-        fig, ax = plt.subplots(1,1)
+        fig = plt.figure()
+    ax = fig.add_axes(rect_scatter)
+    ax_x = fig.add_axes(rect_histx, sharex=ax)
+    ax_y = fig.add_axes(rect_histy, sharey=ax)
+    
     bestfit = np.nanmax(surface.flatten())
     if isplotpdf:
         #make into pdf
         #scale to 0 log to avoid running out of floating point precision
         surface += bestfit 
         surface = np.exp(surface)
+        #mirror image horizontally
+        surface = surface[::-1]
         #normalize pdf surface to represents the likelihood per nm^2 (for mu vs sigma)
         #or per nm per photon count (for A vs mu)
         dx = param_ranges[keyx][1]-param_ranges[keyx][0]
@@ -224,8 +245,13 @@ def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '',
         contourlevels = [bestfit -2, bestfit-0.5, bestfit]
         vmin = bestfit-5
         vmax = bestfit
-    plt.imshow(surface, cmap = 'gray', vmin = vmin, vmax = vmax)
-    CS = ax.contour(surface, levels = contourlevels, colors = 'r', linestyles = 'dashed')
+    pdf_x = np.sum(surface, axis = 0)
+    pdf_y = np.sum(surface, axis = 1)[::-1]
+    pdf_x /= max(pdf_x)
+    pdf_y /= max(pdf_y)
+    aspect = (xmax - xmin) / (ymax - ymin)
+    im = ax.imshow(surface, cmap = 'gray', extent = [xmin, xmax, ymin, ymax], aspect = aspect, vmin = vmin, vmax = vmax)
+    CS = ax.contour(surface, levels = contourlevels, colors = 'r', linestyles = 'dashed', extent = [xmin, xmax, ymax, ymin])
     labels = ['13.5% pmax', '60% pmax', 'pmax']
     
     fmt = {}
@@ -245,7 +271,8 @@ def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '',
     fancyAxisLabel(keyy, ax.set_ylabel)
     def fancyTickLabel(key, setTickFunc, setTickLabelFunc, skip):
         labels = ['%.1f' % x for x in param_ranges[key][::skip]]
-        ticks = [ x for x in range(len(param_ranges[key]))[::skip]]
+        ticks = [x for x in param_ranges[key][::skip]]
+        #ticks = [ x for x in range(len(param_ranges[key]))[::skip]]
         #append final value
         labels.append('%.1f' % max(param_ranges[key]))
         ticks.append(len(param_ranges[key])-1)
@@ -253,8 +280,50 @@ def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '',
         setTickLabelFunc(labels)
     fancyTickLabel(keyx, ax.set_xticks, ax.set_xticklabels, skip)
     fancyTickLabel(keyy, ax.set_yticks, ax.set_yticklabels, skip)
-    plt.title(title)
-    plt.colorbar()
+    # ax_x.set_title(title)
+    #add colorbar
+    #divider = make_axes_locatable(ax)
+    #cax = divider.append_axes('right', size='5%', pad=0.05)
+    #fig.colorbar(im, cax=cax, orientation='vertical')
+    
+    #make side projection of 1D pdf
+    def getborder(pdf, axoffset, step):
+        _, cidx = aid.find_nearest(pdf, 1)
+        _, lidx = aid.find_nearest(pdf[:cidx], np.exp(-0.5))
+        _, ridx = aid.find_nearest(pdf[cidx:], np.exp(-0.5))
+        ridx += cidx
+        lborder = lidx * step + axoffset
+        rborder = ridx * step + axoffset
+        center = cidx * step + axoffset
+        return lborder, rborder, center
+    def find_nearest(array, value):
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return array[idx], idx
+
+    lborder, rborder, center = getborder(pdf_x, param_ranges[keyx][0], dx)
+    #ax.plot([70, 80], [np.exp(-0.5), np.exp(-0.5)], 'y--',label = '1 \u03C3')
+    ax_x.plot( [lborder, lborder], [np.exp(-0.5), 0] , 'r--')
+    ax_x.plot( [rborder, rborder], [np.exp(-0.5), 0] , 'r--')
+    ax_x.text(lborder, np.exp(-0.5), '%.2f' %lborder, horizontalalignment='right', fontsize = 10)
+    ax_x.text(rborder, np.exp(-0.5), '%.2f' %rborder, fontsize = 10)
+    ax_x.text(center, 1, '%.2f' %center,  horizontalalignment='center', fontsize = 10)
+    ax_x.fill_between(x, pdf_x, edgecolor = 'k', facecolor = 'grey')
+    ax_x.set_ylim(0,1.5)
+    ax_x.set_yticks([1])
+
+    lborder, rborder, center = getborder(pdf_y, param_ranges[keyy][0], dy)
+    ax_y.plot([np.exp(-0.5), 0], [lborder, lborder], 'r--')
+    ax_y.plot([np.exp(-0.5), 0], [rborder, rborder], 'r--')
+    ax_y.text(np.exp(-0.5), lborder, '%.2f' %lborder, fontsize = 10, va = 'top')
+    ax_y.text(np.exp(-0.5), rborder, '%.2f' %rborder, fontsize = 10)
+    ax_y.text(1, center, '%.2f' %center, fontsize = 10, va = 'center')
+    ax_y.fill_between(pdf_y, y, edgecolor = 'k', facecolor = 'grey')
+    ax_y.set_ylim((ymin, ymax))
+    ax_y.set_xlim(0,1.5)
+    ax_y.set_xticks([1])
+    
+    #save and plot
     if outname:
         plt.savefig(outname, dpi = 300, bbox_inches = 'tight')
     plt.show()
@@ -268,6 +337,7 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
     counts in each bin. fit is an lmfit.MinimizerResult object, if it is given,
     a model is plotted too.
     plot and data export modalities are integrated."""
+    mpl.rcParams['text.usetex'] = False
     if figsize:
         plt.figure(figsize = figsize)
     binwidth = bins[1] - bins[0]
@@ -293,7 +363,7 @@ def plotdistr(dist, bins, fit = None, fitFunc = NncChidistr, title = '',
         
     plt.hist(dist, bins = bins, color = 'c')
     plt.xlabel(r'$d_{loc} [nm]$')
-    plt.ylabel('localisation events / %.0f nm' % binwidth)
+    plt.ylabel('localisation events / %.1f nm' % binwidth)
     plt.title(title)
     plt.legend()
     if grid:
