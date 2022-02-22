@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 import os
 import pickle
+import shutil
 
 def pos2ROI(xpos, ypos, winSigma):
     """convert center position and width to ROI"""
@@ -48,7 +49,7 @@ def saveDict(dictionary, outfile):
             line += '\n'
             f.write(line)
             
-def simplePTUmerge(infolder, outfolder = ''):
+def simplePTUmerge(infolder, outfolder = '', move = False):
     """copies all ptu files in subfolders of infolder to outfolder"""
     if outfolder == '':
         outfolder = os.path.join(infolder, 'all')
@@ -70,7 +71,10 @@ def simplePTUmerge(infolder, outfolder = ''):
                 # this avoids copying files twice
                 if os.path.isfile(destination): 
                     continue
-                shutil.copyfile(source, destination)
+                if move:
+                    shutil.move(source, destination)
+                else:
+                    shutil.copyfile(source, destination)
                 
 ##########helper functions from Gauss Analysis Pipeline#########################
 def cropAnI(image, ROI, ROISize, ROIpad = 0):
