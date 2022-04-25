@@ -8,11 +8,93 @@ import fitDA
 import gc
 import tiffile #pip install tiffile if missing
 import copy
+from PIL import Image
+import warnings
+from scipy.ndimage import gaussian_filter
 #note name df is blocked for dataframe
-
 debug = False
 if debug:
     import matplotlib.pyplot as plt
+
+
+
+
+
+def saveNpAsImage(array, outname):
+    image = Image.fromarray(array)
+    image.save(outname)
+
+def createSeriesHiLoMasks(seriesdir):
+    """assumes an existing structure of masks and cell images.
+    Finds each pair of mask and cellimg from pre-existing file structure
+    calls function that works to create additional masks
+    Saves these additional masks to disc as .tiff"""
+    #get the names of the tiff 
+    cellimgdir = 'imagesForMasking'
+    cellimgfilesp = os.listdir(os.path.join(seriesdir, cellimgdir))
+    cellimgfiles = [file for file in cellimgfilesp if file.endswith('imG.tif')]
+    
+    #find the Masks folders
+    for entry in os.listdir(seriesdir):
+        if entry.endswith('_Masks'):
+            #get the tiff file that works with this folder
+            basename = entry[:-6]
+            for cellimgfile in cellimgfiles:
+                if (cellimgfile[:-7] == basename):
+                    fcellname = os.path.join(seriesdir, cellimgdir, cellimgfile)
+                    cellarr = np.array(Image.open(fcellname))
+                    #there is a legacy bug that where some values are 
+                    # truncated in 8 bit tiffs: check for clipping of data
+                    maxval = max(cellarr.flatten())
+                    if maxval == 255 or maxval == 2**16-1:
+                        warnings.warn('saturation detected for %s' % cellimgfile)
+                    break
+            #get the masks 
+            maskfiles = os.listdir(os.path.join(seriesdir, entry))
+            maskfiles = [file for file in maskfiles if 
+                         not (file.endswith('_lo.tif') or file.endswith('_hi.tif'))]
+            maskffiles = [os.path.join(seriesdir, entry, maskfile) 
+                          for maskfile in maskfiles]
+            for maskffile in maskffiles:
+                maskarr = np.array(Image.open(maskffile))
+                #make sure the cell area is 1, other values are 0
+                maskarr = maskarr == 0
+                #function that does the calculation
+                himask, lomask = createHiLoMasks(cellarr, maskarr)
+                hiOutname = maskffile[:-4] + '_hi.tif'
+                loOutname = maskffile[:-4] + '_lo.tif'
+                saveNpAsImage(himask, hiOutname)
+                saveNpAsImage(lomask, loOutname)
+                
+
+
+def createHiLoMasks(cellarr, maskarr, verbose = False):
+    #smooth against shot noise
+    cellarr = gaussian_filter(cellarr, 1, output = float)
+    #apply mask
+    maskedcell = cellarr * maskarr
+    total = np.sum(maskedcell)
+    #make an ordering of all smoothed values
+    sortedcell = np.sort(maskedcell.flatten())
+    cumsum = np.cumsum(sortedcell)
+    spliti = np.argmax(cumsum > total / 2)
+    #get the threshold value
+    splitval = sortedcell[spliti]
+    lomask = np.logical_and(maskedcell > 0, maskedcell < splitval)
+    himask = maskedcell >= splitval
+    if verbose:
+        #checks
+        lowersum = np.sum(maskedcell * lomask)
+        uppersum = np.sum(maskedcell * himask)
+        print('lower is up t0 %i\nlowersum is %i\nuppersum is %i' %
+              (spliti, lowersum, uppersum))
+        print('total sum check: %r' % (np.isclose(lowersum + uppersum, total)))
+    return himask, lomask
+
+################################################################################
+#This class structure is disadvantageous because everytime I test a bugfix,
+#I need to reanalyze all data to check it, considering the files are very large
+#this takes a long time, solution: make functional
 
 def PS2PandS(TACPS):
     assert len(TACPS) %2 == 0 and len(TACPS.shape) == 1 ,\
@@ -132,6 +214,8 @@ class sampleSet():
         self.Nframes = -1
         self.dataselect = (0, None)
         self.PSchannels = [[1,0], [5,4]]
+        self.uselinesLst = [np.array([1]), np.array([1])]
+        self.PSshift = 0
     
     def setUserSettings(self, **settings):
         for setting, settingvalue in zip(settings, settings.values()):
@@ -176,8 +260,6 @@ class sampleSet():
         self.genImstatsdf(identifier, **kwargs)
         return 1
 
-
-
     def analyzeDirwMasks(self, identifier, maskdirs, timeList, **kwargs):
         """analyzes a set of N files each with M masks, totalling
         NxM image objects
@@ -197,31 +279,36 @@ class sampleSet():
         #passing identifier each time is pretty cumbersome, 
         #make it a class property?
         if maskdirs == 'automatic':
-            maskdirs = [ptufile[:-4] + 'Masks' for ptufile in self.ptufiles]
+            maskdirs = [os.path.join( self.wdir, ptufile[:-4] + '_Masks') 
+                for ptufile in self.ptufiles]
         else:
             maskdirs = [maskdirs] * len(self.ptufiles)
+        if timeList == 'automatic':
+            timeList = np.zeros(len(self.ptufiles))
         for ptufile, maskdir, time in \
-            zip(self.ptufiles, maskdirs, timeList):
-            maskfiles = [os.path.join(self.wdir, maskdir, file)\
+                zip(self.ptufiles, maskdirs, timeList):
+            maskfiles = [os.path.join(maskdir, file)\
                 for file in os.listdir(maskdir) if file.endswith('tif')]
             self.analyzeFilewMasks(ptufile, maskfiles, time, **kwargs)
         self.genImstatsdf(identifier, **kwargs)
         
     def analyzeFilewMasks(self, ptufile, maskfiles, time, **kwargs):
         ffile = os.path.join(self.wdir, ptufile).encode()
-        for PSchannel, label in zip(self.PSchannels, ['_G', '_Y']):
+        for PSchannel, uselines, label in zip(self.PSchannels, \
+                self.uselinesLst, ['_G', '_Y']):
             PChan, SChan = PSchannel
-            image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
+            image = self.loadPSImage(ffile, PChan, SChan, uselines, **kwargs)
             for maskfile in maskfiles:
                 mask = getMask(maskfile)
                 #there is some overhead here, but we optimize development time
                 imageCopy = copy.deepcopy(image)
-                #ugly workaround, needed to give unique name to each image
+                #give unique name to each image, ugly
                 maskid = os.path.split(os.path.splitext(maskfile)[0])[1]
                 imageCopy.name += maskid
                 imageCopy.maskid = maskid
                 imageCopy.time = time
-                self.procesPSimage(imageCopy, label, usermask = mask, **kwargs)
+                self.procesPSimage(imageCopy, label, usermask = mask,
+                    **kwargs)
                 self.images[label[1]].append(imageCopy)
                 print('finished applying mask %s' %maskid)
         
@@ -229,9 +316,10 @@ class sampleSet():
         #load Donor and acceptor channels
         #P is now called G, S is called R (nuisance)
         ffile = os.path.join(self.wdir, ptufile).encode()
-        for PSchannel, label in zip(self.PSchannels, ['_G', '_Y']):
+        for PSchannel, uselines, label in zip(self.PSchannels, \
+                self.uselinesLst, ['_G', '_Y']):
             PChan, SChan = PSchannel
-            image = self.loadPSImage(ffile, PChan, SChan, **kwargs)
+            image = self.loadPSImage(ffile, PChan, SChan, uselines, **kwargs)
             self.procesPSimage(image, label, **kwargs)
             self.images[label[1]].append(image)
             
@@ -263,7 +351,6 @@ class sampleSet():
                         df.at[image.name, attr] = getattr(image, attr)
                     except AttributeError:
                         pass
-        
         if self.Nframes == -1:
             print('number of frames not given,' \
                   + 'cannot calculate integration time and derived variables')
@@ -309,19 +396,20 @@ class sampleSet():
             saveTACs(image, self.TACdir, label)
             #underlying routine is limited to 8 bit Tiff, problem
             #potential solution is to use the tiffile lib, need to test
-            image.saveWorkIntensityToTiff(self.imdir, image.name +
-                                      '_wmask' +label)
+            image.saveWorkIntensityToTiff(self.imdir, image.name + label)
         if isCleanImage: #free memory intensive 3D array
             cleanImage(image)
         gc.collect()
         return 1
 
-    def loadPSImage(self, ffile, PChan, SChan, **kwargs):
+    def loadPSImage(self, ffile, PChan, SChan, uselines, **kwargs):
         GRYim = IM.processLifetimeImage(
                     ffile,
-                    uselines = np.array([1]),
+                    uselines = uselines,
                     Gchan = np.array([PChan, PChan]), # duplicity works around bug
                     Rchan = np.array([SChan, SChan]),
+                    #Gchan = np.array([2, 0]),
+                    #Rchan = np.array([3, 1]),
                     **self.imreadkwargs,
                     framestop = int(self.Nframes))
         return GRYim
@@ -337,7 +425,7 @@ class sampleSet():
     def genDerivedFromPSDecays(self, image):
         TACPS = PandS2PS(image.P, image.S)
         #add VM and r variables
-        VM, r = bp.genFr(TACPS, self.g_factor, shift = 0)
+        VM, r = bp.genFr(TACPS, self.g_factor, shift = self.PSshift)
         image.VM = VM
         image.r = r
         return 1
@@ -348,10 +436,13 @@ class sampleSet():
                      bgrange = None):
         """implemented on image object level, because it is the least hassle
         has a drawbrack of being inflexible though"""
+        from scipy.ndimage import gaussian_filter
         #subtract background if specified
         for decaytype in decaytypes:
             decay = getattr(image, decaytype)
-            normdecay = getattr(normimage, decaytype)
+            rawnormdecay = getattr(normimage, decaytype)
+            # smooth normdecay to reduce shot noise.
+            normdecay = gaussian_filter(rawnormdecay, 2)
             if bgrange is not None:
                 decay = decay - np.mean(decay[bgrange[0]:bgrange[1]])
                 normdecay = normdecay - np.mean(normdecay[bgrange[0]:bgrange[1]])
@@ -395,9 +486,9 @@ class sampleSet():
         #fit and plot DA
         plotout = os.path.join(self.resdir, identifier + 'D0DA1ltplots')
         aid.trymkdir(plotout)
-
+        
         D0snip = D0dat[fitrange[0]:fitrange[1]]
-        _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
+        _, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip, self.dt_glob)
         for name, DATAC in zip(names, DATACs):
             DAsnip = DATAC[fitrange[0]:fitrange[1]]
             popt, pcov, DAmodel, chi2red = \
@@ -433,7 +524,8 @@ class sampleSet():
         plotout = os.path.join(self.resdir, identifier + 'D0DA2ltplots')
         aid.trymkdir(plotout)
         D0snip = D0dat[fitrange[0]:fitrange[1]]
-        poptD0, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip)
+        poptD0, _, _, Donlymodel, chi2red_D0 = fitDA.fitDonly(D0snip, \
+            self.dt_glob)
         x1, x2, tau1, tau2, _ = poptD0
         x1, x2 = [x1 / (x1 + x2), x2 / (x1 + x2)]
         k1, k2 = [1/tau1, 1 / tau2]
@@ -486,11 +578,13 @@ class sampleSet():
         aid.trymkdir(plotout)
         #fit all data
         TACs = self.getDecay(decaytype)
+        print(fitrange)
         assert len(TACs) != 0, 'TACs is empty'
         for TAC, name in zip(TACs, names):
             D0snip = TAC[fitrange[0]:fitrange[1]]
-            popt, _, _, Donlymodel, chi2red = fitDA.fitDonly(D0snip)
-            fitDA.pltD0(D0snip, Donlymodel, name, plotout)
+            popt, _, _, Donlymodel, chi2red = fitDA.fitDonly(D0snip, \
+                self.dt_glob)
+            fitDA.pltD0(D0snip, Donlymodel, name, plotout, dtime = self.dt_glob)
             #fill dataframe row
             for pname, p in zip(pnames, popt):
                 dfrm.at[name, pname] = p
