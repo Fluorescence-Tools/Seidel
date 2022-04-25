@@ -331,24 +331,22 @@ class processLifetimeImage:
         
     def saveWorkIntensityToTiff(
         self, outfolder, preposition = '', 
-        xmin = 0, xmax = -1, ymin = 0, ymax = -1): 
+        xmin = 0, xmax = None, ymin = 0, ymax = None): 
         """function takes GRY object and saves to outfolder in tif format in 32bit float .tif format
             preposition allows adding identifier to default filenames.
             xmin. xmax, ymin, ymax allow saving snip of np array"""
         #issue: takes only workintensity, would also like baseIntensity
-        #issue: Huygens accepts only export mode uint8 or 'L'
-        #issue 8 bits are insufficient to store the date, need 16 bit
         assert type(outfolder) == str and type(preposition) == str,\
             "outfolder and preposition must be string type"
         #convert all strings to bytes
         aid.trymkdir(outfolder)
-        im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
+        im = Image.fromarray(self.workIntensity.G[xmin:xmax, ymin:ymax].astype(np.uint16))
         outname = os.path.join(outfolder, preposition + 'imG.tif')
         im.save(outname)
-        im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
+        im = Image.fromarray(self.workIntensity.R[xmin:xmax, ymin:ymax].astype(np.uint16))
         outname = os.path.join(outfolder, preposition + 'imR.tif')
         im.save(outname)
-        im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax].astype(np.uint8), mode = 'L')
+        im = Image.fromarray(self.workIntensity.Y[xmin:xmax, ymin:ymax].astype(np.uint16))
         outname = os.path.join(outfolder, preposition + 'imY.tif')
         im.save(outname)
         return 0
