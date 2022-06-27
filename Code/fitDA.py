@@ -19,9 +19,12 @@ def CheckFitData(func):
     """decorator to catch common error when bad data causes a fit to fail"""
     def inner(data, *args, **kwargs):
         assert type(data) == np.ndarray
+        #I suspect this condition does not work properly. Why?
         if (data == 0).any(): 
+            data[data==0] = 1
             warnings.warn('data contains zero values, ' + \
-                          'gaussian error estimate cannot handle this')
+                          'gaussian error estimate cannot handle this, '+\
+                          'setting 0 values to 1')
         try: return func(data, *args, **kwargs)
         except RuntimeError:
             plt.plot(data)
@@ -56,7 +59,8 @@ def fitDonly(D0dat, dtime = 0.064):
     Donlymodel = Donly(fittime, popt[0], popt[1], popt[2], popt[3], popt[4])
     Donly_base = Donly(fittime, popt[0] / ( popt[0] + popt[1] ), \
                             popt[1]/ ( popt[0] + popt[1]), popt[2], popt[3], 0)
-    chi2red = np.sum( (D0dat-Donlymodel)**2 / D0dat) / (Npoints - 5)
+    #print(popt)
+    chi2red = np.sum( (D0dat-Donlymodel)**2 / Donlymodel) / (Npoints - 5)
     #print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, Donly_base, Donlymodel, chi2red
 
@@ -66,11 +70,14 @@ def fitDA1lt (DAdat, D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
     p0 = [np.max(DAdat), 0.8, 10, 1000]
+    #zero values in data crashes the fitting routine
+    for dat in DAdat, D0dat:
+        dat[dat==0]=1
     popt, pcov = curve_fit( lambda t, A, x0, kf, bg: DA1lt(t, A, x0, kf, bg, Donly_base), \
                            fittime, DAdat, p0 = p0, sigma = np.sqrt(DAdat),
                            bounds = ([0, 0, 0, 0], [np.inf, 1, 1e4, np.inf]))
     DAmodel = DA1lt(fittime, *popt, Donly_base)
-    chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - 3)
+    chi2red = np.sum( (DAdat-DAmodel)**2 / DAmodel) / (Npoints - 3)
     print('chi2 reduced is %.2f' % chi2red)
     return popt, pcov, DAmodel, chi2red
 
@@ -87,7 +94,7 @@ def fitDA2lt (DAdat, D0dat, dtime = 0.064):
                                      [np.inf, 1, 1, 1e4, 1e4, np.inf]),
                                      method = 'dogbox')
     DAmodel = DA2lt(fittime, *popt, Donly_base)
-    chi2red = np.sum( (DAdat-DAmodel)**2 / DAdat) / (Npoints - len(p0))
+    chi2red = np.sum( (DAdat-DAmodel)**2 / DAmodel) / (Npoints - len(p0))
     print(chi2red)
     return popt, pcov, DAmodel, chi2red
 fitDA = fitDA1lt #legacy name

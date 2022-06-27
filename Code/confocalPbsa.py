@@ -345,9 +345,15 @@ def getTraceProperty(traceLst, property, oneormulti = 'onep'):
     for trace in traceLst:
         out.append(trace[oneormulti][property])
     return out
+    
+def setTraceProperty(traceLst, propertyName, propertyLst, oneormulti = 'onep'):
+    for trace, property in zip(traceLst, propertyLst):
+        trace[oneormulti][propertyName] = property
+    return 
+    
 def plotTraceLst(traceLst, outfolder = None, **kwargs):
     for trace in traceLst:
-        fluortrace_prelim = trace['multip']['fluortrace_kv']
+        fluortrace = trace['multip']['fluortrace_kv']
         sumtrace = trace['multip']['trace']
         meantrace = trace['multip']['meantrace']
         fluortrace_final = trace['multip']['fluortrace_final']
@@ -357,7 +363,7 @@ def plotTraceLst(traceLst, outfolder = None, **kwargs):
             trace['multip']['file'][:-4] + '.svg')
         else: plotout = None
         print(trace["multip"]['file'][-20:])
-        plotFittedTrace(sumtrace, meantrace, fluortrace_prelim, fluortrace_final, \
+        plotFittedTrace(sumtrace, meantrace, fluortrace, \
                             means,\
                             timestep, \
                             plotout = plotout, \

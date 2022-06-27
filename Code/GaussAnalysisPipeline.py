@@ -133,7 +133,7 @@ def fitNGauss(image, OptionsCluster,
     param3Gauss = GaussFits.Fit2DGauss(param3Gauss, image)
     
     if verbose or outdir:
-        outfile = os.path.join(outdir, 'contourfits.png')
+        outfile = os.path.join(outdir, 'contourfits.svg')
         fig, axs = plt.subplots(1,3, figsize = (12,3))
         drawSpotFit(axs[0], image, param1Gauss, '1 Gauss Fit')
        # pltFitResiduals(image, param1Gauss, '1 Gauss Fit', 

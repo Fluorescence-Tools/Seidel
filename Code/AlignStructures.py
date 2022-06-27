@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rmsd
 import copy
-import developmental_functions as df
+import warnings
+#want to get rid of this dependancy
+from developmental_functions import kickvector
 from matplotlib import patches
 
 ################################################################################
@@ -39,15 +41,16 @@ class fourPointSet:
         self.points = {}
         for key, point in zip(self.keys, pointArr):
             self.points[key] = point
-        
-    @classmethod
-    def fromLoc(cls, loc):
-        D1 = np.array([ loc['G'].spotLst[0].posx, loc['G'].spotLst[0].posy ])
-        D2 = np.array([ loc['G'].spotLst[1].posx, loc['G'].spotLst[1].posy ])
-        A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
-        A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
-        pointArr = np.array([D1, D2, A1, A2])
-        return cls(pointArr, loc)
+ 
+#the different initialization options will be given in the highest level class 
+#    @classmethod
+#    def fromLoc(cls, loc):
+#        D1 = np.array([ loc['G'].spotLst[0].posx, loc['G'].spotLst[0].posy ])
+#        D2 = np.array([ loc['G'].spotLst[1].posx, loc['G'].spotLst[1].posy ])
+#        A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
+#        A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
+#        pointArr = np.array([D1, D2, A1, A2])
+#        return cls(pointArr, loc)
                                      
     def RepositionToPoint(self, pointname):
         """pointname is e.g. 'A1'"""
@@ -206,14 +209,30 @@ class ensemblePointSet:
     #plot
     DADApointset.plotPointsets()
     """
-    def __init__(self, locLst, pxSize):
+    def __init__(self, pointArrays, pxSize):
+        """initialize from an array of point sets"""
+        if isinstance(pointArrays, list):
+            warnings.warn('default behaviour has changed, ensemblePointSet ' +\
+            'now must be initialised with array, to initialze from locLst, use'+\
+            'fromLocLst instead', DeprecationWarning)
         self.pointsets = []
-        #self.locLst = locLst # keeping the raw data for now
-        for loc in locLst:
-            self.pointsets.append(fourPointSet.fromLoc(loc))
+        for pointArray in pointArrays:
+            self.pointsets.append(fourPointSet(pointArray))
         self.Nentries = len(self.pointsets)
         self.pxSize = pxSize
         return
+    @classmethod
+    def fromlocLst(cls, locLst, *args):
+        #construct pointArrays from locLst
+        pointArrays = []
+        for loc in locLst:
+            D1 = np.array([ loc['G'].spotLst[0].posx, loc['G'].spotLst[0].posy ])
+            D2 = np.array([ loc['G'].spotLst[1].posx, loc['G'].spotLst[1].posy ])
+            A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
+            A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
+            pointArrays.append(np.array([D1, D2, A1, A2]))
+        return cls(pointArrays, *args)
+
     def calcAvgDisplacement(self, nameset1, nameset2, maxval = 10):
         #first axis: structs
         #second axis: pair sets
@@ -223,7 +242,7 @@ class ensemblePointSet:
         for i, ps in enumerate(self.pointsets):
             disp[i] = ps.calcDisplacement(nameset1, nameset2)
         disp = disp.reshape(self.Nentries * Npermutations, 2) # throw away struct specificity
-        disp = df.kickvector(disp, maxval)
+        disp = kickvector(disp, maxval)
         return np.mean(disp, axis = (0))
     def callBatchFun(self, functionName, *args, **kwargs):
         """batch run an operation on the constituent pointset objects"""
@@ -434,3 +453,10 @@ def lighten_color(color, amount=0.5):
         c = color
     c = colorsys.rgb_to_hls(*mc.to_rgb(c))
     return colorsys.hls_to_rgb(c[0], 1 - amount * (1 - c[1]), c[2])
+    
+def calc_distance_error(position1, position2, error1, error2):
+    sigmas = np.sqrt(error1**2 + error2**2)
+    distance = position1-position2
+    distnorm = np.linalg.norm(distance)
+    error = np.linalg.norm(distance / distnorm * sigmas)
+    return error

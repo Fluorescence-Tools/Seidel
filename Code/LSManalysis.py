@@ -8,7 +8,7 @@ import fitDA
 import gc
 import tiffile #pip install tiffile if missing
 import copy
-from PIL import Image
+
 import warnings
 from scipy.ndimage import gaussian_filter
 #note name df is blocked for dataframe
@@ -16,7 +16,7 @@ debug = False
 if debug:
     import matplotlib.pyplot as plt
 
-
+warnings.simplefilter("default")
 
 
 
@@ -47,10 +47,13 @@ def createSeriesHiLoMasks(seriesdir):
                     # truncated in 8 bit tiffs: check for clipping of data
                     maxval = max(cellarr.flatten())
                     if maxval == 255 or maxval == 2**16-1:
-                        warnings.warn('saturation detected for %s' % cellimgfile)
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("always")
+                            warnings.warn('saturation detected for %s' % cellimgfile, )
                     break
             #get the masks 
             maskfiles = os.listdir(os.path.join(seriesdir, entry))
+            maskfiles = [file for file in maskfiles if file.endswith('.tif')]
             maskfiles = [file for file in maskfiles if 
                          not (file.endswith('_lo.tif') or file.endswith('_hi.tif'))]
             maskffiles = [os.path.join(seriesdir, entry, maskfile) 
@@ -66,6 +69,19 @@ def createSeriesHiLoMasks(seriesdir):
                 saveNpAsImage(himask, hiOutname)
                 saveNpAsImage(lomask, loOutname)
                 
+def deleteHiLoMasks(seriesdir):
+    """in '_Masks' subfolders delete all .tiff files ending on '_hi.tif' or 
+    '_lo.tif'.
+    """
+    #find the Masks folders
+    for entry in os.listdir(seriesdir):
+        fsubdir = os.path.join(seriesdir, entry)
+        if entry.endswith('_Masks'):
+            for file in os.listdir(fsubdir):
+                if file.endswith('_hi.tif') or file.endswith('_lo.tif'):
+                    print('deleting mask %s' % file)
+                    ffile = os.path.join(fsubdir, file)
+                    os.remove(ffile)
 
 
 def createHiLoMasks(cellarr, maskarr, verbose = False):
@@ -86,8 +102,8 @@ def createHiLoMasks(cellarr, maskarr, verbose = False):
         #checks
         lowersum = np.sum(maskedcell * lomask)
         uppersum = np.sum(maskedcell * himask)
-        print('lower is up t0 %i\nlowersum is %i\nuppersum is %i' %
-              (spliti, lowersum, uppersum))
+        print('lower is up to %.2f\nlowersum is %i\nuppersum is %i' %
+              (splitval, lowersum, uppersum))
         print('total sum check: %r' % (np.isclose(lowersum + uppersum, total)))
     return himask, lomask
 

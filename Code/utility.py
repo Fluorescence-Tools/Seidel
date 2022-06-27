@@ -280,6 +280,18 @@ def loadLSMUtility(wdir, identifier, load = False, **kwargs):
         aid.savepickle(SampleSet, picklepath)
     return SampleSet
     
+def loadLSMUtilitywMasks(wdir, identifier, load = False, **kwargs):
+    """utility function for collecting a bunch of functions often used together"""
+    picklepath = os.path.join(wdir, 'results', identifier + '.pickle')
+    if load:
+        SampleSet = aid.loadpickle(picklepath)
+    else:
+        SampleSet = LSMan.sampleSet(wdir,
+                                    **kwargs)
+        SampleSet.analyzeDirwMasks(identifier, **kwargs)
+        aid.savepickle(SampleSet, picklepath)
+    return SampleSet
+    
 def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
                       fitfunc = 'batchFit2lt',
                       fitkwargs = LSMan.genDefaultFitKwargs(),
@@ -293,3 +305,22 @@ def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
     bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
                          colorcoding = colorcoding,
                          resdir = SampleSet.resdir, **kwargs)
+                         
+def prepareForCreatingManualMask(wdir):
+    #list all ptu files in folder
+    imagefiles = [file for file in os.listdir(wdir)\
+                  if file.endswith('.ptu')]
+    #make a target directory for saving images for masking
+    imagesoutdir = os.path.join(wdir, 'imagesForMasking')
+    aid.trymkdir(imagesoutdir)
+    for file in imagefiles:
+        #generate a directory for manually placing masks
+        maskdir = file[:-4] + '_Masks'
+        aid.trymkdir(os.path.join(wdir, maskdir))
+        #export an image for creating masks
+        ffile = os.path.join(wdir, file)
+        ltimg = IM.processLifetimeImage(ffile.encode())
+        ltimg.loadLifetime()
+        ltimg.loadIntensity()
+        preposition = file[:-4]
+        ltimg.saveWorkIntensityToTiff(imagesoutdir, preposition = preposition)

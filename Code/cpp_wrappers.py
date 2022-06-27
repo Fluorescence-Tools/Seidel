@@ -211,9 +211,9 @@ def genGRYLifetimeWrap(eventN, tac, t, can, dimX, dimY, ntacs, TAC_range,
     #if there are N frames, there are N+1 frame markers. 
     #the +1 is a hotfix. Should be moved to c code.
     C_framestop = ctypes.c_int(framestop + 1)
-    imG = np.zeros(dimX * dimY * ntacs).astype(np.int)
-    imR = np.zeros(dimX * dimY * ntacs).astype(np.int)
-    imY = np.zeros(dimX * dimY * ntacs).astype(np.int)
+    imG = np.zeros(dimX * dimY * ntacs).astype(np.int32)
+    imR = np.zeros(dimX * dimY * ntacs).astype(np.int32)
+    imY = np.zeros(dimX * dimY * ntacs).astype(np.int32)
     imG_p = imG.ctypes.data_as(c_int_p)
     imR_p = imR.ctypes.data_as(c_int_p)
     imY_p = imY.ctypes.data_as(c_int_p)

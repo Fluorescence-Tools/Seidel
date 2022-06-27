@@ -28,7 +28,7 @@ def loadList(ffiles):
     return outlist
 
 def plotdecay(decay,
-              dt = 0.064, 
+              dtime = 0.064, 
               plotkwargs = {}, 
               normrange = None, 
               bgrange = None,
@@ -45,7 +45,7 @@ def plotdecay(decay,
         decay -= avgbg
     if normrange is not None:
         decay = decay / max(decay[normrange[0]:normrange[1]])
-    xdat = np.arange(len(decay)) * dt
+    xdat = np.arange(len(decay)) * dtime
     ax.plot(xdat, decay, **plotkwargs)
     if xlim:
         ax.set_xlim(xlim)
@@ -70,7 +70,7 @@ def plotdecayList(decaylist, plotdecaykwargs = {}, plotkwargs = {}, ax = None,
                       plotkwargs = plotkwargs[i])
     return ax            
 #deprecated
-#def plotList(data_list, dt, plotrange = (0, -1), norm = False, labels = None,
+#def plotList(data_list, dtime, plotrange = (0, -1), norm = False, labels = None,
 #             pattern = '-', normrange = (0, -1), ax = None, alpha = 1,
 #             clist = [0]):
 #    #ugly work around, code misplaced, should pass only plotkwargs in this 
@@ -84,7 +84,7 @@ def plotdecayList(decaylist, plotdecaykwargs = {}, plotkwargs = {}, ax = None,
 #        if labels is not None:
 #            label = labels[i]
 #        else: label = None
-#        xdat = np.arange(len(datasnip)) * dt
+#        xdat = np.arange(len(datasnip)) * dtime
 #        if ax:
 #            ax.plot(xdat, datasnip, pattern, label = label, alpha = alpha,
 #                    c = clist[i])
@@ -139,6 +139,7 @@ def genFrList(data_list, shift = 0, g_factor = 1, bgrange = None):
 #    elif shift >= 0:
 #        return data[shift:]
 def intshift(shift, data1, data2):
+    """shifts data1 by integer amount w.r.t data2"""
     if shift < 0:
         return data1[:shift], data2[-shift:]
     elif shift > 0:
@@ -158,7 +159,7 @@ def pltD0DArisetherms(D0Set, DASet, identifier, resdir = None,
     D0TACs = D0Set.getDecay(decaytype)
     DATACs = DASet.getDecay(decaytype)
     
-    plotdecaykwargs['dt'] = D0Set.dt_glob
+    plotdecaykwargs['dtime'] = D0Set.dt_glob
     plotkwargs['c'] = 'g'
     plotdecayList(D0TACs, plotdecaykwargs, plotkwargs, ax = ax)
     plotkwargs['c'] = 'r'
@@ -186,7 +187,7 @@ def pltPSrisetherms(sampleSet, identifier, resdir = None,
     PTACs = sampleSet.getPropertyList('P')
     STACs = sampleSet.getPropertyList('S')
     plt.figure(figsize=(11,8))
-    plotdecaykwargs['dt'] = sampleSet.dt_glob
+    plotdecaykwargs['dtime'] = sampleSet.dt_glob
     plotkwargs['c'] = 'm'
     plotdecayList(PTACs, plotdecaykwargs, plotkwargs, ax = ax)
     plotkwargs['c'] = 'c'
@@ -239,7 +240,7 @@ def pltRelativeDecays(sampleSet, identifier,
     plotdecaykwargLst = [plotdecaykwargs for i in range(len(TACs))]
     
     for el in plotkwargLst:
-        el['lineStyle'] = '--'
+        el['ls'] = '--'
         
     plotdecayList(TACnorms, plotdecaykwargLst, plotkwargLst, ax = ax1)
     ax1.plot(0,0, **plotkwargLst[0], label = identifier + ' normalised')
@@ -256,7 +257,7 @@ def pltRelativeDecays(sampleSet, identifier,
     ax2 = ax1.twinx() 
     
     for el in plotkwargLst:
-        el['lineStyle'] = '-'
+        el['ls'] = '-'
     plotdecayList(TACs, plotdecaykwargLst, plotkwargLst, ax = ax2)
     ax2.plot(0,0, **plotkwargLst[0], 
              label = identifier + ' \u03B5 (\u03C4) - %i cells' % 
@@ -281,7 +282,7 @@ def pltAnisotropies(sampleSet, identifier, resdir = None,
     fig, ax = plt.figure(figsize=(11,8))
     rs = sampleSet.getPropertyList('r')
     plt.figure(figsize=(11,8))
-    plotdecaykwargs['dt'] = sampleSet.imreadkwargs.dt_glob
+    plotdecaykwargs['dtime'] = sampleSet.imreadkwargs.dt_glob
     plotdecayList(rs, plotdecaykwargs, plotkwargs, ax = ax)
     plt.plot([1.6,1.6], [0,0.45], 'k--')
     plt.ylim(0,1)
