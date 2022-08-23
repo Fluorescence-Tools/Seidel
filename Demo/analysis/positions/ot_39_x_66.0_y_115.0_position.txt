@@ -1,0 +1,4 @@
+name	posx(pixels)	posy(pixels)
+R0	49.964	45.452
+Y0	49.360	48.259
+Y1	46.986	41.829
