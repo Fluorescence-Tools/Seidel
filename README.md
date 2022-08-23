@@ -24,4 +24,4 @@ For a step-by-step instruction on how to use *Seidel* on FRET nanoscopy data, re
 A small dataset of ptu files is provided. As well as a slightly larger processed dataset that can be used for further analysis. To obtain a complete FRET-nanoscopy dataset of several Gigabytes, please contact voort@hhu.de. Similarly, to reproduce published results obtained using *Seidel*, please request the relevent dataset and accompanying analysis notebook.
 
 ## dedication
-Software is dedicated to Prof. C.A.M. Seidel from the Institure of Molecular Physcial Chemistry at the HHU university, the PhD supervisor of the author.
+The *Seidel* software is dedicated to Prof. C.A.M. Seidel from the Institure of Molecular Physcial Chemistry at the HHU university, the PhD supervisor of the author.
