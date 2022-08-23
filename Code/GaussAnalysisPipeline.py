@@ -55,7 +55,7 @@ class Channel:
         sigma = params[3]
         eps = params[4]
         bg = params[5]
-        Nspots = params[16].astype(np.int) + 1
+        Nspots = params[16].astype(int) + 1
         for i in range(Nspots):
             if i == 0:
                 posx = params[0] + ROI[0]
@@ -265,7 +265,7 @@ def getSpotBrightness(params):
     returns length 3 array."""
     brightness = np.zeros(3)
     factor = params[3]**2 * 2 * np.pi
-    for i in range(params[16].astype(np.int)+1):
+    for i in range(params[16].astype(int)+1):
         if i == 0:
             brightness[i] = params[2] * factor
         if i == 1:

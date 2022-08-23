@@ -292,7 +292,7 @@ def plotOccurence(locLst, title = ''):
     #find max occurence
     Gmax = max(Gspots) + 1#+1 to store zero entries
     Ymax = max(Yspots) + 1
-    occurence = np.zeros([Gmax,Ymax], np.int)
+    occurence = np.zeros([Gmax,Ymax], int)
     for Gspot, Yspot in zip(Gspots, Yspots):
         occurence[Gspot, Yspot] += 1
     plt.figure(figsize = [Ymax,Gmax])

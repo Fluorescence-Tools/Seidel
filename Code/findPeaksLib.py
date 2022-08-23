@@ -24,7 +24,7 @@ def findMaxima(data):
     
     xlen = data.shape[0]
     ylen = data.shape[1]
-    points = np.zeros([xlen*ylen, 2], dtype = np.int)
+    points = np.zeros([xlen*ylen, 2], dtype = int)
     eps_step = 1
     for x in range(xlen):
         for y in range(ylen):
@@ -123,7 +123,7 @@ def sortPeaks(peaks, xlen, ylen, mindiff):
         print ('not enough peaks found, try decreasing mindiff \n setting remaining peaks at random')
         goodpeaks[goodpeak_cntr] = np.random.random(2) * [xlen, ylen]
         goodpeak_cntr += 1
-    return goodpeaks.astype(np.int)
+    return goodpeaks.astype(int)
     
 def findPeaks(data, mindiff = 2, smooth_sigma = 1):
     """ finds three initial estimates for spot locations.

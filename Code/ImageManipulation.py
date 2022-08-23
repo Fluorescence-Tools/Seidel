@@ -275,13 +275,13 @@ class processLifetimeImage:
     def smoothIntensity(self, sigma = 1, channel = ['G', 'R', 'Y']):
         if 'G' in channel:
             self.workIntensity.G = \
-                ndimage.gaussian_filter(self.workIntensity.G.astype(np.float), sigma)
+                ndimage.gaussian_filter(self.workIntensity.G.astype(float), sigma)
         if 'R' in channel:
             self.workIntensity.R = \
-                ndimage.gaussian_filter(self.workIntensity.R.astype(np.float), sigma)
+                ndimage.gaussian_filter(self.workIntensity.R.astype(float), sigma)
         if 'Y' in channel:
             self.workIntensity.Y = \
-                ndimage.gaussian_filter(self.workIntensity.Y.astype(np.float), sigma)
+                ndimage.gaussian_filter(self.workIntensity.Y.astype(float), sigma)
         return 0
     def filterIntensity(self, mode = 'xyz'):
         pass

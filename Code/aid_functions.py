@@ -19,7 +19,7 @@ def pos2ROI(xpos, ypos, winSigma):
     #ROI is column major
     #ROI = np.array([ystart, xstart, ystop, xstop], dtype = np.int).transpose()
     #some confusion occurred whether data is row or column major, for row major:
-    ROI = np.array([xstart, ystart, xstop, ystop], dtype = np.int).transpose()
+    ROI = np.array([xstart, ystart, xstop, ystop], dtype = int).transpose()
     return ROI
 
 def loadpickle(outname):
