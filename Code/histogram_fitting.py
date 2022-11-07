@@ -205,7 +205,9 @@ def plotLikelihoodSurface(surface_copy, param_ranges, skip = 2, outname = '',
     #this workaround seems no longer needed, instead $ r_{loc}$ latex style 
     #work directly.
     #really ugly workaround
-    mpl.rcParams['text.usetex'] = True
+    #mpl.rcParams['text.usetex'] = True
+    print('removed text.usetex = True statement, check that code is still functional' +\
+        'then clean this statement')
     keyy, keyx = param_ranges.keys()
     x = param_ranges[keyx]
     y = param_ranges[keyy]

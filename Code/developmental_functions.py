@@ -561,6 +561,9 @@ def getFRETnames(locLst):
     except KeyError:
         return []
         
+    #this trew an error once on Noahs pc for a sample pf 13 ptu files
+    #error: list index out of range.
+    #Maybe there were no Green spots in the data?
     while len(locLst[i]['FRETind']) == 0:
         i += 1
         if i == 10000:

@@ -17,6 +17,8 @@ Software was tested by several users under these settings, no non-standard hardw
 ## installation guide
 1) clone the /FRC/Code into a local directory
 2) include the path to your local copy of /FRC/Code in your PYTHONPATH  
+3) Seidel depends on the *lmfit scikit-image numpy scipy matplotlib tiffile* packages included in the metapackage anaconda. The package *rmsd* must be downloaded separately using
+    pip install rmsd
 In case of any problems, please contact voort@hhu.de. Installation time should be less than a minute.
 
 ## Demo notebook & example data
@@ -24,4 +26,4 @@ For a step-by-step instruction on how to use *Seidel* on FRET nanoscopy data, re
 A small dataset of ptu files is provided. As well as a slightly larger processed dataset that can be used for further analysis. To obtain a complete FRET-nanoscopy dataset of several Gigabytes, please contact voort@hhu.de. Similarly, to reproduce published results obtained using *Seidel*, please request the relevent dataset and accompanying analysis notebook.
 
 ## dedication
-The *Seidel* software is dedicated to Prof. C.A.M. Seidel from the Institure of Molecular Physcial Chemistry at the HHU university, the PhD supervisor of the author.
+The *Seidel* software is dedicated to Prof. C.A.M. Seidel from the Institute of Molecular Physcial Chemistry at the HHU university, the PhD supervisor of the author.

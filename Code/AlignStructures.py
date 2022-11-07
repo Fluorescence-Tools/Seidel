@@ -157,11 +157,11 @@ class fourPointSet:
         for key, pointset in zip(self.keys, pointsetList):
             self.points[key] = pointset
         return
-    def plotPoints(self, pxSize, c = ('orange', 'orange', 'r', 'r')):
-        plt.scatter(*self.points['D1'] * pxSize, c = c[0], marker = '.')
-        plt.scatter(*self.points['D2'] * pxSize, c = c[1], marker = '.')
-        plt.scatter(*self.points['A1'] * pxSize, c = c[2], marker = '.')
-        plt.scatter(*self.points['A2'] * pxSize, c = c[3], marker = '.')
+    def plotPoints(self, pxSize, c = ('orange', 'orange', 'r', 'r'), s = None):
+        plt.scatter(*self.points['D1'] * pxSize, c = c[0], marker = '.', s = s)
+        plt.scatter(*self.points['D2'] * pxSize, c = c[1], marker = '.', s = s)
+        plt.scatter(*self.points['A1'] * pxSize, c = c[2], marker = '.', s = s)
+        plt.scatter(*self.points['A2'] * pxSize, c = c[3], marker = '.', s = s)
         return
     def getDistance(self, name1, name2):
         return np.linalg.norm(self.getDisplacement(name1, name2))
@@ -209,15 +209,19 @@ class ensemblePointSet:
     #plot
     DADApointset.plotPointsets()
     """
-    def __init__(self, pointArrays, pxSize):
+    def __init__(self, pointArrays, pxSize, locLst = None):
         """initialize from an array of point sets"""
         if isinstance(pointArrays, list):
             warnings.warn('default behaviour has changed, ensemblePointSet ' +\
             'now must be initialised with array, to initialze from locLst, use'+\
             'fromLocLst instead', DeprecationWarning)
         self.pointsets = []
-        for pointArray in pointArrays:
-            self.pointsets.append(fourPointSet(pointArray))
+        if locLst is not None: #initialize with locLst
+            for pointArray, loc in zip(pointArrays, locLst):
+                self.pointsets.append(fourPointSet(pointArray, loc))
+        else: #initialize without locLst
+            for pointArray in pointArrays:
+                self.pointsets.append(fourPointSet(pointArray))
         self.Nentries = len(self.pointsets)
         self.pxSize = pxSize
         return
@@ -231,7 +235,7 @@ class ensemblePointSet:
             A1 = np.array([ loc['Y'].spotLst[0].posx, loc['Y'].spotLst[0].posy ])
             A2 = np.array([ loc['Y'].spotLst[1].posx, loc['Y'].spotLst[1].posy ])
             pointArrays.append(np.array([D1, D2, A1, A2]))
-        return cls(pointArrays, *args)
+        return cls(pointArrays, *args, locLst = locLst)
 
     def calcAvgDisplacement(self, nameset1, nameset2, maxval = 10):
         #first axis: structs
@@ -266,14 +270,14 @@ class ensemblePointSet:
             self.scores.append(rmsd.rmsd(psArr, anchor))
             ps.setPoints(psArr)
         return
-    def pruneByScore(self, minscore):
+    def pruneByScore(self, minscore, verbose = True):
         prunedIds = []
         for i in range(len(self.scores)-1, -1, -1):
             if self.scores[i] > minscore:
                 self.scores.pop(i)
                 self.pointsets.pop(i)
                 prunedIds.append(i)
-        print('pruned %i elements' %len(prunedIds))    
+        if verbose: print('pruned %i elements' %len(prunedIds))    
         return prunedIds
     def genAnchorFromMean(self):
         pointsetArr = np.array(self.callBatchFun('getPoints'))
@@ -294,25 +298,27 @@ class ensemblePointSet:
         self.anchor = fourPointSet(pointArr)
         return
     def genAnchorFromPointset(self, pointsetID):
-        self.anchor = self.pointsets[pointsetID]
+        self.anchor = copy.deepcopy(self.pointsets[pointsetID])
         return
     def selectOnPointsetIDs(self, pointsetIDs):
         self.pointsets = [self.pointsets[ID] for ID in pointsetIDs]
         return
-    def plotPointsets(self, c = ['orange', 'orange', 'r', 'r'], outfile = None, \
-        title = None, xlim = [-60, 60], ylim = [-25,25]):
-        fontsize = 24
-        plt.figure(figsize=(10,10))
-        self.callBatchFun('plotPoints', self.pxSize)
+    def plotPointsets(self, c = ['orange', 'orange', 'r', 'r'], s = None, 
+        outfile = None,
+        title = None, xlim = [-60, 60], ylim = [-25,25], 
+        figure = None, figsize = (10,10),\
+        fontsize = 24):
+        if not figure: plt.figure(figsize=figsize)
+        self.callBatchFun('plotPoints', self.pxSize, c = c, s = s)
         if hasattr(self, 'anchor'):
             anchor = self.anchor.getPoints() #localbound var
             anchor *= self.pxSize
-            plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 100)
+            plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 50)
         # plot center for each point
         points = np.array(self.callBatchFun('getPoints')) * self.pxSize
         meanpoints = np.mean(points, axis = 0)
         plt.scatter(meanpoints[:,0], meanpoints[:,1], marker = 's', c = c, \
-        edgecolor = 'k')
+        edgecolor = 'k', s = s)
         plt.axis('equal')
         plt.grid(True)
         plt.tick_params(labelsize= fontsize)
@@ -458,5 +464,6 @@ def calc_distance_error(position1, position2, error1, error2):
     sigmas = np.sqrt(error1**2 + error2**2)
     distance = position1-position2
     distnorm = np.linalg.norm(distance)
+    #calc inner product of distance unit vector and sigmas
     error = np.linalg.norm(distance / distnorm * sigmas)
     return error
