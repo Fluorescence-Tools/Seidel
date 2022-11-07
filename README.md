@@ -23,7 +23,7 @@ In case of any problems, please contact voort@hhu.de. Installation time should b
 
 ## Demo notebook & example data
 For a step-by-step instruction on how to use *Seidel* on FRET nanoscopy data, refer to [this](https://github.com/Fluorescence-Tools/FRC/blob/master/templates/20211103_template_v3.ipynb) notebook. The notebook shows expected results for comparison. Run-time is ~1 second per ptu file.
-A small dataset of ptu files is provided. As well as a slightly larger processed dataset that can be used for further analysis. To obtain a complete FRET-nanoscopy dataset of several Gigabytes, please contact voort@hhu.de. Similarly, to reproduce published results obtained using *Seidel*, please request the relevent dataset and accompanying analysis notebook.
+A small dataset of ptu files is provided for running the ptu reading and spot detection software. A larger sample is not provided due to size limitations, but can be obtained by reasonable request from the authors. Additionally, a [fully analysed dataset](https://github.com/Fluorescence-Tools/Seidel/blob/master/Demo/full_dataset_analysis.zip) is provided in compressed form. This data may be unzipped and read by the template notebook to perform all subsequent analyses and fits. Similarly, to reproduce published results obtained using *Seidel*, please request the relevent dataset and accompanying analysis notebook.
 
 ## dedication
 The *Seidel* software is dedicated to Prof. C.A.M. Seidel from the Institute of Molecular Physcial Chemistry at the HHU university, the PhD supervisor of the author.
