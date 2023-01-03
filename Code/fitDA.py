@@ -37,6 +37,9 @@ def CheckFitData(func):
 
 def Donly(t, A, B, tau1, tau2, bg):
     return A * np.exp(-t/tau1) + B * np.exp(-t/tau2) + bg
+    
+#def Donly_p(t, p):
+#    return(Donly(t, p['A'], p['B'], p['tau1'], p['tau2'], p['bg']))
 
 def DA1lt(t, A, x0, kfret, bg, D0):
     return A * D0 * ( (1-x0) * np.exp(- t * kfret) + x0 ) + bg

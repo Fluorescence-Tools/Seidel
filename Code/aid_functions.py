@@ -9,6 +9,7 @@ from matplotlib import patches
 import os
 import pickle
 import shutil
+from datetime import datetime
 
 def pos2ROI(xpos, ypos, winSigma):
     """convert center position and width to ROI"""
@@ -145,6 +146,25 @@ def trymkdir(path):
     except FileExistsError:
         pass
     
+def backup_onExt(rootfolder, ext = '.csv', timestamp = None):
+    #get single timestamp for all recursive files, same format as in Abberior-Tools
+    if timestamp == None:
+        dateTimeObj = datetime.now()
+        timestamp = dateTimeObj.strftime("%Y-%b-%d-%H-%M-%S")
+    ffiles = [os.path.join(rootfolder, file) for file in os.listdir(rootfolder)]
+    for ffile in ffiles:
+        if os.path.isfile(ffile):
+            if ffile.endswith(ext):
+                #make backup dir if it does not exits
+                backupfolder = os.path.join(rootfolder, 'backup')
+                trymkdir(backupfolder)
+                #dst
+                destination = os.path.join(backupfolder, os.path.split(ffile)[1][:-len(ext)]+timestamp+ext)
+                shutil.copy(ffile, destination)
+                print('backed up file %s' % ffile)
+        elif os.path.isdir(ffile):
+            if ffile.endswith('backup'):continue #avoid backing up backups
+            backup_onExt(ffile, ext, timestamp)
     
 ########################plotting functions#####################################
 def plotBitmapROI(bitmap, spotLst, title = ''):

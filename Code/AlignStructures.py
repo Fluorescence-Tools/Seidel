@@ -313,12 +313,12 @@ class ensemblePointSet:
         if hasattr(self, 'anchor'):
             anchor = self.anchor.getPoints() #localbound var
             anchor *= self.pxSize
-            plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 50)
+            plt.scatter(anchor[:,0], anchor[:,1], c='k', marker = '+', s = 15)
         # plot center for each point
         points = np.array(self.callBatchFun('getPoints')) * self.pxSize
         meanpoints = np.mean(points, axis = 0)
         plt.scatter(meanpoints[:,0], meanpoints[:,1], marker = 's', c = c, \
-        edgecolor = 'k', s = s)
+        edgecolor = 'k', s = s*2)
         plt.axis('equal')
         plt.grid(True)
         plt.tick_params(labelsize= fontsize)

@@ -293,14 +293,14 @@ def loadLSMUtilitywMasks(wdir, identifier, load = False, **kwargs):
     return SampleSet
     
 def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
-                      fitfunc = 'batchFit2lt',
+                      fitfunc = ['batchFit2lt'],
                       fitkwargs = LSMan.genDefaultFitKwargs(),
                       colorby = 'rateY_LPC',
                       **kwargs
                       ):
     SampleSet.batchgenNormDecay(normImageG, normImageY, **kwargs)
-    if fitfunc is not None:
-        getattr(SampleSet, fitfunc)(identifier, **fitkwargs)
+    for fitfunction in fitfunc:
+        getattr(SampleSet, fitfunction)(identifier, **fitkwargs)
     colorcoding = SampleSet.imstats[colorby]
     bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
                          colorcoding = colorcoding,

@@ -751,7 +751,10 @@ def AnIExport(locLst, outfolder, rebin = 1, sizex = 100):
         os.mkdir(outfolder)
     except FileExistsError:
         pass
-        
+    #bug: this function exports duplicate columns called Gbg and bgG
+    #and Ybg and bgY I think, when isforMargarita = True.
+    #duplicate columns have the same values. Simplify to Suren's preferred
+    #name: bgG / bgY
     
     headerbaseG = 'image_ID_cI\tPixel Number_cI\t'
     headerbaseRY = 'image_ID_cII\tPixel Number_cII\t'
