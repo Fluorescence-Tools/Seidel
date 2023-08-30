@@ -6,6 +6,8 @@
 
 #include<vector>
 
+int subtract(int i, int j);
+/*
 typedef struct{
 	//e.g. line_ids = [1,2]. 1 codes for FRET, 2 for PIE (by convention)
 	std::vector<int> line_ids; 
@@ -43,5 +45,5 @@ void ProcessPhotonStream(
 		imOpts ImOpts,
 		std::vector<imChannel> Channels
 		);
-
+*/
 #endif

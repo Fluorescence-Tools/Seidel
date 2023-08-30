@@ -46,7 +46,6 @@ class ImOpts {
 		float dwelltime,
 		float counttime,
 		long long NumRecords,
-		float linestep,
 		float pxsize,
 		int dimX,
 		int dimY,
@@ -56,13 +55,13 @@ class ImOpts {
 		dwelltime(dwelltime),
 		counttime(counttime),
 		NumRecords(NumRecords),
-		linestep(linestep),
 		pxsize(pxsize),
 		dimX(dimX),
 		dimY(dimY),
 		ntacs(ntacs),
 		TAC_range(TAC_range)
-		{ };
+		{ linestep = pxsize / line_ids.size(); //don't need this now. Could be used to correct pixel shift in c code.
+		};
 };
 /*
 class ph {
@@ -125,12 +124,16 @@ class ImChannel {
 			//initialize ltImage size and fill with 0
 			ltImage.resize(imOpts.dimX * imOpts.dimY * imOpts.ntacs, 0);
 		};
-	std::vector<unsigned char> get_ltImage(){
-		return ltImage;
-	};
 };
 
-void ProcessPhotonStream(
+int ProcessPhotonStream_pywrap(
+		ArrayX<int> tac,
+		ArrayX<long long> t,
+		ArrayX<unsigned char> can,
+		ImOpts imOpts,
+		std::vector<ImChannel> Channels);
+		
+int ProcessPhotonStream(
 		int * tac,
 		long long * t,
 		unsigned char * can,

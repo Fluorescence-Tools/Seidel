@@ -2,12 +2,16 @@
 //AG Seidel, HHU Dusseldorf
 //May 2019
 #include "ProcessPhotonStream.h"
-#include <stdio.h>
+//#include <stdio.h>
 //#include <Eigen/Eigen>
-#include <vector>
-#include <algorithm>
+//#include <vector>
+//#include <algorithm>
 
-
+//test function to test py wrapping
+int subtract(int i, int j){
+	return (i - j);
+}
+/*
 void ProcessPhotonStream(
 		int * tac,
 		long long * t,
@@ -213,4 +217,4 @@ extern "C"
 		return 0;
 	}
 }
-
+*/

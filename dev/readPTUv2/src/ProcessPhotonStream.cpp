@@ -6,6 +6,9 @@
 #include "ProcessPhotonStream.h"
 #include <Eigen/Core>
 #include <Eigen/LU>
+//#include <pybind11/pybind11.h>
+//#include <pybind11/iostream.h>// for py::print debugging function
+//namespace py = pybind11;
 //#include <iostream>
 
 
@@ -20,17 +23,31 @@ int subtract(int i, int j)
 {
 	return (i - j);
 }
-
-void ProcessPhotonStream(
+//write to separate file later
+using namespace Eigen;
+int ProcessPhotonStream_pywrap(
+		ArrayX<int> tac,
+		ArrayX<long long> t,
+		ArrayX<unsigned char> can,
+		ImOpts imOpts,
+		std::vector<ImChannel> Channels){
+			int * tac_p = tac.data();
+			long long * t_p = t.data();
+			unsigned char * can_p = can.data();
+			return ProcessPhotonStream(tac_p, t_p, can_p, imOpts, Channels);
+		}
+int ProcessPhotonStream(
+		//tac can be caught in 16 bit short, but my PQ_ptu_sf function expects an int.
+		//potentially this already occurs in Surens code, but maybe also my wrapper is at fault.
+		//I will except this inefficiency for now.
 		int * tac,
 		long long * t,
 		unsigned char * can,
-		int dimX,
-		int dimY,
 		ImOpts imOpts,
 		std::vector<ImChannel> Channels
 		)
 {
+	int outflag = 0;
 	int mode_iter, currentline_id;
 	long long startline, i, timedif;
 	int lineIndex, colIndex, tacIndex;
@@ -44,6 +61,9 @@ void ProcessPhotonStream(
 	//float macrot2pos = ImOpts.pxsize * ImOpts.counttime / ImOpts.dwelltime;
 	float macrotime2pixel = imOpts.counttime / imOpts.dwelltime;
 	int tacconvert = imOpts.TAC_range / imOpts.ntacs;
+	int chsize = Channels.size();
+	
+	
 	for (i = 0; i < imOpts.NumRecords; i++){
 		if (can[i] == 65) {
 			inscan = true;
@@ -67,13 +87,16 @@ void ProcessPhotonStream(
 			lineIndex = 0;
 			continue;
 		}
-		
-		for (ImChannel Ch : Channels){
-			intac = tac[i] > Ch.tacmin and tac[i] < Ch.tacmax;
-			in_t = t[i] > Ch.tmin and t[i] < Ch.tmax; 
-			inmode = Ch.line_id == currentline_id;
-			incan = std::find(Ch.can.begin(),Ch.can.end(),can[i]) 
-					!= Ch.can.end();
+		for(int j = 0; j < chsize ; j++) {
+		//one could use the line below instead to loop, but it does not work for some reason
+		//for (ImChannel Ch : Channels){ 
+			intac = tac[i] > Channels[j].tacmin and tac[i] < Channels[j].tacmax;
+			in_t = t[i] > Channels[j].tmin and t[i] < Channels[j].tmax; 
+			inmode = Channels[j].line_id == currentline_id;
+			
+			incan = std::find(Channels[j].can.begin(),Channels[j].can.end(),can[i]) 
+					!= Channels[j].can.end();
+			
 			//it seems very inefficient to me to make an object for every photon, as we have so many.
 			//I guess the channel sorting is OK, but I should just cast it in a 3D array as before.
 			//can use the bookkeeping from previous function
@@ -83,14 +106,39 @@ void ProcessPhotonStream(
 			//TODO: create a container for the imChannel data, probably an Eigen array that translates no numpy and that I have to give the proper dimensions.
 			
 			if (intac and in_t and incan and inscan and inmode){
-				timedif = t[i] - startline; //cast long long to int
+				timedif = t[i] - startline; //no cast
 				colIndex = timedif * macrotime2pixel;
 				tacIndex = tac[i] / tacconvert;
+				
 				index = lineIndex * imOpts.ntacs * imOpts.dimX 
 					+ colIndex * imOpts.ntacs 
 					+ tacIndex;
+				//check that there is no index overflow
+				if ( index > Channels[j].ltImage.size() ) {
+					//outflag += 1; //bit code to signify index overflow
+					break;
+				} 
+				outflag += 1;
+				//issue: somehow this does not really change the object. Pointer problem?
+				//yes -> objects are being copied, hence any modification here is not refleted in python.
+				//this is also not possible, making this whole pybind11 module pretty sucky.
+				Channels[j].ltImage[index] = 10;
 				//current behaviour is that a photon can only be in a single
 				break;
+
+			}
+			
+		}
+	Channels[0].ltImage[0] = 200;
+	Channels[0].name = "lala";
+	Channels[0].ltImage.push_back(20);
+	tac[0] = 100;
+		
+	}
+	return outflag;
+}
+//old stuff
+//old photon struct, discarded
 				/*
 				ph Ph;
 				Ph.tac = tac[i];
@@ -106,10 +154,6 @@ void ProcessPhotonStream(
 				//channel
 				break;
 				*/
-			}
-		}
-	}
-}
 /*
 	__declspec(dllexport) int genGRYlifetime(
 		long long * eventN,

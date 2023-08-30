@@ -300,11 +300,17 @@ def FitPlotLSMUtility(SampleSet, normImageG, normImageY, identifier,
                       ):
     SampleSet.batchgenNormDecay(normImageG, normImageY, **kwargs)
     for fitfunction in fitfunc:
-        getattr(SampleSet, fitfunction)(identifier, **fitkwargs)
-    colorcoding = SampleSet.imstats[colorby]
-    bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
-                         colorcoding = colorcoding,
-                         resdir = SampleSet.resdir, **kwargs)
+        if fitfunction in ['wrap_OO_fitDO', 'wrap_OO_fitDA']:
+            #these fitfunction were added later, they are written functional
+            #to avoid having to reanalyze the masks, which is very time-consuming
+            getattr(LSMan, fitfunction)(SampleSet, identifier, **fitkwargs)
+        else:
+            #other fit functions are part of the class itself
+            getattr(SampleSet, fitfunction)(identifier, **fitkwargs)
+    #colorcoding = SampleSet.imstats[colorby]
+    #bp.pltRelativeDecays(SampleSet, identifier, decaytype = fitkwargs['decaytype'],
+    #                     colorcoding = colorcoding,
+    #                     resdir = SampleSet.resdir, **kwargs)
                          
 def prepareForCreatingManualMask(wdir):
     #list all ptu files in folder

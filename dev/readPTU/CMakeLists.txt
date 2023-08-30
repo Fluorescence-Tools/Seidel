@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
+#find_package(Python 3.7 COMPONENTS Interpreter Development REQUIRED)
+
 project(readPTU
 	LANGUAGES CXX C
 	VERSION 1.0)

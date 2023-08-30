@@ -1,7 +1,8 @@
 #helper functions for developmental functions and Gauss fitting
 #Nicolaas van der Voort
 #AG Seidel, 4 March, 2020
-
+##issue: findPeaksLib increases dependance and lessens flexibility
+##get rid of it and move depending functions.
 import findPeaksLib
 import numpy as np
 import matplotlib.pyplot as plt

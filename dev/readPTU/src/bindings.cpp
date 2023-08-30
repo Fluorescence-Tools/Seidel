@@ -7,11 +7,12 @@
 
 namespace py = pybind11;
 
-PYBIND11_PLUGIN(ProcessPhotonStream)
+PYBIND11_PLUGIN(readPTU)
 {
-	py::module m("ProcessPhotonStream");
+	py::module m("readPTU");
+	m.def("subtract", &subtract);
+/*
 	m.def("ProcessPhotonStream", &ProcessPhotonStream);
-
 	py::class_<imOpts>(m, "imOpts")
 		.def("line_ids", &imOpts::line_ids)
 		.def("dwelltime", &imOpts::dwelltime)
@@ -38,6 +39,6 @@ PYBIND11_PLUGIN(ProcessPhotonStream)
 		.def("tmax", &imChannel::tmax)
 		.def("line_id", &imChannel::line_id)
 		.def("phstream", &imChannel::phstream);
-
+*/
 	return m.ptr
 }

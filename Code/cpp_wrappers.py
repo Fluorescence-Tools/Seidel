@@ -61,6 +61,9 @@ def ptu_wrap(fname, NumRecords):
     eventN = np.zeros(NumRecords).astype(np.int64)
     eventN_p = eventN.ctypes.data_as(c_longlong_p)
 
+        #tac can be caught in 16 bit short, but my PQ_ptu_sf function expects an int.
+		#potentially this already occurs in Surens code, but maybe also my wrapper is at fault.
+		#I will except this inefficiency for now.
     tac = np.zeros(NumRecords).astype(np.int32)
     tac_p = tac.ctypes.data_as(c_int_p)
 
@@ -101,7 +104,28 @@ def read_header(header_name):
         logger.error("not all needed variables were found")
         raise
 
-
+def read_header_v2(header_name):
+    header = np.genfromtxt(header_name.decode(), delimiter = '\n', dtype = str)
+    for el in header:
+        if "ImgHdr_PixX" in el:
+            dimX = int(el[40:])
+        if "ImgHdr_PixY" in el:
+            dimY = int(el[40:])
+        if "ImgHdr_TimePerPixel" in el:
+            dwelltime = float(el[40:]) * 1e-3
+        if "MeasDesc_GlobalResolution" in el:
+            counttime = float(el[40:])
+        if  "TTResultFormat_DTimeMask" in el:
+            TAC_range = int(el[40:])
+    try:
+        dwelltime
+    except UnboundLocalError:
+        dwelltime = -1
+    try:
+        return dimX, dimY, dwelltime, counttime, TAC_range
+    except NameError:
+        logger.error("not all needed variables were found")
+        raise
 ###this function was superceded by wrapping using pywrap functionality,
 #Producing a .pyd file.
 #Left here for now as an example how to deal with LVArray structs.

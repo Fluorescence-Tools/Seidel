@@ -57,7 +57,7 @@ DA = DA1lt #legacy name
 def fitDonly(D0dat, dtime = 0.064):
     Npoints = D0dat.shape[0]
     fittime = np.arange(Npoints) * dtime
-    p0 = [np.max(D0dat)/2, np.max(D0dat)/2, 1, 3, 100]
+    p0 = [np.max(D0dat)/2, np.max(D0dat)/2, 1, 2.5, 100]
     popt, pcov = curve_fit(Donly, fittime, D0dat, p0 = p0, sigma = np.sqrt(D0dat))
     Donlymodel = Donly(fittime, popt[0], popt[1], popt[2], popt[3], popt[4])
     Donly_base = Donly(fittime, popt[0] / ( popt[0] + popt[1] ), \

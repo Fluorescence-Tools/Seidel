@@ -8,6 +8,12 @@ import fitDA
 import gc
 import tiffile #pip install tiffile if missing
 import copy
+try:
+    import vvvh_support
+except ModuleNotFoundError:
+    import sys
+    sys.path.append(r'K:\vanderVoortN\redRobin\src')
+    import vvvh_support
 
 import warnings
 from scipy.ndimage import gaussian_filter
@@ -183,6 +189,44 @@ def trySaveToCSV(dfrm, outname):
         dfrm.to_csv(outname)
     except PermissionError:
         print('could not save stats, is the file open in Excel?')
+
+## having the below two functions functional, such that I don't need to re-
+# analyze all data
+def wrap_OO_fitDO(SampleSet, identifier, data_irf, data_af, af_G_norm, tauxD0,
+                    bsel = None):
+    #get vvvh format decays
+    decays_vv = np.array(SampleSet.getDecay(decaytype = 'P'))
+    decays_vh = np.array(SampleSet.getDecay(decaytype = 'S'))
+    Ndecays = decays_vv.shape[0]
+    length = decays_vv.shape[1]
+    decays_vvvh = np.zeros([Ndecays, 2, length])
+    decays_vvvh[:,0, :] = decays_vv
+    decays_vvvh[:,1, :] = decays_vh
+    #path for saving result
+    csvout = os.path.join(SampleSet.resdir, identifier + '_2lt_OOFitData.csv')
+    dfrm = vvvh_support.fitDO(decays_vvvh, data_irf, data_af, 
+                        SampleSet.imstats, af_G_norm, tauxD0, bsel = None,
+                        csvout = csvout)
+    #add as class variable
+    SampleSet.D0FitOODfrm = dfrm
+    
+def wrap_OO_fitDA(SampleSet, identifier, data_irf, data_af, af_G_norm, tauxD0,
+                    bsel = None):
+    #get vvvh format decays
+    decays_vv = np.array(SampleSet.getDecay(decaytype = 'P'))
+    decays_vh = np.array(SampleSet.getDecay(decaytype = 'S'))
+    Ndecays = decays_vv.shape[0]
+    length = decays_vv.shape[1]
+    decays_vvvh = np.zeros([Ndecays, 2, length])
+    decays_vvvh[:, 0, :] = decays_vv
+    decays_vvvh[:, 1, :] = decays_vh
+    #path for saving result
+    csvout = os.path.join(SampleSet.resdir, identifier + '_D0DA2lt_OOFitData.csv')
+    dfrm = vvvh_support.fitDA(decays_vvvh, data_irf, data_af, 
+                        SampleSet.imstats, af_G_norm, tauxD0, bsel = None,
+                        csvout = csvout)
+    #add as class variable
+    SampleSet.DAFitOODfrm = dfrm
         
 class sampleSet():
     """This class is intended to automate image analysis for cellular data to

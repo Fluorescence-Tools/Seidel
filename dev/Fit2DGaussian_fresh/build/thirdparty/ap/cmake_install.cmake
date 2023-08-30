@@ -1,4 +1,4 @@
-# Install script for directory: K:/vanderVoortN/FRC/dev/Fit2DGaussian_fresh/thirdparty/ap
+# Install script for directory: K:/vanderVoortN/Seidel/dev/Fit2DGaussian_fresh/thirdparty/ap
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

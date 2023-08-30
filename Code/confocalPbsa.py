@@ -307,7 +307,7 @@ def confocalPbsa(sumtraces, threshold, ffiles, timestep, Chnumbers, \
         multip['tracefit'] = fluortrace_final * stepsize + means[0]
         multip['fluortrace_kv'] = fluortrace_prelim
         multip['fluortrace_final'] = fluortrace_final
-        multip['file'] = file
+        multip['file'] = file #this should go to onep
         traceinfo = {'onep': onep, 'multip':multip}
         traceLst.append(traceinfo)
     print('number of traces with one or less steps: %i' % nbad)

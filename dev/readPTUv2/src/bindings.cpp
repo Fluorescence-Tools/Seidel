@@ -11,26 +11,26 @@ namespace py = pybind11;
 
 PYBIND11_PLUGIN(readPTUv2)
 {
+	//practice examples
+	
 	py::module m("readPTUv2");
 	m.def("inv", &inv);
 	m.def("subtract", &subtract);
 	
-	//practice example
 	py::class_<Pet>(m, "Pet")
 		.def(py::init<const std::string &>())
 		.def("setName", &Pet::setName)
 		.def("getName", &Pet::getName)
 		.def_readwrite("name", &Pet::name);
-		
+	
+	m.def("ProcessPhotonStream", &ProcessPhotonStream_pywrap);
 	//this way of binding passes the constructor, and allows for reading and writing the other variables.
 	py::class_<ImOpts>(m, "ImOpts")
-		.def(py::init<std::vector<int>, float, float, long long, float, float, int, int, int, int>())
+		.def(py::init<std::vector<int>, float, float, long long, float, int, int, int, int>())
 		.def_readwrite("line_ids", &ImOpts::line_ids)
 		.def_readwrite("dwelltime", &ImOpts::dwelltime)
 		.def_readwrite("counttime", &ImOpts::counttime)
 		.def_readwrite("NumRecords", &ImOpts::NumRecords)
-		.def_readwrite("linestep", &ImOpts::linestep, 
-		"e.g. 1 FRET line, 1 PIE line, 10nm px: linstep = 5")
 		.def_readwrite("pxsize", &ImOpts::pxsize)
 		.def_readwrite("dimX", &ImOpts::dimX)
 		.def_readwrite("dimY", &ImOpts::dimY)
@@ -56,36 +56,16 @@ PYBIND11_PLUGIN(readPTUv2)
 		.def_readwrite("tmin", &ImChannel::tmin)
 		.def_readwrite("tmax", &ImChannel::tmax)
 		.def_readwrite("line_id", &ImChannel::line_id)
-		//.def_property_readonly("imOpts", &ImChannel::imOpts) #some compiler problem here, stating that there is no matching function call, investigate later
-		//.def("get_ltImage", &ImChannel::get_ltImage)
-		
 		//this seems to work now in maintaining the unit8 data type. The only remaining problem is that the data is copied when transfer from cpp to python.
 		//unfortunately there seems to be no direct way to solve this other then using Eigen or resorting to black magic. The former not supporting 3D arrays.
+		// another suggestion was to use the def_buffer function to also change the array shape. I can't get it to work though, so I will just do that in python. link: https://alexsm.com/pybind11-buffer-protocol-opencv-to-numpy/
 		.def("get_ltImage", [](ImChannel &imCh) -> py::array {
 			//auto func = &ImChannel::get_ltImage;
 			return py::array(imCh.ltImage.size(), imCh.ltImage.data());
 		});
-		//from example https://alexsm.com/pybind11-buffer-protocol-opencv-to-numpy/
-		/*.def_buffer([](ImChannel & imCh) -> py::buffer_info{
-			return py::buffer_info(
-				//pointer to buffer // is this right?
-				&imCh.ltImage,
-				//size of one scalar
-				sizeof(unsigned char),
-				// Python struct-style format descriptor
-				py::format_descriptor<unsigned char>::format(),
-				//number of dimensions
-				3,
-				// Buffer dimensions
-				{imCh.imOpts.dimY, imCh.imOpts.dimX, imCh.imOpts.ntacs},
-				// Strides in bytes for each index
-				{
-					sizeof(unsigned char) * imCh.imOpts.dimX * imCh.imOpts.ntacs,
-					sizeof(unsigned char) * imCh.imOpts.ntacs,
-					sizeof(unsigned char)
-				}
-			);
-			
-		});*/
+		// next time do:
+		// 1 clean upper -- done
+		// 2 test ProcessPhotonStream function
+		// 3 implement in Image Manipulation class
 	return m.ptr();
 }
